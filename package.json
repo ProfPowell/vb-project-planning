@@ -1,0 +1,74 @@
+{
+  "name": "@profpowell/vb-project-planning",
+  "version": "0.1.0",
+  "description": "Project- and UX-planning Web Components for Vanilla Breeze: personas, stories, journeys, empathy maps, impact/effort and quadrant grids, risk and traceability matrices, burndown, roadmap, kanban, story map, gantt, review surface, work items, and ADRs.",
+  "license": "MIT",
+  "author": "Patrick Powell",
+  "type": "module",
+  "homepage": "https://github.com/ProfPowell/vb-project-planning#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ProfPowell/vb-project-planning.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ProfPowell/vb-project-planning/issues"
+  },
+  "keywords": [
+    "vanilla-breeze",
+    "web-components",
+    "project-planning",
+    "ux",
+    "agile",
+    "kanban",
+    "roadmap"
+  ],
+  "files": [
+    "src",
+    "dist"
+  ],
+  "main": "./dist/vb-project-planning.js",
+  "module": "./src/index.js",
+  "style": "./dist/vb-project-planning.css",
+  "exports": {
+    ".": {
+      "import": "./src/index.js",
+      "default": "./dist/vb-project-planning.js"
+    },
+    "./css": "./src/index.css",
+    "./dist/css": "./dist/vb-project-planning.css",
+    "./user-persona": "./src/web-components/user-persona/logic.js",
+    "./user-story": "./src/web-components/user-story/logic.js",
+    "./user-journey": "./src/web-components/user-journey/logic.js",
+    "./empathy-map": "./src/web-components/empathy-map/logic.js",
+    "./impact-effort": "./src/web-components/impact-effort/logic.js",
+    "./quadrant-grid": "./src/web-components/quadrant-grid/logic.js",
+    "./risk-register": "./src/web-components/risk-register/logic.js",
+    "./traceability-matrix": "./src/web-components/traceability-matrix/logic.js",
+    "./burndown-chart": "./src/web-components/burndown-chart/logic.js",
+    "./product-roadmap": "./src/web-components/product-roadmap/logic.js",
+    "./kanban-board": "./src/web-components/kanban-board/logic.js",
+    "./story-map": "./src/web-components/story-map/logic.js",
+    "./review-surface": "./src/web-components/review-surface/logic.js",
+    "./gantt-chart": "./src/web-components/gantt-chart/logic.js",
+    "./work-item": "./src/web-components/work-item/logic.js",
+    "./adr-wc": "./src/web-components/adr-wc/logic.js",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "npm run build:js && npm run build:css",
+    "build:js": "esbuild src/index.js --bundle --format=esm --outfile=dist/vb-project-planning.js && esbuild src/index.js --bundle --format=esm --minify --outfile=dist/vb-project-planning.min.js",
+    "build:css": "esbuild src/index.css --bundle --outfile=dist/vb-project-planning.css && esbuild src/index.css --bundle --minify --outfile=dist/vb-project-planning.min.css",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "vanilla-breeze": ">=0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "vanilla-breeze": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.0"
+  }
+}
