@@ -9,85 +9,86 @@
   <script>window.__VB_THEME_BASE="/vb-project-planning/cdn";document.documentElement.dataset.iconPath="/vb-project-planning/cdn/icons";</script>
   <title>Overview — VB Project Planning</title>
   <meta name="description" content="Project- and UX-planning Web Components for Vanilla Breeze.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mpx26qar">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mpx26qar">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mpx26qar">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mpx2y4d8">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mpx2y4d8">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mpx2y4d8">
   
 </head>
 <body>
-  <header class="site" data-sticky="" data-layout="cluster" data-layout-justify="between" data-layout-gap="m">
+  <header class="site" data-sticky="">
   <a href="/vb-project-planning/" class="brand">VB Project Planning</a>
-  <nav class="pills" aria-label="Primary" data-layout="cluster" data-layout-gap="2xs">
-    <a href="/vb-project-planning/">Home</a>
-    <a href="/vb-project-planning/elements/">Elements</a>
-    <a href="/vb-project-planning/showcase/sprint-board/">Showcase</a>
-    <a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a>
-    <a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a>
+  <nav class="horizontal pills" aria-label="Primary">
+    <ul>
+      <li><a href="/vb-project-planning/">Home</a></li>
+      <li><a href="/vb-project-planning/elements/">Elements</a></li>
+      <li><a href="/vb-project-planning/showcase/sprint-board/">Sprint Board</a></li>
+      <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
+    </ul>
   </nav>
   <theme-picker compact="">
-    <button type="button" data-trigger="" class="ghost">Theme</button>
+    <button type="button" data-trigger="" class="button ghost">Theme</button>
   </theme-picker>
 </header>
 
 
   <main>
-    <section class="hero">
+    <layout-center data-layout-max="wide">
+      <section data-layout="stack" data-layout-gap="m" style="text-align: center; padding-block: var(--size-2xl);">
   <h1>vb-project-planning</h1>
-  <p class="tagline">Web Components for the research, planning, and delivery phases of product work — personas, journeys, roadmaps, kanban, gantt and more, all themed by Vanilla Breeze.</p>
-  <div class="btn-group">
-    <a class="btn" href="/vb-project-planning/showcase/sprint-board/">See the Sprint Board</a>
-    <a class="btn btn-secondary" href="/vb-project-planning/elements/">Browse elements</a>
-  </div>
-  <div class="hero-demo" style="width: min(100%, 52rem); margin-block-start: var(--size-l);">
-    <kanban-board>
-      <section data-column="todo" data-column-label="To Do">
-        <user-story draggable="true" story-id="ATL-345" epic="Notifications" priority="high" status="to-do" points="5" detail="compact">
-          <span slot="persona">Alex, PM</span>
-          <span slot="action">get a daily digest of status changes</span>
-        </user-story>
-      </section>
-      <section data-column="doing" data-column-label="In Progress">
-        <user-story draggable="true" story-id="ATL-318" epic="Reporting" priority="high" status="in-progress" points="5" detail="compact">
-          <span slot="persona">Jordan, Analyst</span>
-          <span slot="action">filter reports by date range and team</span>
-        </user-story>
-      </section>
-      <section data-column="done" data-column-label="Done" data-column-color="success">
-        <user-story draggable="true" story-id="ATL-298" epic="Reporting" priority="high" status="done" points="8" detail="compact">
-          <span slot="persona">Sarah, Ops Lead</span>
-          <span slot="action">export any report as a shareable PDF</span>
-        </user-story>
-      </section>
-    </kanban-board>
-  </div>
+  <p class="lead" style="margin-inline: auto;">Web Components for the research, planning, and delivery phases of product work — personas, journeys, roadmaps, kanban, gantt and more, all themed by Vanilla Breeze.</p>
+  <nav data-layout="cluster" data-layout-justify="center" data-layout-gap="s">
+    <a class="button" href="/vb-project-planning/showcase/sprint-board/">See the Sprint Board</a>
+    <a class="button secondary" href="/vb-project-planning/elements/">Browse elements</a>
+  </nav>
 </section>
 
-<article data-layout="stack" data-layout-gap="l">
-  <section data-layout="stack" data-layout-gap="m">
-    <h2>Elements</h2>
-    <ul class="element-grid">
-      <li><a href="/vb-project-planning/elements/user-persona/"><code>&lt;user-persona&gt;</code><p>Persona card.</p></a></li>
-      <li><a href="/vb-project-planning/elements/user-story/"><code>&lt;user-story&gt;</code><p>User story card.</p></a></li>
-      <li><a href="/vb-project-planning/elements/user-journey/"><code>&lt;user-journey&gt;</code><p>Journey map with emotion curve.</p></a></li>
-      <li><a href="/vb-project-planning/elements/empathy-map/"><code>&lt;empathy-map&gt;</code><p>Says / thinks / does / feels.</p></a></li>
-      <li><a href="/vb-project-planning/elements/impact-effort/"><code>&lt;impact-effort&gt;</code><p>Impact vs. effort matrix.</p></a></li>
-      <li><a href="/vb-project-planning/elements/quadrant-grid/"><code>&lt;quadrant-grid&gt;</code><p>2×2 quadrant plotting surface.</p></a></li>
-      <li><a href="/vb-project-planning/elements/risk-register/"><code>&lt;risk-register&gt;</code><p>Risk log with likelihood/impact.</p></a></li>
-      <li><a href="/vb-project-planning/elements/traceability-matrix/"><code>&lt;traceability-matrix&gt;</code><p>Requirement ↔ artifact grid.</p></a></li>
-      <li><a href="/vb-project-planning/elements/burndown-chart/"><code>&lt;burndown-chart&gt;</code><p>Sprint/release burndown.</p></a></li>
-      <li><a href="/vb-project-planning/elements/product-roadmap/"><code>&lt;product-roadmap&gt;</code><p>Time-phased roadmap.</p></a></li>
-      <li><a href="/vb-project-planning/elements/kanban-board/"><code>&lt;kanban-board&gt;</code><p>Kanban board (drag to reorder).</p></a></li>
-      <li><a href="/vb-project-planning/elements/story-map/"><code>&lt;story-map&gt;</code><p>User-story map.</p></a></li>
-      <li><a href="/vb-project-planning/elements/review-surface/"><code>&lt;review-surface&gt;</code><p>Annotated review surface.</p></a></li>
-      <li><a href="/vb-project-planning/elements/gantt-chart/"><code>&lt;gantt-chart&gt;</code><p>Gantt schedule.</p></a></li>
-      <li><a href="/vb-project-planning/elements/work-item/"><code>&lt;work-item&gt;</code><p>Work-item card.</p></a></li>
-      <li><a href="/vb-project-planning/elements/adr-wc/"><code>&lt;adr-wc&gt;</code><p>Architecture Decision Record.</p></a></li>
-    </ul>
-  </section>
+<section data-layout="stack" data-layout-gap="m">
+  <h2>A live board</h2>
+  <kanban-board>
+    <section data-column="todo" data-column-label="To Do">
+      <user-story draggable="true" story-id="ATL-345" epic="Notifications" priority="high" status="to-do" points="5" detail="compact">
+        <span slot="persona">Alex, PM</span><span slot="action">get a daily digest of status changes</span>
+      </user-story>
+    </section>
+    <section data-column="doing" data-column-label="In Progress">
+      <user-story draggable="true" story-id="ATL-318" epic="Reporting" priority="high" status="in-progress" points="5" detail="compact">
+        <span slot="persona">Jordan, Analyst</span><span slot="action">filter reports by date range and team</span>
+      </user-story>
+    </section>
+    <section data-column="done" data-column-label="Done" data-column-color="success">
+      <user-story draggable="true" story-id="ATL-298" epic="Reporting" priority="high" status="done" points="8" detail="compact">
+        <span slot="persona">Sarah, Ops Lead</span><span slot="action">export any report as a shareable PDF</span>
+      </user-story>
+    </section>
+  </kanban-board>
+</section>
 
-  <section data-layout="stack" data-layout-gap="s">
-    <h2>Install</h2>
-    <code-block language="bash" data-ssr><template shadowrootmode="open"><style>
+<section data-layout="stack" data-layout-gap="m">
+  <h2>Elements</h2>
+  <layout-grid data-layout-min="16rem">
+    <layout-card><a href="/vb-project-planning/elements/user-persona/"><code>&lt;user-persona&gt;</code></a><p>Persona card.</p></layout-card>
+    <layout-card><a href="/vb-project-planning/elements/user-story/"><code>&lt;user-story&gt;</code></a><p>User story card.</p></layout-card>
+    <layout-card><a href="/vb-project-planning/elements/user-journey/"><code>&lt;user-journey&gt;</code></a><p>Journey map with emotion curve.</p></layout-card>
+    <layout-card><a href="/vb-project-planning/elements/empathy-map/"><code>&lt;empathy-map&gt;</code></a><p>Says / thinks / does / feels.</p></layout-card>
+    <layout-card><a href="/vb-project-planning/elements/impact-effort/"><code>&lt;impact-effort&gt;</code></a><p>Impact vs. effort matrix.</p></layout-card>
+    <layout-card><a href="/vb-project-planning/elements/quadrant-grid/"><code>&lt;quadrant-grid&gt;</code></a><p>2×2 quadrant plotting surface.</p></layout-card>
+    <layout-card><a href="/vb-project-planning/elements/risk-register/"><code>&lt;risk-register&gt;</code></a><p>Risk log with likelihood/impact.</p></layout-card>
+    <layout-card><a href="/vb-project-planning/elements/traceability-matrix/"><code>&lt;traceability-matrix&gt;</code></a><p>Requirement ↔ artifact grid.</p></layout-card>
+    <layout-card><a href="/vb-project-planning/elements/burndown-chart/"><code>&lt;burndown-chart&gt;</code></a><p>Sprint/release burndown.</p></layout-card>
+    <layout-card><a href="/vb-project-planning/elements/product-roadmap/"><code>&lt;product-roadmap&gt;</code></a><p>Time-phased roadmap.</p></layout-card>
+    <layout-card><a href="/vb-project-planning/elements/kanban-board/"><code>&lt;kanban-board&gt;</code></a><p>Kanban board (drag to reorder).</p></layout-card>
+    <layout-card><a href="/vb-project-planning/elements/story-map/"><code>&lt;story-map&gt;</code></a><p>User-story map.</p></layout-card>
+    <layout-card><a href="/vb-project-planning/elements/review-surface/"><code>&lt;review-surface&gt;</code></a><p>Annotated review surface.</p></layout-card>
+    <layout-card><a href="/vb-project-planning/elements/gantt-chart/"><code>&lt;gantt-chart&gt;</code></a><p>Gantt schedule.</p></layout-card>
+    <layout-card><a href="/vb-project-planning/elements/work-item/"><code>&lt;work-item&gt;</code></a><p>Work-item card.</p></layout-card>
+    <layout-card><a href="/vb-project-planning/elements/adr-wc/"><code>&lt;adr-wc&gt;</code></a><p>Architecture Decision Record.</p></layout-card>
+  </layout-grid>
+</section>
+
+<section data-layout="stack" data-layout-gap="s">
+  <h2>Install</h2>
+  <code-block language="bash" data-ssr><template shadowrootmode="open"><style>
       :host {
         --_cb-bg: var(--color-surface-raised, #f6f8fa);
         --_cb-code-bg: var(--color-surface, #fff);
@@ -573,7 +574,7 @@
         <pre><code class="language-bash" tabindex="0"><span class="code-line">npm install @profpowell/vb-project-planning</span></code></pre>
       </div>
       </template><textarea style="display:none">npm install @profpowell/vb-project-planning</textarea></code-block>
-    <code-block language="js" data-ssr><template shadowrootmode="open"><style>
+  <code-block language="js" data-ssr><template shadowrootmode="open"><style>
       :host {
         --_cb-bg: var(--color-surface-raised, #f6f8fa);
         --_cb-code-bg: var(--color-surface, #fff);
@@ -1060,9 +1061,9 @@
       </div>
       </template><textarea style="display:none">import &#39;@profpowell/vb-project-planning&#39;;
 import &#39;@profpowell/vb-project-planning/css&#39;;</textarea></code-block>
-    <p>Pair with Vanilla Breeze tokens/themes — components inherit the active theme automatically (try the <strong>Theme</strong> picker above). The drag components (<code>kanban-board</code>, <code>quadrant-grid</code>, <code>impact-effort</code>, <code>story-map</code>) use VB's <code>&lt;drag-surface&gt;</code> peer.</p>
-  </section>
-</article>
+  <p>Drag components (<code>kanban-board</code>, <code>quadrant-grid</code>, <code>impact-effort</code>, <code>story-map</code>) use VB's <code>&lt;drag-surface&gt;</code> peer. Try the <strong>Theme</strong> picker above.</p>
+</section>
+    </layout-center>
   </main>
 
   <footer class="site-footer">
@@ -1070,10 +1071,10 @@ import &#39;@profpowell/vb-project-planning/css&#39;;</textarea></code-block>
 </footer>
 
 
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mpx26qar"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mpx26qar"></script>
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mpx26qar"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vb-theme-picker.js?v=mpx26qar"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mpx2y4d8"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mpx2y4d8"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mpx2y4d8"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vb-theme-picker.js?v=mpx2y4d8"></script>
   
 </body>
 </html>

@@ -4,65 +4,62 @@ title: Overview
 description: Project- and UX-planning Web Components for Vanilla Breeze.
 ---
 
-<section class="hero">
+<section data-layout="stack" data-layout-gap="m" style="text-align: center; padding-block: var(--size-2xl);">
   <h1>vb-project-planning</h1>
-  <p class="tagline">Web Components for the research, planning, and delivery phases of product work — personas, journeys, roadmaps, kanban, gantt and more, all themed by Vanilla Breeze.</p>
-  <div class="btn-group">
-    <a class="btn" href="/showcase/sprint-board/">See the Sprint Board</a>
-    <a class="btn btn-secondary" href="/elements/">Browse elements</a>
-  </div>
-  <div class="hero-demo" style="width: min(100%, 52rem); margin-block-start: var(--size-l);">
-    <kanban-board>
-      <section data-column="todo" data-column-label="To Do">
-        <user-story draggable="true" story-id="ATL-345" epic="Notifications" priority="high" status="to-do" points="5" detail="compact">
-          <span slot="persona">Alex, PM</span>
-          <span slot="action">get a daily digest of status changes</span>
-        </user-story>
-      </section>
-      <section data-column="doing" data-column-label="In Progress">
-        <user-story draggable="true" story-id="ATL-318" epic="Reporting" priority="high" status="in-progress" points="5" detail="compact">
-          <span slot="persona">Jordan, Analyst</span>
-          <span slot="action">filter reports by date range and team</span>
-        </user-story>
-      </section>
-      <section data-column="done" data-column-label="Done" data-column-color="success">
-        <user-story draggable="true" story-id="ATL-298" epic="Reporting" priority="high" status="done" points="8" detail="compact">
-          <span slot="persona">Sarah, Ops Lead</span>
-          <span slot="action">export any report as a shareable PDF</span>
-        </user-story>
-      </section>
-    </kanban-board>
-  </div>
+  <p class="lead" style="margin-inline: auto;">Web Components for the research, planning, and delivery phases of product work — personas, journeys, roadmaps, kanban, gantt and more, all themed by Vanilla Breeze.</p>
+  <nav data-layout="cluster" data-layout-justify="center" data-layout-gap="s">
+    <a class="button" href="/showcase/sprint-board/">See the Sprint Board</a>
+    <a class="button secondary" href="/elements/">Browse elements</a>
+  </nav>
 </section>
 
-<article data-layout="stack" data-layout-gap="l">
-  <section data-layout="stack" data-layout-gap="m">
-    <h2>Elements</h2>
-    <ul class="element-grid">
-      <li><a href="/elements/user-persona/"><code>&lt;user-persona&gt;</code><p>Persona card.</p></a></li>
-      <li><a href="/elements/user-story/"><code>&lt;user-story&gt;</code><p>User story card.</p></a></li>
-      <li><a href="/elements/user-journey/"><code>&lt;user-journey&gt;</code><p>Journey map with emotion curve.</p></a></li>
-      <li><a href="/elements/empathy-map/"><code>&lt;empathy-map&gt;</code><p>Says / thinks / does / feels.</p></a></li>
-      <li><a href="/elements/impact-effort/"><code>&lt;impact-effort&gt;</code><p>Impact vs. effort matrix.</p></a></li>
-      <li><a href="/elements/quadrant-grid/"><code>&lt;quadrant-grid&gt;</code><p>2×2 quadrant plotting surface.</p></a></li>
-      <li><a href="/elements/risk-register/"><code>&lt;risk-register&gt;</code><p>Risk log with likelihood/impact.</p></a></li>
-      <li><a href="/elements/traceability-matrix/"><code>&lt;traceability-matrix&gt;</code><p>Requirement ↔ artifact grid.</p></a></li>
-      <li><a href="/elements/burndown-chart/"><code>&lt;burndown-chart&gt;</code><p>Sprint/release burndown.</p></a></li>
-      <li><a href="/elements/product-roadmap/"><code>&lt;product-roadmap&gt;</code><p>Time-phased roadmap.</p></a></li>
-      <li><a href="/elements/kanban-board/"><code>&lt;kanban-board&gt;</code><p>Kanban board (drag to reorder).</p></a></li>
-      <li><a href="/elements/story-map/"><code>&lt;story-map&gt;</code><p>User-story map.</p></a></li>
-      <li><a href="/elements/review-surface/"><code>&lt;review-surface&gt;</code><p>Annotated review surface.</p></a></li>
-      <li><a href="/elements/gantt-chart/"><code>&lt;gantt-chart&gt;</code><p>Gantt schedule.</p></a></li>
-      <li><a href="/elements/work-item/"><code>&lt;work-item&gt;</code><p>Work-item card.</p></a></li>
-      <li><a href="/elements/adr-wc/"><code>&lt;adr-wc&gt;</code><p>Architecture Decision Record.</p></a></li>
-    </ul>
-  </section>
+<section data-layout="stack" data-layout-gap="m">
+  <h2>A live board</h2>
+  <kanban-board>
+    <section data-column="todo" data-column-label="To Do">
+      <user-story draggable="true" story-id="ATL-345" epic="Notifications" priority="high" status="to-do" points="5" detail="compact">
+        <span slot="persona">Alex, PM</span><span slot="action">get a daily digest of status changes</span>
+      </user-story>
+    </section>
+    <section data-column="doing" data-column-label="In Progress">
+      <user-story draggable="true" story-id="ATL-318" epic="Reporting" priority="high" status="in-progress" points="5" detail="compact">
+        <span slot="persona">Jordan, Analyst</span><span slot="action">filter reports by date range and team</span>
+      </user-story>
+    </section>
+    <section data-column="done" data-column-label="Done" data-column-color="success">
+      <user-story draggable="true" story-id="ATL-298" epic="Reporting" priority="high" status="done" points="8" detail="compact">
+        <span slot="persona">Sarah, Ops Lead</span><span slot="action">export any report as a shareable PDF</span>
+      </user-story>
+    </section>
+  </kanban-board>
+</section>
 
-  <section data-layout="stack" data-layout-gap="s">
-    <h2>Install</h2>
-    <code-block language="bash" data-escape>npm install @profpowell/vb-project-planning</code-block>
-    <code-block language="js" data-escape>import '@profpowell/vb-project-planning';
+<section data-layout="stack" data-layout-gap="m">
+  <h2>Elements</h2>
+  <layout-grid data-layout-min="16rem">
+    <layout-card><a href="/elements/user-persona/"><code>&lt;user-persona&gt;</code></a><p>Persona card.</p></layout-card>
+    <layout-card><a href="/elements/user-story/"><code>&lt;user-story&gt;</code></a><p>User story card.</p></layout-card>
+    <layout-card><a href="/elements/user-journey/"><code>&lt;user-journey&gt;</code></a><p>Journey map with emotion curve.</p></layout-card>
+    <layout-card><a href="/elements/empathy-map/"><code>&lt;empathy-map&gt;</code></a><p>Says / thinks / does / feels.</p></layout-card>
+    <layout-card><a href="/elements/impact-effort/"><code>&lt;impact-effort&gt;</code></a><p>Impact vs. effort matrix.</p></layout-card>
+    <layout-card><a href="/elements/quadrant-grid/"><code>&lt;quadrant-grid&gt;</code></a><p>2×2 quadrant plotting surface.</p></layout-card>
+    <layout-card><a href="/elements/risk-register/"><code>&lt;risk-register&gt;</code></a><p>Risk log with likelihood/impact.</p></layout-card>
+    <layout-card><a href="/elements/traceability-matrix/"><code>&lt;traceability-matrix&gt;</code></a><p>Requirement ↔ artifact grid.</p></layout-card>
+    <layout-card><a href="/elements/burndown-chart/"><code>&lt;burndown-chart&gt;</code></a><p>Sprint/release burndown.</p></layout-card>
+    <layout-card><a href="/elements/product-roadmap/"><code>&lt;product-roadmap&gt;</code></a><p>Time-phased roadmap.</p></layout-card>
+    <layout-card><a href="/elements/kanban-board/"><code>&lt;kanban-board&gt;</code></a><p>Kanban board (drag to reorder).</p></layout-card>
+    <layout-card><a href="/elements/story-map/"><code>&lt;story-map&gt;</code></a><p>User-story map.</p></layout-card>
+    <layout-card><a href="/elements/review-surface/"><code>&lt;review-surface&gt;</code></a><p>Annotated review surface.</p></layout-card>
+    <layout-card><a href="/elements/gantt-chart/"><code>&lt;gantt-chart&gt;</code></a><p>Gantt schedule.</p></layout-card>
+    <layout-card><a href="/elements/work-item/"><code>&lt;work-item&gt;</code></a><p>Work-item card.</p></layout-card>
+    <layout-card><a href="/elements/adr-wc/"><code>&lt;adr-wc&gt;</code></a><p>Architecture Decision Record.</p></layout-card>
+  </layout-grid>
+</section>
+
+<section data-layout="stack" data-layout-gap="s">
+  <h2>Install</h2>
+  <code-block language="bash" data-escape>npm install @profpowell/vb-project-planning</code-block>
+  <code-block language="js" data-escape>import '@profpowell/vb-project-planning';
 import '@profpowell/vb-project-planning/css';</code-block>
-    <p>Pair with Vanilla Breeze tokens/themes — components inherit the active theme automatically (try the <strong>Theme</strong> picker above). The drag components (<code>kanban-board</code>, <code>quadrant-grid</code>, <code>impact-effort</code>, <code>story-map</code>) use VB's <code>&lt;drag-surface&gt;</code> peer.</p>
-  </section>
-</article>
+  <p>Drag components (<code>kanban-board</code>, <code>quadrant-grid</code>, <code>impact-effort</code>, <code>story-map</code>) use VB's <code>&lt;drag-surface&gt;</code> peer. Try the <strong>Theme</strong> picker above.</p>
+</section>
