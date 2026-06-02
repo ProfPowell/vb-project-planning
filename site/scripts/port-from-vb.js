@@ -49,7 +49,13 @@ for (const rel of referencedDemos) {
   let html = readFileSync(from, 'utf8');
   html = html
     .replace(/\/src\/main\.css/g, '/assets/vendor/vanilla-breeze.css')
-    .replace(/\/src\/main\.js/g, `/assets/pack/${PACK_JS}`);
+    .replace(/\/src\/main\.js/g, `/assets/pack/${PACK_JS}`)
+    // Drop now-redundant VB-internal bundle refs (e.g. /cdn/packs/ux-planning.full.*,
+    // /cdn/vanilla-breeze-charts.*). The pack comes from main.js above and the
+    // pack CSS + <drag-surface> peer are injected below — keeping these would
+    // double-register elements (define twice → error) or 404.
+    .replace(/[ \t]*<link\b[^>]*\/cdn\/[^>]*>\s*\n?/g, '')
+    .replace(/[ \t]*<script\b[^>]*\/cdn\/[^>]*><\/script>\s*\n?/g, '');
   // ensure pack CSS + the drag-surface peer are loaded in demos
   if (!html.includes(`/assets/pack/${PACK_CSS}`)) {
     const inject = `/assets/vendor/vanilla-breeze.css`;

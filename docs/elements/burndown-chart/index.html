@@ -11,25 +11,17 @@
   
 </head>
 <body>
-  <header data-layout="cluster" data-layout-justify="space-between" class="site-header">
-  <a href="/vb-project-planning/" class="brand"><strong>VB Project Planning</strong></a>
-  <nav data-layout="cluster" aria-label="Primary">
+  <header class="site" data-sticky="" data-layout="cluster" data-layout-justify="between" data-layout-gap="m">
+  <a href="/vb-project-planning/" class="brand">VB Project Planning</a>
+  <nav class="pills" aria-label="Primary" data-layout="cluster" data-layout-gap="2xs">
     <a href="/vb-project-planning/">Home</a>
     <a class="active-parent" href="/vb-project-planning/elements/">Elements</a>
-    <a href="https://github.com/ProfPowell/vb-project-planning">GitHub</a>
-    <a href="https://vanilla-breeze.com/docs/">Vanilla Breeze ↗</a>
-    <form data-theme-picker="" aria-label="Theme">
-      <label>Theme
-        <select data-theme-select="">
-          <option value="modern">Modern</option>
-          <option value="minimal">Minimal</option>
-          <option value="classic">Classic</option>
-          <option value="a11y-high-contrast">High contrast</option>
-        </select>
-      </label>
-      <button type="button" data-mode-toggle="" aria-pressed="false">🌙 Dark</button>
-    </form>
+    <a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a>
   </nav>
+  <theme-picker compact="">
+    <button type="button" data-trigger="" class="ghost">Theme</button>
+  </theme-picker>
 </header>
 
 
@@ -1582,7 +1574,7 @@
   <script type="module" src="/vb-project-planning/assets/vendor/code-block.js"></script>
   <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js"></script>
   <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js"></script>
-  <script src="/vb-project-planning/assets/theme-picker.js"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vb-theme-picker.js"></script>
   
 </body>
 </html>

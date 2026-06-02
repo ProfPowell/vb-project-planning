@@ -7,8 +7,7 @@
   <link rel="stylesheet" href="/assets/vendor/vanilla-breeze.css" />
   <link rel="stylesheet" href="/assets/pack/vb-project-planning.css" />
   <script type="module" src="/assets/vendor/drag-surface.js"></script>
-  <link rel="stylesheet" href="/cdn/packs/ux-planning.full.css" />
-  <style>
+<style>
     body { padding: var(--size-l); background: var(--color-surface); max-inline-size: 78rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--size-m); }
     h1 { font-size: var(--font-size-l); margin: 0; }
     p  { color: var(--color-text-muted); margin: 0; }
@@ -51,8 +50,7 @@
   <output id="log">(drag a bar to see events)</output>
 
   <script type="module" src="/assets/pack/vb-project-planning.js"></script>
-  <script type="module" src="/cdn/packs/ux-planning.full.js"></script>
-  <script type="module">
+<script type="module">
     const log = document.getElementById('log');
     const append = (label, detail) => {
       log.textContent = `${label}: ${JSON.stringify(detail, (k, v) => k === 'initiative' ? v?.querySelector?.('h3')?.textContent : v)}\n` + log.textContent;
