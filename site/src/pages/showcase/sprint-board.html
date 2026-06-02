@@ -1,0 +1,116 @@
+---
+layout: base
+title: Sprint Board showcase
+description: A full user-story kanban board built with vb-project-planning — drag stories across columns, themed live by Vanilla Breeze.
+---
+
+<article data-layout="stack" data-layout-gap="l">
+  <header data-layout="stack" data-layout-gap="2xs">
+    <p class="breadcrumb"><a href="/">Home</a> · Showcase</p>
+    <h1>Atlas — Sprint 24 Board</h1>
+    <p class="lead"><strong>Sprint goal:</strong> ship the new reporting dashboard and cut digest email latency. Drag story cards between columns or reorder within a column. Use the <strong>Theme</strong> picker above — the whole board re-themes live.</p>
+  </header>
+
+  <kanban-board>
+    <section data-column="backlog" data-column-label="Backlog">
+      <user-story draggable="true" data-id="ATL-340" story-id="ATL-340" epic="Reporting" priority="high" status="backlog" points="5" detail="compact">
+        <span slot="persona">Sarah, Ops Lead</span>
+        <span slot="action">build custom report templates I can reuse</span>
+        <span slot="benefit">my team stops rebuilding the same views every week</span>
+      </user-story>
+      <user-story draggable="true" data-id="ATL-352" story-id="ATL-352" epic="Notifications" priority="medium" status="backlog" points="3" detail="compact">
+        <span slot="persona">Alex, PM</span>
+        <span slot="action">choose which projects trigger digest emails</span>
+        <span slot="benefit">I only hear about the work I own</span>
+      </user-story>
+      <user-story draggable="true" data-id="ATL-361" story-id="ATL-361" epic="Reporting" priority="low" status="backlog" points="2" detail="compact">
+        <span slot="persona">Jordan, Analyst</span>
+        <span slot="action">pin favourite charts to a home view</span>
+        <span slot="benefit">my morning check-in takes one click</span>
+      </user-story>
+    </section>
+
+    <section data-column="to-do" data-column-label="To Do">
+      <user-story draggable="true" data-id="ATL-333" story-id="ATL-333" epic="Reporting" priority="critical" status="to-do" points="8" detail="compact">
+        <span slot="persona">Sarah, Ops Lead</span>
+        <span slot="action">see all project timelines in one dashboard</span>
+        <span slot="benefit">I can spot bottlenecks before they slip</span>
+      </user-story>
+      <user-story draggable="true" data-id="ATL-345" story-id="ATL-345" epic="Notifications" priority="high" status="to-do" points="5" detail="compact">
+        <span slot="persona">Alex, PM</span>
+        <span slot="action">get a daily digest of status changes</span>
+        <span slot="benefit">I skip the morning standup scramble</span>
+      </user-story>
+    </section>
+
+    <section data-column="in-progress" data-column-label="In Progress">
+      <user-story draggable="true" data-id="ATL-318" story-id="ATL-318" epic="Reporting" priority="high" status="in-progress" points="5" detail="compact">
+        <span slot="persona">Jordan, Analyst</span>
+        <span slot="action">filter reports by date range and team</span>
+        <span slot="benefit">I answer exec questions without exporting to a spreadsheet</span>
+      </user-story>
+      <user-story draggable="true" data-id="ATL-327" story-id="ATL-327" epic="Performance" priority="medium" status="in-progress" points="3" detail="compact">
+        <span slot="persona">Priya, Engineer</span>
+        <span slot="action">cache the digest query results</span>
+        <span slot="benefit">emails go out in seconds, not minutes</span>
+      </user-story>
+    </section>
+
+    <section data-column="review" data-column-label="In Review">
+      <user-story draggable="true" data-id="ATL-309" story-id="ATL-309" epic="Reporting" priority="medium" status="review" points="2" detail="compact">
+        <span slot="persona">Jordan, Analyst</span>
+        <span slot="action">see loading indicators on every async action</span>
+        <span slot="benefit">I trust the dashboard isn't frozen</span>
+      </user-story>
+    </section>
+
+    <section data-column="done" data-column-label="Done" data-column-color="success">
+      <user-story draggable="true" data-id="ATL-298" story-id="ATL-298" epic="Reporting" priority="high" status="done" points="8" detail="compact">
+        <span slot="persona">Sarah, Ops Lead</span>
+        <span slot="action">export any report as a shareable PDF</span>
+        <span slot="benefit">I send board-ready updates without screenshots</span>
+      </user-story>
+      <user-story draggable="true" data-id="ATL-301" story-id="ATL-301" epic="Performance" priority="medium" status="done" points="3" detail="compact">
+        <span slot="persona">Priya, Engineer</span>
+        <span slot="action">paginate the activity feed</span>
+        <span slot="benefit">long projects load instantly</span>
+      </user-story>
+    </section>
+  </kanban-board>
+
+  <section data-layout="stack" data-layout-gap="m">
+    <h2>Anatomy of a story</h2>
+    <p>The same <code>&lt;user-story&gt;</code> element renders a full card with acceptance criteria and tasks when <code>detail="full"</code>:</p>
+    <user-story story-id="ATL-333" epic="Reporting" priority="critical" status="to-do" points="8" detail="full">
+      <span slot="persona">Sarah, Ops Lead</span>
+      <span slot="action">see all project timelines in one dashboard</span>
+      <span slot="benefit">I can spot bottlenecks before they slip</span>
+      <ul slot="acceptance-criteria">
+        <li>All active projects appear on a single timeline</li>
+        <li>Overdue milestones are visually flagged</li>
+        <li>Clicking a milestone opens the project detail</li>
+      </ul>
+      <ul slot="tasks">
+        <li>Timeline data API</li>
+        <li>Virtualised timeline rendering</li>
+        <li>Overdue/at-risk styling from theme tokens</li>
+      </ul>
+      <p slot="notes">Reuse the existing charting library for the timeline axis.</p>
+    </user-story>
+  </section>
+
+  <section data-layout="stack" data-layout-gap="s">
+    <h2>Build it</h2>
+    <code-block language="html" data-escape><kanban-board>
+  <section data-column="in-progress" data-column-label="In Progress">
+    <user-story draggable="true" story-id="ATL-318" epic="Reporting"
+                priority="high" status="in-progress" points="5" detail="compact">
+      <span slot="persona">Jordan, Analyst</span>
+      <span slot="action">filter reports by date range and team</span>
+      <span slot="benefit">I answer exec questions fast</span>
+    </user-story>
+  </section>
+</kanban-board></code-block>
+    <p>Drag-to-reorder uses Vanilla Breeze's <code>&lt;drag-surface&gt;</code> peer. <a href="/elements/kanban-board/">kanban-board API →</a> · <a href="/elements/user-story/">user-story API →</a></p>
+  </section>
+</article>

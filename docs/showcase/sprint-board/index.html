@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>product-roadmap — VB Project Planning</title>
-  <meta name="description" content="Interactive themes × quarters product roadmap. Auto-discovers lane sections + initiative articles; editable mode wires drag-to-reschedule, drag-to-resize, and drop-on-lane.">
+  <title>Sprint Board showcase — VB Project Planning</title>
+  <meta name="description" content="A full user-story kanban board built with vb-project-planning — drag stories across columns, themed live by Vanilla Breeze.">
   <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css">
   <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css">
   <link rel="stylesheet" href="/vb-project-planning/assets/site.css">
@@ -15,8 +15,8 @@
   <a href="/vb-project-planning/" class="brand">VB Project Planning</a>
   <nav class="pills" aria-label="Primary" data-layout="cluster" data-layout-gap="2xs">
     <a href="/vb-project-planning/">Home</a>
-    <a class="active-parent" href="/vb-project-planning/elements/">Elements</a>
-    <a href="/vb-project-planning/showcase/sprint-board/">Showcase</a>
+    <a href="/vb-project-planning/elements/">Elements</a>
+    <a class="active" href="/vb-project-planning/showcase/sprint-board/">Showcase</a>
     <a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a>
     <a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a>
   </nav>
@@ -27,32 +27,104 @@
 
 
   <main>
-    <article id="doc-article" data-layout="stack" data-layout-gap="l">
-      <nav class="breadcrumb" aria-label="Breadcrumb">
-        <ol data-layout="cluster" data-layout-gap="s">
-          <li><a href="/vb-project-planning/">Home</a></li>
-          <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
-          <li><span aria-current="page">product-roadmap</span></li>
-        </ol>
-      </nav>
-      <header data-layout="stack" data-layout-gap="s">
-        <h1><code>&lt;product-roadmap&gt;</code></h1>
-        <p class="lead">Interactive themes × quarters product roadmap. Auto-discovers lane sections + initiative articles; editable mode wires drag-to-reschedule, drag-to-resize, and drop-on-lane.</p>
-      </header>
-      <section>
-  <h2>Overview</h2>
-  <p>The <code>&lt;product-roadmap&gt;</code> component renders a horizontal time axis (quarters or months) with one swimlane per <code>&lt;section data-lane&gt;</code>. Each <code>&lt;article data-start data-end&gt;</code> inside a lane becomes a status-coded bar spanning its date range.</p>
+    <article data-layout="stack" data-layout-gap="l">
+  <header data-layout="stack" data-layout-gap="2xs">
+    <p class="breadcrumb"><a href="/vb-project-planning/">Home</a> · Showcase</p>
+    <h1>Atlas — Sprint 24 Board</h1>
+    <p class="lead"><strong>Sprint goal:</strong> ship the new reporting dashboard and cut digest email latency. Drag story cards between columns or reorder within a column. Use the <strong>Theme</strong> picker above — the whole board re-themes live.</p>
+  </header>
 
-  <p>Distinct from <a href="https://vanilla-breeze.com/docs/elements/web-components/gantt-chart/"><code>&lt;gantt-chart&gt;</code></a>: roadmap is theme-centric (initiatives in lanes, status as enum, no dependency arrows). Gantt is task-scheduling. Use roadmap for quarterly product roadmaps; gantt for project plans.</p>
+  <kanban-board>
+    <section data-column="backlog" data-column-label="Backlog">
+      <user-story draggable="true" data-id="ATL-340" story-id="ATL-340" epic="Reporting" priority="high" status="backlog" points="5" detail="compact">
+        <span slot="persona">Sarah, Ops Lead</span>
+        <span slot="action">build custom report templates I can reuse</span>
+        <span slot="benefit">my team stops rebuilding the same views every week</span>
+      </user-story>
+      <user-story draggable="true" data-id="ATL-352" story-id="ATL-352" epic="Notifications" priority="medium" status="backlog" points="3" detail="compact">
+        <span slot="persona">Alex, PM</span>
+        <span slot="action">choose which projects trigger digest emails</span>
+        <span slot="benefit">I only hear about the work I own</span>
+      </user-story>
+      <user-story draggable="true" data-id="ATL-361" story-id="ATL-361" epic="Reporting" priority="low" status="backlog" points="2" detail="compact">
+        <span slot="persona">Jordan, Analyst</span>
+        <span slot="action">pin favourite charts to a home view</span>
+        <span slot="benefit">my morning check-in takes one click</span>
+      </user-story>
+    </section>
 
-  <browser-window url="product-roadmap" src="/vb-project-planning/demos/product-roadmap-basic/"></browser-window>
-</section>
+    <section data-column="to-do" data-column-label="To Do">
+      <user-story draggable="true" data-id="ATL-333" story-id="ATL-333" epic="Reporting" priority="critical" status="to-do" points="8" detail="compact">
+        <span slot="persona">Sarah, Ops Lead</span>
+        <span slot="action">see all project timelines in one dashboard</span>
+        <span slot="benefit">I can spot bottlenecks before they slip</span>
+      </user-story>
+      <user-story draggable="true" data-id="ATL-345" story-id="ATL-345" epic="Notifications" priority="high" status="to-do" points="5" detail="compact">
+        <span slot="persona">Alex, PM</span>
+        <span slot="action">get a daily digest of status changes</span>
+        <span slot="benefit">I skip the morning standup scramble</span>
+      </user-story>
+    </section>
 
-<section>
-  <h2>Authoring shape</h2>
-  <p>The component reads its content from authored HTML — no JSON config required. Lanes are <code>&lt;section data-lane&gt;</code>; initiatives are <code>&lt;article data-start data-end&gt;</code> inside a lane:</p>
+    <section data-column="in-progress" data-column-label="In Progress">
+      <user-story draggable="true" data-id="ATL-318" story-id="ATL-318" epic="Reporting" priority="high" status="in-progress" points="5" detail="compact">
+        <span slot="persona">Jordan, Analyst</span>
+        <span slot="action">filter reports by date range and team</span>
+        <span slot="benefit">I answer exec questions without exporting to a spreadsheet</span>
+      </user-story>
+      <user-story draggable="true" data-id="ATL-327" story-id="ATL-327" epic="Performance" priority="medium" status="in-progress" points="3" detail="compact">
+        <span slot="persona">Priya, Engineer</span>
+        <span slot="action">cache the digest query results</span>
+        <span slot="benefit">emails go out in seconds, not minutes</span>
+      </user-story>
+    </section>
 
-  <code-block language="html" data-ssr><template shadowrootmode="open"><style>
+    <section data-column="review" data-column-label="In Review">
+      <user-story draggable="true" data-id="ATL-309" story-id="ATL-309" epic="Reporting" priority="medium" status="review" points="2" detail="compact">
+        <span slot="persona">Jordan, Analyst</span>
+        <span slot="action">see loading indicators on every async action</span>
+        <span slot="benefit">I trust the dashboard isn't frozen</span>
+      </user-story>
+    </section>
+
+    <section data-column="done" data-column-label="Done" data-column-color="success">
+      <user-story draggable="true" data-id="ATL-298" story-id="ATL-298" epic="Reporting" priority="high" status="done" points="8" detail="compact">
+        <span slot="persona">Sarah, Ops Lead</span>
+        <span slot="action">export any report as a shareable PDF</span>
+        <span slot="benefit">I send board-ready updates without screenshots</span>
+      </user-story>
+      <user-story draggable="true" data-id="ATL-301" story-id="ATL-301" epic="Performance" priority="medium" status="done" points="3" detail="compact">
+        <span slot="persona">Priya, Engineer</span>
+        <span slot="action">paginate the activity feed</span>
+        <span slot="benefit">long projects load instantly</span>
+      </user-story>
+    </section>
+  </kanban-board>
+
+  <section data-layout="stack" data-layout-gap="m">
+    <h2>Anatomy of a story</h2>
+    <p>The same <code>&lt;user-story&gt;</code> element renders a full card with acceptance criteria and tasks when <code>detail="full"</code>:</p>
+    <user-story story-id="ATL-333" epic="Reporting" priority="critical" status="to-do" points="8" detail="full">
+      <span slot="persona">Sarah, Ops Lead</span>
+      <span slot="action">see all project timelines in one dashboard</span>
+      <span slot="benefit">I can spot bottlenecks before they slip</span>
+      <ul slot="acceptance-criteria">
+        <li>All active projects appear on a single timeline</li>
+        <li>Overdue milestones are visually flagged</li>
+        <li>Clicking a milestone opens the project detail</li>
+      </ul>
+      <ul slot="tasks">
+        <li>Timeline data API</li>
+        <li>Virtualised timeline rendering</li>
+        <li>Overdue/at-risk styling from theme tokens</li>
+      </ul>
+      <p slot="notes">Reuse the existing charting library for the timeline axis.</p>
+    </user-story>
+  </section>
+
+  <section data-layout="stack" data-layout-gap="s">
+    <h2>Build it</h2>
+    <code-block language="html" data-ssr><template shadowrootmode="open"><style>
       :host {
         --_cb-bg: var(--color-surface-raised, #f6f8fa);
         --_cb-code-bg: var(--color-surface, #fff);
@@ -535,101 +607,21 @@
       </div>
       <div class="code-container" role="region" aria-labelledby="code-label" style="">
         
-        <pre><code class="language-html" tabindex="0"><span class="code-line"><span class="hljs-tag">&lt;<span class="hljs-name">product-roadmap</span> <span class="hljs-attr">start</span>=<span class="hljs-string">&quot;2026-Q3&quot;</span> <span class="hljs-attr">end</span>=<span class="hljs-string">&quot;2027-Q2&quot;</span> <span class="hljs-attr">today-marker</span>&gt;</span></span><span class="code-line">  <span class="hljs-tag">&lt;<span class="hljs-name">section</span> <span class="hljs-attr">data-lane</span>=<span class="hljs-string">&quot;Platform&quot;</span>&gt;</span></span><span class="code-line">    <span class="hljs-tag">&lt;<span class="hljs-name">article</span> <span class="hljs-attr">data-start</span>=<span class="hljs-string">&quot;2026-Q3&quot;</span> <span class="hljs-attr">data-end</span>=<span class="hljs-string">&quot;2026-Q4&quot;</span> <span class="hljs-attr">data-status</span>=<span class="hljs-string">&quot;in-progress&quot;</span>&gt;</span></span><span class="code-line">      <span class="hljs-tag">&lt;<span class="hljs-name">h3</span>&gt;</span>Multi-tenant database<span class="hljs-tag">&lt;/<span class="hljs-name">h3</span>&gt;</span></span><span class="code-line">    <span class="hljs-tag">&lt;/<span class="hljs-name">article</span>&gt;</span></span><span class="code-line">    <span class="hljs-tag">&lt;<span class="hljs-name">article</span> <span class="hljs-attr">data-start</span>=<span class="hljs-string">&quot;2027-Q1&quot;</span> <span class="hljs-attr">data-end</span>=<span class="hljs-string">&quot;2027-Q2&quot;</span> <span class="hljs-attr">data-status</span>=<span class="hljs-string">&quot;planned&quot;</span>&gt;</span></span><span class="code-line">      <span class="hljs-tag">&lt;<span class="hljs-name">h3</span>&gt;</span>Edge cache layer<span class="hljs-tag">&lt;/<span class="hljs-name">h3</span>&gt;</span></span><span class="code-line">    <span class="hljs-tag">&lt;/<span class="hljs-name">article</span>&gt;</span></span><span class="code-line">  <span class="hljs-tag">&lt;/<span class="hljs-name">section</span>&gt;</span></span><span class="code-line">  <span class="hljs-tag">&lt;<span class="hljs-name">section</span> <span class="hljs-attr">data-lane</span>=<span class="hljs-string">&quot;Growth&quot;</span>&gt;</span></span><span class="code-line">    <span class="hljs-tag">&lt;<span class="hljs-name">article</span> <span class="hljs-attr">data-start</span>=<span class="hljs-string">&quot;2026-Q4&quot;</span> <span class="hljs-attr">data-end</span>=<span class="hljs-string">&quot;2027-Q1&quot;</span> <span class="hljs-attr">data-status</span>=<span class="hljs-string">&quot;planned&quot;</span>&gt;</span></span><span class="code-line">      <span class="hljs-tag">&lt;<span class="hljs-name">h3</span>&gt;</span>Onboarding rewrite<span class="hljs-tag">&lt;/<span class="hljs-name">h3</span>&gt;</span></span><span class="code-line">    <span class="hljs-tag">&lt;/<span class="hljs-name">article</span>&gt;</span></span><span class="code-line">  <span class="hljs-tag">&lt;/<span class="hljs-name">section</span>&gt;</span></span><span class="code-line"><span class="hljs-tag">&lt;/<span class="hljs-name">product-roadmap</span>&gt;</span></span></code></pre>
+        <pre><code class="language-html" tabindex="0"><span class="code-line"><span class="hljs-tag">&lt;<span class="hljs-name">kanban-board</span>&gt;</span></span><span class="code-line">  <span class="hljs-tag">&lt;<span class="hljs-name">section</span> <span class="hljs-attr">data-column</span>=<span class="hljs-string">&quot;in-progress&quot;</span> <span class="hljs-attr">data-column-label</span>=<span class="hljs-string">&quot;In Progress&quot;</span>&gt;</span></span><span class="code-line">    <span class="hljs-tag">&lt;<span class="hljs-name">user-story</span> <span class="hljs-attr">draggable</span>=<span class="hljs-string">&quot;true&quot;</span> <span class="hljs-attr">story-id</span>=<span class="hljs-string">&quot;ATL-318&quot;</span> <span class="hljs-attr">epic</span>=<span class="hljs-string">&quot;Reporting&quot;</span></span></span><span class="code-line"><span class="hljs-tag">                <span class="hljs-attr">priority</span>=<span class="hljs-string">&quot;high&quot;</span> <span class="hljs-attr">status</span>=<span class="hljs-string">&quot;in-progress&quot;</span> <span class="hljs-attr">points</span>=<span class="hljs-string">&quot;5&quot;</span> <span class="hljs-attr">detail</span>=<span class="hljs-string">&quot;compact&quot;</span>&gt;</span></span><span class="code-line">      <span class="hljs-tag">&lt;<span class="hljs-name">span</span> <span class="hljs-attr">slot</span>=<span class="hljs-string">&quot;persona&quot;</span>&gt;</span>Jordan, Analyst<span class="hljs-tag">&lt;/<span class="hljs-name">span</span>&gt;</span></span><span class="code-line">      <span class="hljs-tag">&lt;<span class="hljs-name">span</span> <span class="hljs-attr">slot</span>=<span class="hljs-string">&quot;action&quot;</span>&gt;</span>filter reports by date range and team<span class="hljs-tag">&lt;/<span class="hljs-name">span</span>&gt;</span></span><span class="code-line">      <span class="hljs-tag">&lt;<span class="hljs-name">span</span> <span class="hljs-attr">slot</span>=<span class="hljs-string">&quot;benefit&quot;</span>&gt;</span>I answer exec questions fast<span class="hljs-tag">&lt;/<span class="hljs-name">span</span>&gt;</span></span><span class="code-line">    <span class="hljs-tag">&lt;/<span class="hljs-name">user-story</span>&gt;</span></span><span class="code-line">  <span class="hljs-tag">&lt;/<span class="hljs-name">section</span>&gt;</span></span><span class="code-line"><span class="hljs-tag">&lt;/<span class="hljs-name">kanban-board</span>&gt;</span></span></code></pre>
       </div>
-      </template><textarea style="display:none">&lt;product-roadmap start=&quot;2026-Q3&quot; end=&quot;2027-Q2&quot; today-marker&gt;
-  &lt;section data-lane=&quot;Platform&quot;&gt;
-    &lt;article data-start=&quot;2026-Q3&quot; data-end=&quot;2026-Q4&quot; data-status=&quot;in-progress&quot;&gt;
-      &lt;h3&gt;Multi-tenant database&lt;/h3&gt;
-    &lt;/article&gt;
-    &lt;article data-start=&quot;2027-Q1&quot; data-end=&quot;2027-Q2&quot; data-status=&quot;planned&quot;&gt;
-      &lt;h3&gt;Edge cache layer&lt;/h3&gt;
-    &lt;/article&gt;
+      </template><textarea style="display:none">&lt;kanban-board&gt;
+  &lt;section data-column=&quot;in-progress&quot; data-column-label=&quot;In Progress&quot;&gt;
+    &lt;user-story draggable=&quot;true&quot; story-id=&quot;ATL-318&quot; epic=&quot;Reporting&quot;
+                priority=&quot;high&quot; status=&quot;in-progress&quot; points=&quot;5&quot; detail=&quot;compact&quot;&gt;
+      &lt;span slot=&quot;persona&quot;&gt;Jordan, Analyst&lt;/span&gt;
+      &lt;span slot=&quot;action&quot;&gt;filter reports by date range and team&lt;/span&gt;
+      &lt;span slot=&quot;benefit&quot;&gt;I answer exec questions fast&lt;/span&gt;
+    &lt;/user-story&gt;
   &lt;/section&gt;
-  &lt;section data-lane=&quot;Growth&quot;&gt;
-    &lt;article data-start=&quot;2026-Q4&quot; data-end=&quot;2027-Q1&quot; data-status=&quot;planned&quot;&gt;
-      &lt;h3&gt;Onboarding rewrite&lt;/h3&gt;
-    &lt;/article&gt;
-  &lt;/section&gt;
-&lt;/product-roadmap&gt;</textarea></code-block>
-
-  <p>Dates accept <strong>ISO 8601</strong> (<code>2026-07-01</code>) or <strong>quarter shorthand</strong> (<code>2026-Q3</code>). For <code>data-end</code>, quarter shorthand resolves to the last day of the quarter.</p>
-</section>
-
-<section>
-  <h2>Attributes</h2>
-  <table class="props-table"><thead><tr><th>Attribute</th><th>Values</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>start</code></td><td>string</td><td>—</td><td>First date in the range (ISO 8601 or "YYYY-Qn"; required)</td></tr>
-<tr><td><code>end</code></td><td>string</td><td>—</td><td>Last date in the range (ISO 8601 or "YYYY-Qn"; required, inclusive)</td></tr>
-<tr><td><code>view</code></td><td><code>"quarter"</code>, <code>"month"</code></td><td>—</td><td>Time-axis granularity (default: quarter)</td></tr>
-<tr><td><code>editable</code></td><td>boolean</td><td>—</td><td>Wire drag-to-reschedule, drag-to-resize, and lane drop</td></tr>
-<tr><td><code>today-marker</code></td><td>boolean</td><td>—</td><td>Render a vertical line at today's date if it falls within the range</td></tr></tbody></table>
-
-  <h3>Child attributes</h3>
-  <table class="props-table"><thead><tr><th>Attribute</th><th>On</th><th>Values</th><th>Description</th></tr></thead><tbody><tr><td><code>data-lane</code></td><td><code>section</code></td><td>string</td><td>Lane name (used as the row label)</td></tr>
-<tr><td><code>data-start</code></td><td><code>article</code></td><td>string</td><td>Initiative start date (ISO 8601 or YYYY-Qn)</td></tr>
-<tr><td><code>data-end</code></td><td><code>article</code></td><td>string</td><td>Initiative end date (ISO 8601 or YYYY-Qn)</td></tr>
-<tr><td><code>data-status</code></td><td><code>article</code></td><td><code>"planned"</code>, <code>"in-progress"</code>, <code>"at-risk"</code>, <code>"shipped"</code>, <code>"blocked"</code></td><td>Status enum; drives bar color</td></tr></tbody></table>
-</section>
-
-<section>
-  <h2>Status colors</h2>
-  <p>Set <code>data-status</code> on each initiative to drive the bar color. Recognized values:</p>
-  <ul>
-    <li><code>planned</code> — info blue</li>
-    <li><code>in-progress</code> — accent</li>
-    <li><code>at-risk</code> — warning amber</li>
-    <li><code>shipped</code> — success green</li>
-    <li><code>blocked</code> — danger red</li>
-  </ul>
-  <p>Custom statuses fall back to the default accent. Override <code>--color-accent</code> or per-status tokens to retheme.</p>
-</section>
-
-<section>
-  <h2>Editable mode</h2>
-  <p>Add the <code>editable</code> attribute to enable interactive editing:</p>
-  <ul>
-    <li><strong>Drag bar body</strong> → snaps to the nearest quarter (or month, if <code>view="month"</code>); fires <code>product-roadmap:reschedule</code>; updates <code>data-start</code>/<code>data-end</code> on both the rendered bar AND the source <code>&lt;article&gt;</code>.</li>
-    <li><strong>Drag right edge</strong> → resizes the end date; fires <code>product-roadmap:resize</code>.</li>
-    <li><strong>Drag onto another lane</strong> → moves the source <code>&lt;article&gt;</code>; fires <code>product-roadmap:move</code>.</li>
-    <li><strong>Click bar</strong> → fires <code>product-roadmap:select</code> with full detail.</li>
-  </ul>
-
-  <browser-window url="product-roadmap-editable" src="/vb-project-planning/demos/product-roadmap-editable/"></browser-window>
-</section>
-
-<section>
-  <h2>Today marker</h2>
-  <p>Add <code>today-marker</code> to render a vertical line at the current date if it falls within the visible range. Useful for "where are we now in the year" context.</p>
-</section>
-
-<section>
-  <h2>Progressive Enhancement</h2>
-  <ol>
-    <li><strong>HTML.</strong> Without JS, the component CSS hides source lanes (otherwise <code>&lt;article&gt;</code> headings would flash before upgrade). Authors who need a visible no-JS fallback should render a sibling table or list.</li>
-    <li><strong>CSS.</strong> The <code>:not(:defined)</code> selector keeps the host visible pre-upgrade.</li>
-    <li><strong>JS.</strong> Auto-discovers lanes + initiatives, builds the time-axis header, positions bars by date fraction, optionally wires drag-to-reschedule and lane drops.</li>
-  </ol>
-</section>
-
-<section>
-  <h2>Known limitations (v1)</h2>
-  <ul>
-    <li>Overlapping initiatives in the same lane render stacked (later DOM order on top). Sequence non-overlapping work in a single lane, or split overlapping work into multiple lanes.</li>
-    <li>Initiatives whose dates fall entirely outside the visible range are skipped. Initiatives crossing the boundary are clipped.</li>
-    <li>No keyboard shortcuts for drag-to-reschedule yet (use the explicit <code>data-start</code>/<code>data-end</code> attributes for screen-reader-driven editing).</li>
-  </ul>
-</section>
-
-<section>
-  <h2>Related</h2>
-  <ul>
-    <li><a href="https://vanilla-breeze.com/docs/elements/web-components/gantt-chart/"><code>&lt;gantt-chart&gt;</code></a> — Task-level scheduling with dependencies.</li>
-    <li><a href="https://vanilla-breeze.com/docs/elements/web-components/burndown-chart/"><code>&lt;burndown-chart&gt;</code></a> — Sprint progress at the day-level.</li>
-    <li><a href="https://vanilla-breeze.com/docs/elements/web-components/iron-triangle/"><code>&lt;iron-triangle&gt;</code></a> — Sprint capacity / scope / time visualization.</li>
-  </ul>
-</section>
-      <p><a class="active-parent" href="/vb-project-planning/elements/">← All elements</a></p>
-    </article>
+&lt;/kanban-board&gt;</textarea></code-block>
+    <p>Drag-to-reorder uses Vanilla Breeze's <code>&lt;drag-surface&gt;</code> peer. <a href="/vb-project-planning/elements/kanban-board/">kanban-board API →</a> · <a href="/vb-project-planning/elements/user-story/">user-story API →</a></p>
+  </section>
+</article>
   </main>
 
   <footer class="site-footer">
