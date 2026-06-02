@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="modern" data-mode="light" data-fluid="">
+<html lang="en" data-page="docs" data-theme="modern" data-mode="light" data-fluid="" data-sticky="" data-icon-path="/vb-project-planning/cdn/icons">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,30 +9,79 @@
   <script>window.__VB_THEME_BASE="/vb-project-planning/cdn";document.documentElement.dataset.iconPath="/vb-project-planning/cdn/icons";</script>
   <title>Sprint Board showcase — VB Project Planning</title>
   <meta name="description" content="A full user-story kanban board built with vb-project-planning — drag stories across columns, themed live by Vanilla Breeze.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mpx3k0p1">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mpx3k0p1">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mpx3k0p1">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mpx7n8dg">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mpx7n8dg">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mpx7n8dg">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mpx7n8dg">
   
 </head>
-<body>
-  <header class="site" data-sticky="">
-  <a href="/vb-project-planning/" class="brand"><brand-mark>VB Project Planning</brand-mark></a>
-  <nav class="horizontal pills" aria-label="Primary">
-    <ul>
-      <li><a href="/vb-project-planning/">Home</a></li>
-      <li><a href="/vb-project-planning/elements/">Elements</a></li>
-      <li><a class="active" href="/vb-project-planning/showcase/sprint-board/">Sprint Board</a></li>
-      <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
-      <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
-    </ul>
-  </nav>
-  <theme-picker compact="">
-    <button type="button" data-trigger="" class="button ghost">Theme</button>
-  </theme-picker>
+<body style="overflow-x: clip;">
+
+  <header class="site" data-sticky="" data-vt="header">
+  <a href="/vb-project-planning/"><brand-mark>VB Project Planning</brand-mark></a>
+  <nav-bar aria-label="Main navigation">
+    <nav class="horizontal pills">
+      <ul>
+        <li><a href="/vb-project-planning/" data-nav-link="">Home</a></li>
+        <li><a href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
+        <li><a class="active" href="/vb-project-planning/showcase/sprint-board/" data-nav-link="">Sprint Board</a></li>
+        <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
+      </ul>
+    </nav>
+  </nav-bar>
+  <site-tools>
+    <site-search>
+      <button type="button" data-trigger="" class="ghost">
+        <icon-wc name="search" size="sm"></icon-wc>
+        Search
+      </button>
+    </site-search>
+    <theme-picker compact="">
+      <button type="button" data-trigger="" class="ghost">
+        <icon-wc name="palette" size="sm"></icon-wc>
+        Theme
+      </button>
+    </theme-picker>
+  </site-tools>
+  <mobile-menu breakpoint="52rem">
+    <button type="button" data-trigger="" popovertarget="mobile-menu" aria-label="Menu">
+      <icon-wc name="menu"></icon-wc>
+    </button>
+    <nav popover="" id="mobile-menu" class="mobile-menu-panel">
+      <button type="button" class="mobile-menu-close" popovertarget="mobile-menu" popovertargetaction="hide" aria-label="Close menu">
+        <icon-wc name="x"></icon-wc>
+      </button>
+      <div class="mobile-menu-search">
+        <site-search>
+          <button type="button" data-trigger="" class="ghost" style="inline-size: 100%">
+            <icon-wc name="search" size="sm"></icon-wc>
+            Search
+          </button>
+        </site-search>
+      </div>
+      <ul>
+        <li class="mobile-section">
+          <strong class="mobile-section-title">Pages</strong>
+          <ul>
+            <li><a href="/vb-project-planning/">Home</a></li>
+            <li><a href="/vb-project-planning/elements/">Elements</a></li>
+            <li><a class="active" href="/vb-project-planning/showcase/sprint-board/">Sprint Board</a></li>
+            <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
+          </ul>
+        </li>
+      </ul>
+      <div class="mobile-menu-theme">
+        <strong class="mobile-section-title">Theme</strong>
+        <theme-picker variant="inline" compact=""></theme-picker>
+      </div>
+    </nav>
+  </mobile-menu>
 </header>
 
 
-  <main>
+  <main data-pagefind-body="" style="overflow-x: clip;">
     <layout-center data-layout-max="wide">
       <article data-layout="stack" data-layout-gap="l">
   <header data-layout="stack" data-layout-gap="2xs">
@@ -652,12 +701,15 @@
 </footer>
 
 
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mpx3k0p1"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mpx3k0p1"></script>
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mpx3k0p1"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/icon-wc.js?v=mpx3k0p1"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/brand-mark.js?v=mpx3k0p1"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vb-theme-picker.js?v=mpx3k0p1"></script>
+  <fab-stack>
+    <settings-panel></settings-panel>
+    <a href="#" data-back-to-top="" aria-label="Back to top">↑</a>
+  </fab-stack>
+
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mpx7n8dg"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mpx7n8dg"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mpx7n8dg"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mpx7n8dg"></script>
   
 </body>
 </html>

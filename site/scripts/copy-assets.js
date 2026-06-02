@@ -32,6 +32,10 @@ function pkgMain(pkg) {
 
 console.log('Copying Vanilla Breeze assets…');
 cp(resolve(nm, 'vanilla-breeze/dist/cdn/vanilla-breeze.css'), resolve(vendor, 'vanilla-breeze.css'));
+// Full VB bundle — supplies the doc chrome: page-toc, heading-links, site-search,
+// settings-panel, page-tools, theme-picker, icon-wc, brand-mark, drag-surface, etc.
+// (registerComponent is first-wins, so loading this alongside the pack is safe.)
+cp(resolve(nm, 'vanilla-breeze/dist/cdn/vanilla-breeze.js'), resolve(vendor, 'vanilla-breeze.js'));
 // Real VB theme picker (standalone, conflict-free)
 cp(resolve(nm, 'vanilla-breeze/dist/cdn/components/theme-picker.js'), resolve(vendor, 'vb-theme-picker.js'));
 // <drag-surface> peer — standalone per-component CDN file (defines only `drag-surface`,
