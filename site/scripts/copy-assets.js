@@ -37,12 +37,19 @@ cp(resolve(nm, 'vanilla-breeze/dist/cdn/components/theme-picker.js'), resolve(ve
 // <drag-surface> peer — standalone per-component CDN file (defines only `drag-surface`,
 // so no conflict with the pack bundle's elements).
 cp(resolve(nm, 'vanilla-breeze/dist/cdn/components/drag-surface.js'), resolve(vendor, 'drag-surface.js'));
+// Chrome components (header brand-mark, theme-picker icons)
+cp(resolve(nm, 'vanilla-breeze/dist/cdn/components/icon-wc.js'), resolve(vendor, 'icon-wc.js'));
+cp(resolve(nm, 'vanilla-breeze/dist/cdn/components/brand-mark.js'), resolve(vendor, 'brand-mark.js'));
 
 console.log('Copying VB themes catalog…');
 const themesTo = resolve(siteRoot, 'src/pages/cdn/themes');
 mkdirSync(themesTo, { recursive: true });
 cpSync(resolve(nm, 'vanilla-breeze/dist/cdn/themes'), themesTo, { recursive: true });
 console.log('  ✓ src/pages/cdn/themes (' + readdirSync(themesTo).length + ' files)');
+const iconsDest = resolve(siteRoot, 'src/pages/cdn/icons');
+mkdirSync(iconsDest, { recursive: true });
+cpSync(resolve(nm, 'vanilla-breeze/dist/cdn/icons'), iconsDest, { recursive: true });
+console.log('  ✓ src/pages/cdn/icons (' + readdirSync(iconsDest).length + ' sets)');
 
 console.log('Copying pack bundle…');
 cp(resolve(repoRoot, 'dist/vb-project-planning.js'), resolve(packDir, 'vb-project-planning.js'));

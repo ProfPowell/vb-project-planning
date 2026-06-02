@@ -6,14 +6,14 @@
   <script>window.__VB_THEME_BASE="/vb-project-planning/cdn";document.documentElement.dataset.iconPath="/vb-project-planning/cdn/icons";</script>
   <title>kanban-board — VB Project Planning</title>
   <meta name="description" content="Columnar drag-and-drop board with user-defined columns, count badges, and optional WIP limits.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mpx2y4d8">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mpx2y4d8">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mpx2y4d8">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mpx3k0p1">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mpx3k0p1">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mpx3k0p1">
   
 </head>
 <body>
   <header class="site" data-sticky="">
-  <a href="/vb-project-planning/" class="brand">VB Project Planning</a>
+  <a href="/vb-project-planning/" class="brand"><brand-mark>VB Project Planning</brand-mark></a>
   <nav class="horizontal pills" aria-label="Primary">
     <ul>
       <li><a href="/vb-project-planning/">Home</a></li>
@@ -3223,15 +3223,32 @@ board.addEventListener(&#39;kanban-board:items-changed&#39;, (e) =&amp;gt; {
   </layout-center>
   </main>
 
-  <footer class="site-footer">
-  <p>VB Project Planning — part of the <a href="https://vanilla-breeze.com/docs/">Vanilla Breeze</a> ecosystem. MIT licensed. · <a href="https://github.com/ProfPowell/vb-project-planning">Source on GitHub</a></p>
+  <footer>
+  <layout-center data-layout-max="wide">
+    <div data-layout="cluster" data-layout-justify="between" data-layout-gap="l" style="align-items: flex-start;">
+      <p data-layout="stack" data-layout-gap="3xs" style="margin: 0;">
+        <strong>VB Project Planning</strong>
+        <small>Project- and UX-planning Web Components for Vanilla Breeze.</small>
+      </p>
+      <nav data-layout="cluster" data-layout-gap="m" aria-label="Footer">
+        <a class="active-parent" href="/vb-project-planning/elements/">Elements</a>
+        <a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a>
+      </nav>
+    </div>
+    <p style="margin-block-start: var(--size-m); color: var(--color-text-muted);">
+      <small>Part of the Vanilla Breeze ecosystem · MIT licensed.</small>
+    </p>
+  </layout-center>
 </footer>
 
 
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mpx2y4d8"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mpx2y4d8"></script>
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mpx2y4d8"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vb-theme-picker.js?v=mpx2y4d8"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mpx3k0p1"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mpx3k0p1"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mpx3k0p1"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/icon-wc.js?v=mpx3k0p1"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/brand-mark.js?v=mpx3k0p1"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vb-theme-picker.js?v=mpx3k0p1"></script>
   
 </body>
 </html>
