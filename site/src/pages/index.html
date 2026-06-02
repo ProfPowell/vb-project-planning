@@ -10,7 +10,28 @@ description: Project- and UX-planning Web Components for Vanilla Breeze.
   <div class="btn-group">
     <a class="btn" href="/showcase/sprint-board/">See the Sprint Board</a>
     <a class="btn btn-secondary" href="/elements/">Browse elements</a>
-    <a class="btn btn-secondary" href="${site.repo}" target="_blank" rel="noopener">GitHub</a>
+  </div>
+  <div class="hero-demo" style="width: min(100%, 52rem); margin-block-start: var(--size-l);">
+    <kanban-board>
+      <section data-column="todo" data-column-label="To Do">
+        <user-story draggable="true" story-id="ATL-345" epic="Notifications" priority="high" status="to-do" points="5" detail="compact">
+          <span slot="persona">Alex, PM</span>
+          <span slot="action">get a daily digest of status changes</span>
+        </user-story>
+      </section>
+      <section data-column="doing" data-column-label="In Progress">
+        <user-story draggable="true" story-id="ATL-318" epic="Reporting" priority="high" status="in-progress" points="5" detail="compact">
+          <span slot="persona">Jordan, Analyst</span>
+          <span slot="action">filter reports by date range and team</span>
+        </user-story>
+      </section>
+      <section data-column="done" data-column-label="Done" data-column-color="success">
+        <user-story draggable="true" story-id="ATL-298" epic="Reporting" priority="high" status="done" points="8" detail="compact">
+          <span slot="persona">Sarah, Ops Lead</span>
+          <span slot="action">export any report as a shareable PDF</span>
+        </user-story>
+      </section>
+    </kanban-board>
   </div>
 </section>
 
