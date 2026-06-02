@@ -3,6 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Tell VB's theme-loader / icon-wc where /cdn lives under the Pages subpath
+       (%BASE_PATH% is replaced at publish; empty for local root). Runtime config
+       beats patching minified paths. -->
+  <script>window.__VB_THEME_BASE="%BASE_PATH%/cdn";document.documentElement.dataset.iconPath="%BASE_PATH%/cdn/icons";</script>
   <title>${title} — ${site.title}</title>
   <meta name="description" content="${description}">
   <link rel="stylesheet" href="/assets/vendor/vanilla-breeze.css">
@@ -21,7 +25,6 @@
 
   <script type="module" src="/assets/vendor/browser-window.js"></script>
   <script type="module" src="/assets/vendor/code-block.js"></script>
-  <script type="module" src="/assets/vendor/drag-surface.js"></script>
   <script type="module" src="/assets/pack/${site.packJs}"></script>
   <script type="module" src="/assets/vendor/vb-theme-picker.js"></script>
   ${slot:extraScripts}
