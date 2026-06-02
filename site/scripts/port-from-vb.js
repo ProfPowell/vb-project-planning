@@ -35,6 +35,8 @@ for (const c of COMPONENTS) {
   let html = readFileSync(srcFile, 'utf8');
   for (const m of html.matchAll(/\/docs\/examples\/demos\/([^"']+)/g)) referencedDemos.add(m[1]);
   html = html.replace(/\/docs\/examples\/demos\/([^"'\s#?]+)\.html/g, '/demos/$1/').replace(/\/docs\/examples\/demos\//g, '/demos/');
+  // Cross-links to other VB docs point at the canonical VB site
+  html = html.replace(/(href|src)="\/docs\//g, '$1="https://vanilla-breeze.com/docs/');
   writeFileSync(resolve(siteRoot, `src/pages/elements/${c}.html`), html);
 }
 console.log(`✓ ${COMPONENTS.length} element pages (referenced demos: ${referencedDemos.size})`);
