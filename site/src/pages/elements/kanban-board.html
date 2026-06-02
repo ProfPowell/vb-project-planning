@@ -15,7 +15,7 @@ crumbLabel: Web Components
     <p>A web component that renders a columnar drag-and-drop board with user-defined columns. Each column wraps a <code>&lt;drag-surface&gt;</code> for native drag-and-drop and keyboard-accessible reordering and transfer. Supports any draggable content &mdash; user-story cards, plain articles, or custom elements. Includes auto-updating count badges, optional WIP (work-in-progress) limits with visual warnings, and optional column color tinting.</p>
 
     <browser-window
-      src="/demos/kanban-board-basic.html"
+      src="/demos/kanban-board-basic/"
       url="https://vanilla-breeze.dev/kanban-board"
       title="Kanban Board"
       shadow>
@@ -96,7 +96,7 @@ crumbLabel: Web Components
     <p>Add <code>data-wip</code> to any column section to set a work-in-progress limit. When the number of items in a column exceeds the limit, the component adds a <code>data-wip-exceeded</code> attribute to the column and fires a <code>kanban-board:wip-exceeded</code> event. Items are <strong>not blocked</strong> from entering &mdash; this is a visual warning only.</p>
 
     <browser-window
-      src="/demos/kanban-board-wip.html"
+      src="/demos/kanban-board-wip/"
       url="https://vanilla-breeze.dev/kanban-board/wip"
       title="WIP Limits"
       shadow>
@@ -124,7 +124,7 @@ crumbLabel: Web Components
     <p>The board is not limited to sprint planning. Any draggable content works &mdash; blog posts through a publishing pipeline, support tickets, hiring candidates, or content workflows.</p>
 
     <browser-window
-      src="/demos/kanban-board-generic.html"
+      src="/demos/kanban-board-generic/"
       url="https://vanilla-breeze.dev/kanban-board/pipeline"
       title="Content Pipeline"
       shadow>
@@ -263,7 +263,7 @@ board.addEventListener('kanban-board:items-changed', (e) =&gt; {
     <h2>Retrospective recipe</h2>
     <p>Start / Stop / Continue retrospective boards are just <code>&lt;kanban-board&gt;</code> with three named columns. The component already supports arbitrary <code>data-column</code> children — there's no separate <code>retrospective-board</code> component needed.</p>
 
-    <browser-window url="kanban-retrospective" src="/demos/kanban-retrospective.html"></browser-window>
+    <browser-window url="kanban-retrospective" src="/demos/kanban-retrospective/"></browser-window>
 
     <code-block language="html" data-escape>
 <kanban-board>

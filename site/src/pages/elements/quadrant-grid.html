@@ -15,7 +15,7 @@ crumbLabel: Web Components
   <p>The <code>&lt;quadrant-grid&gt;</code> component renders a configurable 2x2 grid with axis labels, low/high markers, and four titled quadrants. Children are placed by either <code>data-quadrant</code> (explicit bucket) or <code>data-x</code> / <code>data-y</code> (normalized coordinates that compute to the matching quadrant and pin the child as a labelled dot). Optional drag-and-drop via the <code>draggable</code> attribute composes <code>&lt;drag-surface&gt;</code>.</p>
   <p>This is the primitive that backs SWOT, stakeholder-map, and other 2x2 patterns — it replaces three previously-proposed standalone components with one configurable element plus recipes.</p>
 
-  <browser-window url="quadrant-grid-basic" src="/demos/quadrant-grid-basic.html"></browser-window>
+  <browser-window url="quadrant-grid-basic" src="/demos/quadrant-grid-basic/"></browser-window>
 </section>
 
 <section>
@@ -43,7 +43,7 @@ crumbLabel: Web Components
   <h2>SWOT recipe</h2>
   <p>SWOT analysis is just a quadrant-grid with appropriate axis labels and quadrant titles. No new component required.</p>
 
-  <browser-window url="quadrant-grid-swot" src="/demos/quadrant-grid-swot.html"></browser-window>
+  <browser-window url="quadrant-grid-swot" src="/demos/quadrant-grid-swot/"></browser-window>
 
   <code-block language="html" data-escape>
 <quadrant-grid
@@ -67,7 +67,7 @@ crumbLabel: Web Components
   <h2>Stakeholder Map recipe</h2>
   <p>Power × Interest grid with labelled dots positioned at exact coordinates via <code>data-x</code> / <code>data-y</code>.</p>
 
-  <browser-window url="quadrant-grid-stakeholders" src="/demos/quadrant-grid-stakeholders.html"></browser-window>
+  <browser-window url="quadrant-grid-stakeholders" src="/demos/quadrant-grid-stakeholders/"></browser-window>
 
   <code-block language="html" data-escape>
 <quadrant-grid
