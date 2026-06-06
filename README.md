@@ -1,10 +1,8 @@
 # @profpowell/vb-project-planning
 
-Project- and UX-planning Web Components for [Vanilla Breeze](https://github.com/ProfPowell/vanilla-breeze) — a toolset for the research, planning, and delivery phases of product work.
+Project- and UX-planning Web Components for the research, planning, and delivery phases of software projects. These are specialized components you might use in a home spun SWE dashboard or planning system.  They can be used individually or together and are related with [Vanilla Breeze](https://github.com/ProfPowell/vanilla-breeze) and work well with that package's **design tokens** (CSS custom properties), but carry their own logic.
 
-These are standalone Web Components extracted from Vanilla Breeze core. They render against Vanilla Breeze **design tokens** (CSS custom properties) and carry their own logic, so you can drop them into any page that loads VB tokens/themes.
-
-## Components
+## Component Inventory
 
 | Tag | Purpose |
 |-----|---------|
@@ -55,7 +53,7 @@ import '@profpowell/vb-project-planning/kanban-board';
 
 ```html
 <kanban-board>…</kanban-board>
-<user-persona name="Alex" role="Engineer">…</user-persona>
+<user-persona name="Fred" role="Engineer">…</user-persona>
 ```
 
 ## Peer: `<drag-surface>`
@@ -74,7 +72,7 @@ These components are **token-driven**: they read Vanilla Breeze CSS custom prope
 
 ## Relationship to Vanilla Breeze
 
-This package was decomposed out of `vanilla-breeze` core so the framework stays focused on general site-building primitives while planning tooling versions independently. General components that were grouped with the planning pack but belong on any site (`diagram-wc`, `flow-diagram`, `glossary-wc`, the `<site-map>` IA tree) remain in VB core.
+This package was decomposed out of `vanilla-breeze` core so that framework stays focused on general site-building primitives while planning tooling versions independently. General components that were grouped with the planning pack but belong on any site (`diagram-wc`, `flow-diagram`, `glossary-wc`, the `<site-map>` IA tree) remain in VB core.  When building a planning system you may want to explore the main library for more general UI controls.
 
 ## Development
 
@@ -82,8 +80,8 @@ This package was decomposed out of `vanilla-breeze` core so the framework stays 
 npm run build   # bundle dist/ (esm + minified, js + css) via esbuild
 ```
 
-A GitHub Pages demo site can depend on `vanilla-breeze` for tokens/themes and the `<drag-surface>` peer, and import this package directly.
+Note the demo site depends on `vanilla-breeze` for tokens/themes and the `<drag-surface>` peer, and import this package directly.
 
 ## License
 
-MIT © Patrick Powell
+MIT © Thomas A. Powell
