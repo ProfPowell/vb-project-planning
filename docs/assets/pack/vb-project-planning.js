@@ -1232,6 +1232,8 @@ var UserStory = class _UserStory extends HTMLElement {
     done: { label: "Done", color: "#22c55e", bg: "rgba(34, 197, 94, 0.1)" }
   };
   #slotCache = /* @__PURE__ */ new Map();
+  /** @type {MutationObserver | null} */
+  #personaObserver = null;
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
@@ -1365,10 +1367,13 @@ var UserStory = class _UserStory extends HTMLElement {
       this._loadSrc(this.getAttribute("src"));
     }
     this.#render();
+    this.#observeLinkedPersona();
     this.setAttribute("data-upgraded", "");
   }
   disconnectedCallback() {
     this.removeAttribute("data-upgraded");
+    this.#personaObserver?.disconnect();
+    this.#personaObserver = null;
   }
   attributeChangedCallback(name, oldValue, newValue) {
     if (oldValue !== newValue && this.shadowRoot) {
@@ -1376,17 +1381,63 @@ var UserStory = class _UserStory extends HTMLElement {
         this._loadSrc(newValue);
       } else {
         this.#render();
+        if (name === "persona-id") this.#observeLinkedPersona();
       }
     }
   }
+  /**
+   * Keep the "As a…" text in sync when the linked persona's role is edited.
+   * Only observes when persona-id resolves and the author has not supplied an
+   * explicit persona slot (an explicit slot always wins, so nothing to track).
+   */
+  #observeLinkedPersona() {
+    this.#personaObserver?.disconnect();
+    this.#personaObserver = null;
+    if (!this.personaId || this.#explicitPersona()) return;
+    const root = (
+      /** @type {Document | ShadowRoot} */
+      this.getRootNode()
+    );
+    const scope = root && typeof root.getElementById === "function" ? root : document;
+    const persona = scope.getElementById(this.personaId);
+    if (!persona || persona.tagName !== "USER-PERSONA") return;
+    this.#personaObserver = new MutationObserver(() => this.#render());
+    this.#personaObserver.observe(persona, { attributes: true, attributeFilter: ["role"] });
+  }
   // ── Getters ────────────────────────────────────────────────────────
-  /** Read persona from slotted element or cache */
+  /**
+   * Read persona from slotted element or cache. When neither is authored but
+   * persona-id links to a user-persona on the page, fall back to that
+   * persona's role ("As a Product Manager…") rather than the generic "user".
+   */
   get persona() {
-    const slotted = this.querySelector('[slot="persona"]');
-    return slotted?.textContent?.trim() || this.#slotCache.get("persona") || "user";
+    const explicit = this.#explicitPersona();
+    return explicit || this.#linkedPersonaRole() || "user";
   }
   get personaId() {
     return this.getAttribute("persona-id") || "";
+  }
+  /** Persona text the author supplied directly via slot or .data (no link resolution). */
+  #explicitPersona() {
+    const slotted = this.querySelector('[slot="persona"]');
+    return slotted?.textContent?.trim() || this.#slotCache.get("persona") || "";
+  }
+  /**
+   * Resolve the role of the user-persona referenced by persona-id, if one
+   * exists in the same tree. Used as the "As a…" fallback so a linked story
+   * reads "As a Product Manager" instead of "As a user". Returns '' when there
+   * is no persona-id, no matching persona, or the persona has no role.
+   */
+  #linkedPersonaRole() {
+    if (!this.personaId) return "";
+    const root = (
+      /** @type {Document | ShadowRoot} */
+      this.getRootNode()
+    );
+    const scope = root && typeof root.getElementById === "function" ? root : document;
+    const persona = scope.getElementById(this.personaId);
+    if (!persona || persona.tagName !== "USER-PERSONA") return "";
+    return persona.getAttribute("role")?.trim() || "";
   }
   /** Read action from slotted element or cache */
   get action() {
@@ -1556,7 +1607,7 @@ var UserStory = class _UserStory extends HTMLElement {
           <div class="story-body" part="body">
             <p class="story-statement" part="statement">
               <span class="keyword">As a</span>
-              ${this.personaId ? `<a class="persona-text persona-text--link" href="#${esc(this.personaId)}">${lucideSvg(UX_ICONS.user)} <slot name="persona"><span>user</span></slot></a>` : `<span class="persona-text"><slot name="persona"><span>user</span></slot></span>`},
+              ${this.personaId ? `<a class="persona-text persona-text--link" href="#${esc(this.personaId)}">${lucideSvg(UX_ICONS.user)} <slot name="persona"><span>${esc(this.#linkedPersonaRole() || "user")}</span></slot></a>` : `<span class="persona-text"><slot name="persona"><span>user</span></slot></span>`},
               <span class="keyword">I want</span>
               <span class="action-text"><slot name="action"><span>[describe the action]</span></slot></span>${this.benefit || this.querySelector('[slot="benefit"]') ? `
               <span class="keyword">so that</span>
