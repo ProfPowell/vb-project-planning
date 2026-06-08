@@ -4,282 +4,318 @@ title: Demos
 description: Live, themeable demos of every VB Project Planning component, plus the Atlas sprint board showcase.
 ---
 
-<header data-layout="stack" data-layout-gap="s">
-  <h1>Demos</h1>
-  <p class="lead">Every component in the pack, shown live and fully themeable. Pick a theme from the header and every demo re-themes instantly. Open any demo full-screen, or jump to its API on the <a href="/elements/">Elements</a> pages.</p>
-</header>
+<style>
+  /* Gallery links read as quiet navigation, not prose — underline on hover only. */
+  .demos-content :is(.group-head a, figcaption a, .showcase-cta) {
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .demos-content :is(.group-head a, figcaption a, .showcase-cta):hover {
+    text-decoration: underline;
+  }
+  .demos-content .group-head code { font-size: var(--font-size-lg, 1.125rem); }
+  .demos-content figcaption { font-size: var(--font-size-sm, 0.875rem); }
 
-<section data-layout="stack" data-layout-gap="m" aria-labelledby="showcase-heading">
-  <h2 id="showcase-heading">Showcase</h2>
-  <p>A full user-story kanban built from <code>&lt;kanban-board&gt;</code> and <code>&lt;user-story&gt;</code> — drag stories across columns, themed live by Vanilla Breeze.</p>
-  <browser-window src="/demos/kanban-board-basic/" url="vanilla-breeze.dev/sprint-board" title="Atlas — Sprint Board" shadow></browser-window>
-  <p><a href="/showcase/sprint-board/">Open the annotated Sprint Board showcase →</a></p>
-</section>
+  /* Sections are authored as <section> siblings; VB's @scope flow-separator
+     adds margin/padding/top-border to every section after the first, which
+     fights the layout-stack gaps and draws stray divider lines. Let the
+     stack own the rhythm. */
+  .demos-content section {
+    margin-block-start: 0;
+    padding-block-start: 0;
+    border-block-start: 0;
+  }
 
-<section data-layout="stack" data-layout-gap="xl" aria-labelledby="components-heading">
-  <h2 id="components-heading">By component</h2>
+  /* Side nav is a component index — keep every branch expanded, not just the
+     active one (page-toc collapses inactive branches by default). */
+  .demos-nav { font-size: var(--font-size-sm, 0.875rem); }
+  .demos-nav page-toc ul ul { display: block !important; }
+</style>
 
-  <section data-layout="stack" data-layout-gap="m">
-    <header data-layout="stack" data-layout-gap="3xs">
-      <h3><a href="/elements/user-persona/"><code>&lt;user-persona&gt;</code></a></h3>
-      <p>Persona cards.</p>
+<layout-sidebar data-layout-sidebar-width="narrow" data-layout-gap="2xl">
+  <nav class="demos-nav" data-layout-sticky aria-label="Jump to a component">
+    <page-toc levels="h2,h3" scope=".demos-content"></page-toc>
+  </nav>
+
+  <article class="demos-content" data-layout="stack" data-layout-gap="2xl">
+    <header data-layout="stack" data-layout-gap="s">
+      <h1>Demos</h1>
+      <p class="lead">Every component in the pack, shown live and fully themeable. Pick a theme from the header and every demo re-themes instantly. Open any demo full-screen, or jump to its API on the <a href="/elements/">Elements</a> pages.</p>
     </header>
-    <layout-grid data-layout-min="26rem">
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/user-persona-basic/" url="vanilla-breeze.dev/demos/user-persona-basic" title="user-persona — Basic" shadow></browser-window>
-        <figcaption><a href="/demos/user-persona-basic/">Basic →</a></figcaption>
-      </figure>
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/user-persona-compact/" url="vanilla-breeze.dev/demos/user-persona-compact" title="user-persona — Compact" shadow></browser-window>
-        <figcaption><a href="/demos/user-persona-compact/">Compact →</a></figcaption>
-      </figure>
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/user-persona-mock/" url="vanilla-breeze.dev/demos/user-persona-mock" title="user-persona — Mock data" shadow></browser-window>
-        <figcaption><a href="/demos/user-persona-mock/">Mock data →</a></figcaption>
-      </figure>
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/user-persona-stories/" url="vanilla-breeze.dev/demos/user-persona-stories" title="user-persona — With stories" shadow></browser-window>
-        <figcaption><a href="/demos/user-persona-stories/">With stories →</a></figcaption>
-      </figure>
-    </layout-grid>
-  </section>
 
-  <section data-layout="stack" data-layout-gap="m">
-    <header data-layout="stack" data-layout-gap="3xs">
-      <h3><a href="/elements/user-story/"><code>&lt;user-story&gt;</code></a></h3>
-      <p>User-story cards.</p>
-    </header>
-    <layout-grid data-layout-min="26rem">
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/user-story-basic/" url="vanilla-breeze.dev/demos/user-story-basic" title="user-story — Basic" shadow></browser-window>
-        <figcaption><a href="/demos/user-story-basic/">Basic →</a></figcaption>
-      </figure>
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/user-story-expand/" url="vanilla-breeze.dev/demos/user-story-expand" title="user-story — Expandable" shadow></browser-window>
-        <figcaption><a href="/demos/user-story-expand/">Expandable →</a></figcaption>
-      </figure>
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/user-story-variants/" url="vanilla-breeze.dev/demos/user-story-variants" title="user-story — Variants" shadow></browser-window>
-        <figcaption><a href="/demos/user-story-variants/">Variants →</a></figcaption>
-      </figure>
-    </layout-grid>
-  </section>
+    <section data-layout="stack" data-layout-gap="m">
+      <h2 id="showcase">Showcase</h2>
+      <p>A full user-story kanban built from <code>&lt;kanban-board&gt;</code> and <code>&lt;user-story&gt;</code> — drag stories across columns, themed live by Vanilla Breeze.</p>
+      <browser-window src="/demos/kanban-board-basic/" url="vanilla-breeze.dev/sprint-board" title="Atlas — Sprint Board" shadow></browser-window>
+      <p><a class="showcase-cta" href="/showcase/sprint-board/">Open the annotated Sprint Board showcase →</a></p>
+    </section>
 
-  <section data-layout="stack" data-layout-gap="m">
-    <header data-layout="stack" data-layout-gap="3xs">
-      <h3><a href="/elements/user-journey/"><code>&lt;user-journey&gt;</code></a></h3>
-      <p>Journey maps with emotion curve.</p>
-    </header>
-    <layout-grid data-layout-min="26rem">
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/user-journey-basic/" url="vanilla-breeze.dev/demos/user-journey-basic" title="user-journey — Basic" shadow></browser-window>
-        <figcaption><a href="/demos/user-journey-basic/">Basic →</a></figcaption>
-      </figure>
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/user-journey-compact/" url="vanilla-breeze.dev/demos/user-journey-compact" title="user-journey — Compact" shadow></browser-window>
-        <figcaption><a href="/demos/user-journey-compact/">Compact →</a></figcaption>
-      </figure>
-    </layout-grid>
-  </section>
+    <section data-layout="stack" data-layout-gap="xl">
+      <h2 id="by-component">By component</h2>
 
-  <section data-layout="stack" data-layout-gap="m">
-    <header data-layout="stack" data-layout-gap="3xs">
-      <h3><a href="/elements/empathy-map/"><code>&lt;empathy-map&gt;</code></a></h3>
-      <p>Says / thinks / does / feels.</p>
-    </header>
-    <layout-grid data-layout-min="26rem">
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/empathy-map-basic/" url="vanilla-breeze.dev/demos/empathy-map-basic" title="empathy-map — Basic" shadow></browser-window>
-        <figcaption><a href="/demos/empathy-map-basic/">Basic →</a></figcaption>
-      </figure>
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/empathy-map-editable/" url="vanilla-breeze.dev/demos/empathy-map-editable" title="empathy-map — Editable" shadow></browser-window>
-        <figcaption><a href="/demos/empathy-map-editable/">Editable →</a></figcaption>
-      </figure>
-    </layout-grid>
-  </section>
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="user-persona"><code>&lt;user-persona&gt;</code></h3>
+          <p>Persona cards. <a href="/elements/user-persona/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="26rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/user-persona-basic/" url="vanilla-breeze.dev/demos/user-persona-basic" title="user-persona — Basic" shadow></browser-window>
+            <figcaption><a href="/demos/user-persona-basic/">Basic →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/user-persona-compact/" url="vanilla-breeze.dev/demos/user-persona-compact" title="user-persona — Compact" shadow></browser-window>
+            <figcaption><a href="/demos/user-persona-compact/">Compact →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/user-persona-mock/" url="vanilla-breeze.dev/demos/user-persona-mock" title="user-persona — Mock data" shadow></browser-window>
+            <figcaption><a href="/demos/user-persona-mock/">Mock data →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/user-persona-stories/" url="vanilla-breeze.dev/demos/user-persona-stories" title="user-persona — With stories" shadow></browser-window>
+            <figcaption><a href="/demos/user-persona-stories/">With stories →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
 
-  <section data-layout="stack" data-layout-gap="m">
-    <header data-layout="stack" data-layout-gap="3xs">
-      <h3><a href="/elements/impact-effort/"><code>&lt;impact-effort&gt;</code></a></h3>
-      <p>Impact vs. effort matrix.</p>
-    </header>
-    <layout-grid data-layout-min="26rem">
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/impact-effort-basic/" url="vanilla-breeze.dev/demos/impact-effort-basic" title="impact-effort — Basic" shadow></browser-window>
-        <figcaption><a href="/demos/impact-effort-basic/">Basic →</a></figcaption>
-      </figure>
-    </layout-grid>
-  </section>
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="user-story"><code>&lt;user-story&gt;</code></h3>
+          <p>User-story cards. <a href="/elements/user-story/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="26rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/user-story-basic/" url="vanilla-breeze.dev/demos/user-story-basic" title="user-story — Basic" shadow></browser-window>
+            <figcaption><a href="/demos/user-story-basic/">Basic →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/user-story-expand/" url="vanilla-breeze.dev/demos/user-story-expand" title="user-story — Expandable" shadow></browser-window>
+            <figcaption><a href="/demos/user-story-expand/">Expandable →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/user-story-variants/" url="vanilla-breeze.dev/demos/user-story-variants" title="user-story — Variants" shadow></browser-window>
+            <figcaption><a href="/demos/user-story-variants/">Variants →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
 
-  <section data-layout="stack" data-layout-gap="m">
-    <header data-layout="stack" data-layout-gap="3xs">
-      <h3><a href="/elements/quadrant-grid/"><code>&lt;quadrant-grid&gt;</code></a></h3>
-      <p>2×2 quadrant plotting surface.</p>
-    </header>
-    <layout-grid data-layout-min="26rem">
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/quadrant-grid-basic/" url="vanilla-breeze.dev/demos/quadrant-grid-basic" title="quadrant-grid — Basic" shadow></browser-window>
-        <figcaption><a href="/demos/quadrant-grid-basic/">Basic →</a></figcaption>
-      </figure>
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/quadrant-grid-stakeholders/" url="vanilla-breeze.dev/demos/quadrant-grid-stakeholders" title="quadrant-grid — Stakeholders" shadow></browser-window>
-        <figcaption><a href="/demos/quadrant-grid-stakeholders/">Stakeholders →</a></figcaption>
-      </figure>
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/quadrant-grid-swot/" url="vanilla-breeze.dev/demos/quadrant-grid-swot" title="quadrant-grid — SWOT" shadow></browser-window>
-        <figcaption><a href="/demos/quadrant-grid-swot/">SWOT →</a></figcaption>
-      </figure>
-    </layout-grid>
-  </section>
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="user-journey"><code>&lt;user-journey&gt;</code></h3>
+          <p>Journey maps with emotion curve. <a href="/elements/user-journey/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="26rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/user-journey-basic/" url="vanilla-breeze.dev/demos/user-journey-basic" title="user-journey — Basic" shadow></browser-window>
+            <figcaption><a href="/demos/user-journey-basic/">Basic →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/user-journey-compact/" url="vanilla-breeze.dev/demos/user-journey-compact" title="user-journey — Compact" shadow></browser-window>
+            <figcaption><a href="/demos/user-journey-compact/">Compact →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
 
-  <section data-layout="stack" data-layout-gap="m">
-    <header data-layout="stack" data-layout-gap="3xs">
-      <h3><a href="/elements/risk-register/"><code>&lt;risk-register&gt;</code></a></h3>
-      <p>Risk log with likelihood / impact.</p>
-    </header>
-    <layout-grid data-layout-min="26rem">
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/risk-register-basic/" url="vanilla-breeze.dev/demos/risk-register-basic" title="risk-register — Basic" shadow></browser-window>
-        <figcaption><a href="/demos/risk-register-basic/">Basic →</a></figcaption>
-      </figure>
-    </layout-grid>
-  </section>
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="empathy-map"><code>&lt;empathy-map&gt;</code></h3>
+          <p>Says / thinks / does / feels. <a href="/elements/empathy-map/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="26rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/empathy-map-basic/" url="vanilla-breeze.dev/demos/empathy-map-basic" title="empathy-map — Basic" shadow></browser-window>
+            <figcaption><a href="/demos/empathy-map-basic/">Basic →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/empathy-map-editable/" url="vanilla-breeze.dev/demos/empathy-map-editable" title="empathy-map — Editable" shadow></browser-window>
+            <figcaption><a href="/demos/empathy-map-editable/">Editable →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
 
-  <section data-layout="stack" data-layout-gap="m">
-    <header data-layout="stack" data-layout-gap="3xs">
-      <h3><a href="/elements/traceability-matrix/"><code>&lt;traceability-matrix&gt;</code></a></h3>
-      <p>Requirement ↔ artifact grid.</p>
-    </header>
-    <layout-grid data-layout-min="26rem">
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/traceability-matrix-basic/" url="vanilla-breeze.dev/demos/traceability-matrix-basic" title="traceability-matrix — Basic" shadow></browser-window>
-        <figcaption><a href="/demos/traceability-matrix-basic/">Basic →</a></figcaption>
-      </figure>
-    </layout-grid>
-  </section>
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="impact-effort"><code>&lt;impact-effort&gt;</code></h3>
+          <p>Impact vs. effort matrix. <a href="/elements/impact-effort/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="26rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/impact-effort-basic/" url="vanilla-breeze.dev/demos/impact-effort-basic" title="impact-effort — Basic" shadow></browser-window>
+            <figcaption><a href="/demos/impact-effort-basic/">Basic →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
 
-  <section data-layout="stack" data-layout-gap="m">
-    <header data-layout="stack" data-layout-gap="3xs">
-      <h3><a href="/elements/burndown-chart/"><code>&lt;burndown-chart&gt;</code></a></h3>
-      <p>Sprint / release burndown.</p>
-    </header>
-    <layout-grid data-layout-min="26rem">
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/burndown-chart-basic/" url="vanilla-breeze.dev/demos/burndown-chart-basic" title="burndown-chart — Basic" shadow></browser-window>
-        <figcaption><a href="/demos/burndown-chart-basic/">Basic →</a></figcaption>
-      </figure>
-    </layout-grid>
-  </section>
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="quadrant-grid"><code>&lt;quadrant-grid&gt;</code></h3>
+          <p>2×2 quadrant plotting surface. <a href="/elements/quadrant-grid/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="26rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/quadrant-grid-basic/" url="vanilla-breeze.dev/demos/quadrant-grid-basic" title="quadrant-grid — Basic" shadow></browser-window>
+            <figcaption><a href="/demos/quadrant-grid-basic/">Basic →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/quadrant-grid-stakeholders/" url="vanilla-breeze.dev/demos/quadrant-grid-stakeholders" title="quadrant-grid — Stakeholders" shadow></browser-window>
+            <figcaption><a href="/demos/quadrant-grid-stakeholders/">Stakeholders →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/quadrant-grid-swot/" url="vanilla-breeze.dev/demos/quadrant-grid-swot" title="quadrant-grid — SWOT" shadow></browser-window>
+            <figcaption><a href="/demos/quadrant-grid-swot/">SWOT →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
 
-  <section data-layout="stack" data-layout-gap="m">
-    <header data-layout="stack" data-layout-gap="3xs">
-      <h3><a href="/elements/product-roadmap/"><code>&lt;product-roadmap&gt;</code></a></h3>
-      <p>Time-phased roadmap.</p>
-    </header>
-    <layout-grid data-layout-min="26rem">
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/product-roadmap-basic/" url="vanilla-breeze.dev/demos/product-roadmap-basic" title="product-roadmap — Basic" shadow></browser-window>
-        <figcaption><a href="/demos/product-roadmap-basic/">Basic →</a></figcaption>
-      </figure>
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/product-roadmap-editable/" url="vanilla-breeze.dev/demos/product-roadmap-editable" title="product-roadmap — Editable" shadow></browser-window>
-        <figcaption><a href="/demos/product-roadmap-editable/">Editable →</a></figcaption>
-      </figure>
-    </layout-grid>
-  </section>
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="risk-register"><code>&lt;risk-register&gt;</code></h3>
+          <p>Risk log with likelihood / impact. <a href="/elements/risk-register/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="26rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/risk-register-basic/" url="vanilla-breeze.dev/demos/risk-register-basic" title="risk-register — Basic" shadow></browser-window>
+            <figcaption><a href="/demos/risk-register-basic/">Basic →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
 
-  <section data-layout="stack" data-layout-gap="m">
-    <header data-layout="stack" data-layout-gap="3xs">
-      <h3><a href="/elements/kanban-board/"><code>&lt;kanban-board&gt;</code></a></h3>
-      <p>Kanban board (drag to reorder).</p>
-    </header>
-    <layout-grid data-layout-min="26rem">
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/kanban-board-basic/" url="vanilla-breeze.dev/demos/kanban-board-basic" title="kanban-board — Basic" shadow></browser-window>
-        <figcaption><a href="/demos/kanban-board-basic/">Basic →</a></figcaption>
-      </figure>
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/kanban-board-generic/" url="vanilla-breeze.dev/demos/kanban-board-generic" title="kanban-board — Generic cards" shadow></browser-window>
-        <figcaption><a href="/demos/kanban-board-generic/">Generic cards →</a></figcaption>
-      </figure>
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/kanban-board-wip/" url="vanilla-breeze.dev/demos/kanban-board-wip" title="kanban-board — WIP limits" shadow></browser-window>
-        <figcaption><a href="/demos/kanban-board-wip/">WIP limits →</a></figcaption>
-      </figure>
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/kanban-retrospective/" url="vanilla-breeze.dev/demos/kanban-retrospective" title="kanban-board — Retrospective" shadow></browser-window>
-        <figcaption><a href="/demos/kanban-retrospective/">Retrospective →</a></figcaption>
-      </figure>
-    </layout-grid>
-  </section>
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="traceability-matrix"><code>&lt;traceability-matrix&gt;</code></h3>
+          <p>Requirement ↔ artifact grid. <a href="/elements/traceability-matrix/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="26rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/traceability-matrix-basic/" url="vanilla-breeze.dev/demos/traceability-matrix-basic" title="traceability-matrix — Basic" shadow></browser-window>
+            <figcaption><a href="/demos/traceability-matrix-basic/">Basic →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
 
-  <section data-layout="stack" data-layout-gap="m">
-    <header data-layout="stack" data-layout-gap="3xs">
-      <h3><a href="/elements/story-map/"><code>&lt;story-map&gt;</code></a></h3>
-      <p>User-story map.</p>
-    </header>
-    <layout-grid data-layout-min="26rem">
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/story-map-basic/" url="vanilla-breeze.dev/demos/story-map-basic" title="story-map — Basic" shadow></browser-window>
-        <figcaption><a href="/demos/story-map-basic/">Basic →</a></figcaption>
-      </figure>
-    </layout-grid>
-  </section>
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="burndown-chart"><code>&lt;burndown-chart&gt;</code></h3>
+          <p>Sprint / release burndown. <a href="/elements/burndown-chart/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="26rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/burndown-chart-basic/" url="vanilla-breeze.dev/demos/burndown-chart-basic" title="burndown-chart — Basic" shadow></browser-window>
+            <figcaption><a href="/demos/burndown-chart-basic/">Basic →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
 
-  <section data-layout="stack" data-layout-gap="m">
-    <header data-layout="stack" data-layout-gap="3xs">
-      <h3><a href="/elements/review-surface/"><code>&lt;review-surface&gt;</code></a></h3>
-      <p>Annotated review surface.</p>
-    </header>
-    <layout-grid data-layout-min="26rem">
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/review-surface-basic/" url="vanilla-breeze.dev/demos/review-surface-basic" title="review-surface — Basic" shadow></browser-window>
-        <figcaption><a href="/demos/review-surface-basic/">Basic →</a></figcaption>
-      </figure>
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/review-surface-empathy/" url="vanilla-breeze.dev/demos/review-surface-empathy" title="review-surface — Empathy" shadow></browser-window>
-        <figcaption><a href="/demos/review-surface-empathy/">Empathy →</a></figcaption>
-      </figure>
-    </layout-grid>
-  </section>
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="product-roadmap"><code>&lt;product-roadmap&gt;</code></h3>
+          <p>Time-phased roadmap. <a href="/elements/product-roadmap/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="26rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/product-roadmap-basic/" url="vanilla-breeze.dev/demos/product-roadmap-basic" title="product-roadmap — Basic" shadow></browser-window>
+            <figcaption><a href="/demos/product-roadmap-basic/">Basic →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/product-roadmap-editable/" url="vanilla-breeze.dev/demos/product-roadmap-editable" title="product-roadmap — Editable" shadow></browser-window>
+            <figcaption><a href="/demos/product-roadmap-editable/">Editable →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
 
-  <section data-layout="stack" data-layout-gap="m">
-    <header data-layout="stack" data-layout-gap="3xs">
-      <h3><a href="/elements/gantt-chart/"><code>&lt;gantt-chart&gt;</code></a></h3>
-      <p>Gantt schedule.</p>
-    </header>
-    <layout-grid data-layout-min="26rem">
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/gantt-chart-basic/" url="vanilla-breeze.dev/demos/gantt-chart-basic" title="gantt-chart — Basic" shadow></browser-window>
-        <figcaption><a href="/demos/gantt-chart-basic/">Basic →</a></figcaption>
-      </figure>
-    </layout-grid>
-  </section>
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="kanban-board"><code>&lt;kanban-board&gt;</code></h3>
+          <p>Kanban board (drag to reorder). <a href="/elements/kanban-board/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="26rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/kanban-board-basic/" url="vanilla-breeze.dev/demos/kanban-board-basic" title="kanban-board — Basic" shadow></browser-window>
+            <figcaption><a href="/demos/kanban-board-basic/">Basic →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/kanban-board-generic/" url="vanilla-breeze.dev/demos/kanban-board-generic" title="kanban-board — Generic cards" shadow></browser-window>
+            <figcaption><a href="/demos/kanban-board-generic/">Generic cards →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/kanban-board-wip/" url="vanilla-breeze.dev/demos/kanban-board-wip" title="kanban-board — WIP limits" shadow></browser-window>
+            <figcaption><a href="/demos/kanban-board-wip/">WIP limits →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/kanban-retrospective/" url="vanilla-breeze.dev/demos/kanban-retrospective" title="kanban-board — Retrospective" shadow></browser-window>
+            <figcaption><a href="/demos/kanban-retrospective/">Retrospective →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
 
-  <section data-layout="stack" data-layout-gap="m">
-    <header data-layout="stack" data-layout-gap="3xs">
-      <h3><a href="/elements/work-item/"><code>&lt;work-item&gt;</code></a></h3>
-      <p>Work-item cards.</p>
-    </header>
-    <layout-grid data-layout-min="26rem">
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/work-item-basic/" url="vanilla-breeze.dev/demos/work-item-basic" title="work-item — Basic" shadow></browser-window>
-        <figcaption><a href="/demos/work-item-basic/">Basic →</a></figcaption>
-      </figure>
-    </layout-grid>
-  </section>
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="story-map"><code>&lt;story-map&gt;</code></h3>
+          <p>User-story map. <a href="/elements/story-map/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="26rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/story-map-basic/" url="vanilla-breeze.dev/demos/story-map-basic" title="story-map — Basic" shadow></browser-window>
+            <figcaption><a href="/demos/story-map-basic/">Basic →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
 
-  <section data-layout="stack" data-layout-gap="m">
-    <header data-layout="stack" data-layout-gap="3xs">
-      <h3><a href="/elements/adr-wc/"><code>&lt;adr-wc&gt;</code></a></h3>
-      <p>Architecture Decision Record.</p>
-    </header>
-    <layout-grid data-layout-min="26rem">
-      <figure data-layout="stack" data-layout-gap="2xs">
-        <browser-window src="/demos/adr-wc-basic/" url="vanilla-breeze.dev/demos/adr-wc-basic" title="adr-wc — Basic" shadow></browser-window>
-        <figcaption><a href="/demos/adr-wc-basic/">Basic →</a></figcaption>
-      </figure>
-    </layout-grid>
-  </section>
-</section>
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="review-surface"><code>&lt;review-surface&gt;</code></h3>
+          <p>Annotated review surface. <a href="/elements/review-surface/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="26rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/review-surface-basic/" url="vanilla-breeze.dev/demos/review-surface-basic" title="review-surface — Basic" shadow></browser-window>
+            <figcaption><a href="/demos/review-surface-basic/">Basic →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/review-surface-empathy/" url="vanilla-breeze.dev/demos/review-surface-empathy" title="review-surface — Empathy" shadow></browser-window>
+            <figcaption><a href="/demos/review-surface-empathy/">Empathy →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
+
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="gantt-chart"><code>&lt;gantt-chart&gt;</code></h3>
+          <p>Gantt schedule. <a href="/elements/gantt-chart/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="26rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/gantt-chart-basic/" url="vanilla-breeze.dev/demos/gantt-chart-basic" title="gantt-chart — Basic" shadow></browser-window>
+            <figcaption><a href="/demos/gantt-chart-basic/">Basic →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
+
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="work-item"><code>&lt;work-item&gt;</code></h3>
+          <p>Work-item cards. <a href="/elements/work-item/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="26rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/work-item-basic/" url="vanilla-breeze.dev/demos/work-item-basic" title="work-item — Basic" shadow></browser-window>
+            <figcaption><a href="/demos/work-item-basic/">Basic →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
+
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="adr-wc"><code>&lt;adr-wc&gt;</code></h3>
+          <p>Architecture Decision Record. <a href="/elements/adr-wc/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="26rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/demos/adr-wc-basic/" url="vanilla-breeze.dev/demos/adr-wc-basic" title="adr-wc — Basic" shadow></browser-window>
+            <figcaption><a href="/demos/adr-wc-basic/">Basic →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
+    </section>
+  </article>
+</layout-sidebar>
