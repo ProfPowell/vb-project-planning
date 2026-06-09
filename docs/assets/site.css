@@ -8,3 +8,11 @@
 
 /* Footer separation (chrome spacing; token-based so it stays theme-safe). */
 footer { border-block-start: 1px solid var(--color-border, currentColor); margin-block-start: var(--size-2xl, 3rem); padding-block: var(--size-l, 1.5rem); }
+
+/* Mobile header: mobile-menu's JS hides sibling <nav>/<site-tools> below its
+   breakpoint, but our primary nav is wrapped in <nav-bar>, which its selector
+   misses — so the desktop nav stayed visible and wrapped on phones. Hide it on
+   the same signal the JS uses (it sets [data-mobile] when below the breakpoint),
+   so only the hamburger shows. (Root cause is in core mobile-menu; this is the
+   self-contained fix for the vendored bundle — see bead vanilla-breeze-kcc5.) */
+header.site:has(mobile-menu[data-mobile]) > nav-bar { display: none; }
