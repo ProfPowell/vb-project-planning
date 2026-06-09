@@ -30,6 +30,21 @@ description: Live, themeable demos of every VB Project Planning component, plus 
      active one (page-toc collapses inactive branches by default). */
   .demos-nav { font-size: var(--font-size-sm, 0.875rem); }
   .demos-nav page-toc ul ul { display: block !important; }
+
+  /* Cap grid tracks at the container width. VB's layout-grid uses
+     minmax(--_min, 1fr) with no min(…,100%) guard, so a 25rem min would
+     overflow (and clip, since body is overflow-x:clip) any column narrower
+     than 400px on small screens. */
+  .demos-content layout-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(25rem, 100%), 1fr)) !important;
+  }
+
+  /* Below the header's mobile breakpoint the side nav would squeeze the
+     gallery to the point the 280px-min previews overflow; hide it there and
+     let the previews take the full width. */
+  @media (max-width: 52rem) {
+    .demos-nav { display: none; }
+  }
 </style>
 
 <layout-sidebar data-layout-sidebar-width="narrow" data-layout-gap="2xl">
