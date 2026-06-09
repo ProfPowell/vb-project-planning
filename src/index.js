@@ -20,3 +20,7 @@ import './web-components/review-surface/logic.js';
 import './web-components/gantt-chart/logic.js';
 import './web-components/work-item/logic.js';
 import './web-components/adr-wc/logic.js';
+import './web-components/iron-triangle/logic.js';
+import './web-components/capacity-plan/logic.js';
+import './web-components/quality-target/logic.js';
+import './web-components/requirement-card/logic.js';

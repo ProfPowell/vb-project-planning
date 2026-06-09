@@ -9178,3 +9178,1948 @@ var AdrWc = class extends HTMLElement {
   }
 };
 registerComponent("adr-wc", AdrWc);
+
+// src/web-components/iron-triangle/_capacity.js
+function defaultFormula(time, cost, focusFactor) {
+  const weeks = num(time?.sprintCount) > 0 ? num(time.sprintCount) * (num(time.sprintWeeks) || 1) : num(time?.sprintWeeks);
+  const fte = num(cost?.teamFTE);
+  const f = clamp(num(focusFactor), 0, 1);
+  if (!(weeks > 0) || !(fte > 0) || !(f > 0)) return 0;
+  return Math.ceil(weeks * fte * f);
+}
+function fnv1a(str) {
+  let hash3 = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    hash3 ^= str.charCodeAt(i);
+    hash3 = Math.imul(hash3, 16777619);
+  }
+  return (hash3 >>> 0).toString(36);
+}
+function stableStringify(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return "[" + value.map(stableStringify).join(",") + "]";
+  const keys = Object.keys(value).sort();
+  return "{" + keys.map((k) => JSON.stringify(k) + ":" + stableStringify(value[k])).join(",") + "}";
+}
+function triangleHash({ time, cost, scope }) {
+  return fnv1a(stableStringify({ time: time || {}, cost: cost || {}, scope: scope || {} }));
+}
+function num(value) {
+  if (value === "" || value == null) return 0;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
+// src/web-components/iron-triangle/_triangle-geometry.js
+var MIN_STRETCH = 0.55;
+var MAX_STRETCH = 1.45;
+function relativeMagnitudes({ time = {}, cost = {}, scope = {} } = {}) {
+  return {
+    t: numeric(time.sprintCount, 1) * numeric(time.sprintWeeks, 1),
+    c: numeric(cost.teamFTE, 0) * numeric(cost.hoursPerWeek, 40),
+    s: numeric(scope.mustHaveCount, 0) + 0.5 * numeric(scope.shouldHaveCount, 0)
+  };
+}
+function stretchFactors(mag) {
+  const positives = [mag.t, mag.c, mag.s].filter((v) => v > 0);
+  if (positives.length === 0) return { time: 1, cost: 1, scope: 1 };
+  const max = Math.max(...positives);
+  const norm = (v) => v <= 0 ? MIN_STRETCH : MIN_STRETCH + (MAX_STRETCH - MIN_STRETCH) * (v / max);
+  return { time: norm(mag.t), cost: norm(mag.c), scope: norm(mag.s) };
+}
+function triangleVertices(value, radius = 80) {
+  const baseAngles = {
+    scope: -Math.PI / 2,
+    // top
+    time: 5 * Math.PI / 6,
+    // bottom-left
+    cost: Math.PI / 6
+    // bottom-right (SVG-y down)
+  };
+  const fs = stretchFactors(relativeMagnitudes(value));
+  const at = (key) => ({
+    x: Math.cos(baseAngles[key]) * radius * fs[key],
+    y: Math.sin(baseAngles[key]) * radius * fs[key],
+    factor: fs[key]
+  });
+  return { scope: at("scope"), time: at("time"), cost: at("cost") };
+}
+function formatTimeSummary(time = {}) {
+  const sprintCount = numeric(time.sprintCount, 0);
+  const sprintWeeks = numeric(time.sprintWeeks, 0);
+  if (sprintCount > 0 && sprintWeeks > 0) {
+    const total = sprintCount * sprintWeeks;
+    return sprintCount > 1 ? `${total} weeks (${sprintCount} \xD7 ${sprintWeeks}wk)` : `${total} week${total === 1 ? "" : "s"}`;
+  }
+  if (sprintWeeks > 0) return `${sprintWeeks} week${sprintWeeks === 1 ? "" : "s"}`;
+  if (time.deadline) return `until ${time.deadline}`;
+  return "TBD";
+}
+function formatCostSummary(cost = {}) {
+  const fte = Number(cost.teamFTE);
+  const tier = cost.budgetTier;
+  const parts = [];
+  if (Number.isFinite(fte) && fte > 0) parts.push(`${fte} FTE`);
+  if (tier && tier !== "unset") parts.push(tier);
+  return parts.length > 0 ? parts.join(" \xB7 ") : "TBD";
+}
+function formatScopeSummary(scope = {}) {
+  const must = numeric(scope.mustHaveCount, 0);
+  const should = numeric(scope.shouldHaveCount, 0);
+  if (must > 0 && should > 0) return `${must} must \xB7 ${should} should`;
+  if (must > 0) return `${must} must-have`;
+  if (should > 0) return `${should} should-have`;
+  return "TBD";
+}
+function formatQualitySummary(qualitySummary) {
+  if (typeof qualitySummary === "string" && qualitySummary.trim().length > 0) {
+    return qualitySummary;
+  }
+  return "TBD \u2014 click to set";
+}
+var SVG_NS = "http://www.w3.org/2000/svg";
+var VERTEX_LABEL_OFFSETS = {
+  scope: { dx: 0, dy: -22, anchor: "middle" },
+  time: { dx: -10, dy: 14, anchor: "end" },
+  cost: { dx: 10, dy: 14, anchor: "start" }
+};
+var VERTEX_SUMMARY_OFFSETS = {
+  scope: { dx: 0, dy: -8, anchor: "middle" },
+  time: { dx: -10, dy: 28, anchor: "end" },
+  cost: { dx: 10, dy: 28, anchor: "start" }
+};
+var VERTEX_LABELS = {
+  scope: { name: "Scope", unit: "# features / story points" },
+  time: { name: "Time", unit: "hours / days / weeks" },
+  cost: { name: "Cost", unit: "FTE / $" }
+};
+function buildTriangleSvg({
+  value = {},
+  vertices,
+  capacityPoints = 0,
+  capacitySource = "formula",
+  qualitySummary = ""
+} = {}) {
+  const v = vertices || triangleVertices(value);
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "-220 -170 440 340");
+  svg.setAttribute("role", "group");
+  svg.setAttribute(
+    "aria-label",
+    `Project shape: ${capacityPoints || 0} capacity points. Click each corner to edit, or the center to open the quality compass.`
+  );
+  const tri = document.createElementNS(SVG_NS, "polygon");
+  tri.setAttribute("class", "triangle");
+  tri.setAttribute("points", [
+    `${round(v.scope.x)},${round(v.scope.y)}`,
+    `${round(v.time.x)},${round(v.time.y)}`,
+    `${round(v.cost.x)},${round(v.cost.y)}`
+  ].join(" "));
+  svg.append(tri);
+  const center = document.createElementNS(SVG_NS, "g");
+  center.setAttribute("class", "center");
+  center.setAttribute("data-target", "quality");
+  center.setAttribute("tabindex", "0");
+  center.setAttribute("role", "button");
+  center.setAttribute(
+    "aria-label",
+    `Quality \u2014 ${formatQualitySummary(qualitySummary)}. Activate to open the NFR compass.`
+  );
+  const backdrop = document.createElementNS(SVG_NS, "circle");
+  backdrop.setAttribute("class", "capacity-backdrop");
+  backdrop.setAttribute("cx", "0");
+  backdrop.setAttribute("cy", "4");
+  backdrop.setAttribute("r", "32");
+  center.append(backdrop);
+  const centerHit = document.createElementNS(SVG_NS, "rect");
+  centerHit.setAttribute("class", "hit");
+  centerHit.setAttribute("x", "-36");
+  centerHit.setAttribute("y", "-30");
+  centerHit.setAttribute("width", "72");
+  centerHit.setAttribute("height", "68");
+  centerHit.setAttribute("rx", "34");
+  center.append(centerHit);
+  const quality = document.createElementNS(SVG_NS, "text");
+  quality.setAttribute("class", "quality-label");
+  quality.setAttribute("x", "0");
+  quality.setAttribute("y", "-15");
+  quality.setAttribute("text-anchor", "middle");
+  quality.textContent = "Quality";
+  center.append(quality);
+  const cap = document.createElementNS(SVG_NS, "text");
+  cap.setAttribute("class", "capacity");
+  cap.setAttribute("x", "0");
+  cap.setAttribute("y", "7");
+  cap.setAttribute("text-anchor", "middle");
+  cap.setAttribute("dominant-baseline", "middle");
+  cap.textContent = capacityPoints > 0 ? String(capacityPoints) : "\u2014";
+  center.append(cap);
+  const unit = document.createElementNS(SVG_NS, "text");
+  unit.setAttribute("class", "capacity-unit");
+  unit.setAttribute("x", "0");
+  unit.setAttribute("y", "26");
+  unit.setAttribute("text-anchor", "middle");
+  unit.textContent = capacitySource === "manual" ? "pts (manual)" : "pts";
+  center.append(unit);
+  const centerTitle = document.createElementNS(SVG_NS, "title");
+  centerTitle.textContent = formatQualitySummary(qualitySummary);
+  center.append(centerTitle);
+  svg.append(center);
+  for (const axis of ["scope", "time", "cost"]) {
+    svg.append(buildVertex(axis, v[axis], value));
+  }
+  return svg;
+}
+function buildVertex(axis, vertex, value) {
+  const labelMeta = VERTEX_LABEL_OFFSETS[axis];
+  const summaryMeta = VERTEX_SUMMARY_OFFSETS[axis];
+  const labels = VERTEX_LABELS[axis];
+  const summary = axis === "scope" ? formatScopeSummary(value.scope) : axis === "cost" ? formatCostSummary(value.cost) : formatTimeSummary(value.time);
+  const g = document.createElementNS(SVG_NS, "g");
+  g.setAttribute("class", "vertex");
+  g.setAttribute("data-axis", axis);
+  g.setAttribute("tabindex", "0");
+  g.setAttribute("role", "button");
+  g.setAttribute("aria-label", `${labels.name} \u2014 ${summary}. Activate to edit.`);
+  const hit = document.createElementNS(SVG_NS, "rect");
+  hit.setAttribute("class", "hit");
+  const hitW = 160;
+  const hitH = 50;
+  let hitX;
+  if (labelMeta.anchor === "end") {
+    hitX = vertex.x - hitW + 6;
+  } else if (labelMeta.anchor === "start") {
+    hitX = vertex.x - 6;
+  } else {
+    hitX = vertex.x - hitW / 2;
+  }
+  const hitY = axis === "scope" ? vertex.y - hitH + 6 : vertex.y - 6;
+  hit.setAttribute("x", String(round(hitX)));
+  hit.setAttribute("y", String(round(hitY)));
+  hit.setAttribute("width", String(hitW));
+  hit.setAttribute("height", String(hitH));
+  hit.setAttribute("rx", "6");
+  g.append(hit);
+  const name = document.createElementNS(SVG_NS, "text");
+  name.setAttribute("class", "vertex-name");
+  name.setAttribute("x", String(round(vertex.x + labelMeta.dx)));
+  name.setAttribute("y", String(round(vertex.y + labelMeta.dy)));
+  name.setAttribute("text-anchor", labelMeta.anchor);
+  name.textContent = labels.name;
+  g.append(name);
+  const summaryEl = document.createElementNS(SVG_NS, "text");
+  summaryEl.setAttribute("class", "vertex-summary");
+  summaryEl.setAttribute("x", String(round(vertex.x + summaryMeta.dx)));
+  summaryEl.setAttribute("y", String(round(vertex.y + summaryMeta.dy)));
+  summaryEl.setAttribute("text-anchor", summaryMeta.anchor);
+  summaryEl.textContent = summary;
+  g.append(summaryEl);
+  const title = document.createElementNS(SVG_NS, "title");
+  title.textContent = `${labels.name}: ${summary} \u2014 ${labels.unit}`;
+  g.append(title);
+  return g;
+}
+function numeric(value, fallback) {
+  if (value === "" || value == null) return fallback;
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+function round(n) {
+  return Math.round(n * 100) / 100;
+}
+
+// src/web-components/iron-triangle/logic.js
+var SECTIONS = ["time", "cost", "scope"];
+var FIELD_DEFS = {
+  time: [
+    { key: "sprintWeeks", label: "Sprint length (weeks)", type: "number", min: 1, step: 1, value: 2, width: "6rem" },
+    { key: "sprintCount", label: "Number of sprints", type: "number", min: 1, step: 1, value: 3, width: "6rem" },
+    { key: "hoursPerWeek", label: "Hours per week (per FTE)", type: "number", min: 1, max: 168, step: 1, value: 40, width: "6rem" },
+    { key: "deadline", label: "Deadline (optional)", type: "date", width: "12rem" }
+  ],
+  cost: [
+    { key: "teamFTE", label: "Team size (FTE)", type: "number", min: 0, step: 0.5, value: 1, width: "6rem" },
+    { key: "budgetTier", label: "Budget tier", type: "select", options: [
+      ["solo", "Solo"],
+      ["small", "Small (2-5)"],
+      ["medium", "Medium (6-15)"],
+      ["large", "Large (16+)"]
+    ], value: "solo", width: "14rem" },
+    { key: "contractorBudget", label: "Contractor budget ($, optional)", type: "number", min: 0, step: 100, width: "10rem" }
+  ],
+  scope: [
+    { key: "mustHaveCount", label: "Must-have feature count", type: "number", min: 0, step: 1, width: "6rem" },
+    { key: "shouldHaveCount", label: "Should-have feature count", type: "number", min: 0, step: 1, width: "6rem" },
+    { key: "scopeNotes", label: "Notes", type: "textarea", rows: 3, maxlength: 2e3 }
+  ]
+};
+var SECTION_TITLES = {
+  scope: "Scope",
+  time: "Time",
+  cost: "Cost"
+};
+var IronTriangle = class extends VBElement {
+  static formAssociated = true;
+  static get observedAttributes() {
+    return [
+      "data-focus-factor",
+      "data-min-capacity",
+      "data-quality-href",
+      "data-quality-summary",
+      "disabled",
+      "locked"
+    ];
+  }
+  /** @type {ElementInternals} */
+  #internals;
+  #value = {
+    time: {},
+    cost: {},
+    scope: {},
+    capacityPoints: 0,
+    capacitySource: "formula",
+    hash: ""
+  };
+  /** @type {number | null} */
+  #manualPoints = null;
+  #revisionLog = [];
+  #qualitySummary = "";
+  /** @type {Recordstring, HTMLDialogElement} */
+  #dialogs = {};
+  constructor() {
+    super();
+    this.#internals = this.attachInternals();
+    this._adoptInternals(this.#internals);
+  }
+  setup() {
+    this.#qualitySummary = this.getAttribute("data-quality-summary") || "";
+    this.#seedDefaults();
+    this.#renderViz();
+    this.listen(this, "click", (e) => this.#onClick(e));
+    this.listen(this, "keydown", (e) => this.#onKeydown(e));
+  }
+  attributeChangedCallback(name) {
+    if (!this.isConnected) return;
+    if (name === "data-focus-factor" || name === "data-min-capacity") {
+      this.#recompute({ source: "attribute" });
+    } else if (name === "data-quality-summary") {
+      this.#qualitySummary = this.getAttribute("data-quality-summary") || "";
+      this.#renderViz();
+    } else if (name === "disabled" || name === "locked") {
+      this.#syncDisabledLocked();
+    }
+  }
+  // ── Public API ────────────────────────────────────────────────────
+  get value() {
+    return JSON.parse(JSON.stringify({ ...this.#value, revisionLog: this.#revisionLog }));
+  }
+  set value(next) {
+    if (!next || typeof next !== "object") return;
+    for (const section of SECTIONS) {
+      if (next[section] && typeof next[section] === "object") {
+        this.#value[section] = { ...next[section] };
+      }
+    }
+    if (next.capacitySource === "manual" && Number.isFinite(next.capacityPoints)) {
+      this.#manualPoints = next.capacityPoints;
+      this.#value.capacitySource = "manual";
+    } else {
+      this.#manualPoints = null;
+      this.#value.capacitySource = "formula";
+    }
+    if (Array.isArray(next.revisionLog)) this.#revisionLog = [...next.revisionLog];
+    this.#syncDialogInputs();
+    this.#recompute({ source: "property" });
+  }
+  get capacityPoints() {
+    return this.#value.capacityPoints;
+  }
+  get capacitySource() {
+    return this.#value.capacitySource;
+  }
+  get hash() {
+    return this.#value.hash;
+  }
+  get revisionLog() {
+    return JSON.parse(JSON.stringify(this.#revisionLog));
+  }
+  get qualitySummary() {
+    return this.#qualitySummary;
+  }
+  set qualitySummary(s) {
+    this.#qualitySummary = String(s ?? "");
+    this.#renderViz();
+  }
+  /** Imperatively open a vertex editor. */
+  openEditor(axis) {
+    if (!SECTIONS.includes(axis)) return;
+    const dialog = this.#ensureDialog(axis);
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+  }
+  revise(field, newValue, reason) {
+    if (!field || typeof reason !== "string" || reason.length < 10) {
+      throw new Error("iron-triangle: revise() requires field and a reason of at least 10 characters");
+    }
+    const from = this.#getField(field);
+    this.#setField(field, newValue);
+    const change = { field, from, to: newValue, reason };
+    this.#revisionLog.push({ revisedAt: (/* @__PURE__ */ new Date()).toISOString(), changes: [change] });
+    this.dispatchEvent(new CustomEvent("iron-triangle:revise", {
+      bubbles: true,
+      composed: true,
+      detail: change
+    }));
+    this.#syncDialogInputs();
+    this.#recompute({ source: "revise" });
+  }
+  setManual(integer) {
+    const n = Math.max(1, Math.floor(Number(integer) || 0));
+    this.#manualPoints = n;
+    const previous = this.#value.capacitySource;
+    this.#value.capacitySource = "manual";
+    if (previous !== "manual") {
+      this.dispatchEvent(new CustomEvent("iron-triangle:mode", {
+        bubbles: true,
+        composed: true,
+        detail: { from: previous, to: "manual" }
+      }));
+    }
+    this.setState("manual", true);
+    this.setState("formula", false);
+    this.#recompute({ source: "manual" });
+  }
+  setFormula() {
+    this.#manualPoints = null;
+    const previous = this.#value.capacitySource;
+    this.#value.capacitySource = "formula";
+    if (previous !== "formula") {
+      this.dispatchEvent(new CustomEvent("iron-triangle:mode", {
+        bubbles: true,
+        composed: true,
+        detail: { from: previous, to: "formula" }
+      }));
+    }
+    this.setState("manual", false);
+    this.setState("formula", true);
+    this.#recompute({ source: "formula" });
+  }
+  recalc() {
+    this.#recompute({ source: "recalc" });
+  }
+  // ── Internal: SVG hit-target click/keyboard ──────────────────────
+  #onClick(event) {
+    const vertex = event.target.closest?.(".vertex[data-axis]");
+    if (vertex && this.contains(vertex)) {
+      event.preventDefault();
+      this.openEditor(vertex.dataset.axis);
+      return;
+    }
+    const center = event.target.closest?.('.center[data-target="quality"]');
+    if (center && this.contains(center)) {
+      event.preventDefault();
+      this.#fireQualityOpen();
+    }
+  }
+  #onKeydown(event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const vertex = event.target.closest?.(".vertex[data-axis]");
+    if (vertex && this.contains(vertex)) {
+      event.preventDefault();
+      this.openEditor(vertex.dataset.axis);
+      return;
+    }
+    const center = event.target.closest?.('.center[data-target="quality"]');
+    if (center && this.contains(center)) {
+      event.preventDefault();
+      this.#fireQualityOpen();
+    }
+  }
+  #fireQualityOpen() {
+    const evt = new CustomEvent("iron-triangle:open-quality", {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+      detail: { qualitySummary: this.#qualitySummary, capacityPoints: this.#value.capacityPoints }
+    });
+    const allowDefault = this.dispatchEvent(evt);
+    if (allowDefault) {
+      const href = this.getAttribute("data-quality-href");
+      if (href) window.location.assign(href);
+    }
+  }
+  // ── Internal: dialogs ─────────────────────────────────────────────
+  #ensureDialog(axis) {
+    if (this.#dialogs[axis]) return this.#dialogs[axis];
+    const dialog = document.createElement("dialog");
+    dialog.className = `iron-triangle-dialog iron-triangle-dialog--${axis}`;
+    dialog.setAttribute("aria-label", `${SECTION_TITLES[axis]} \u2014 edit`);
+    const form = document.createElement("form");
+    form.method = "dialog";
+    form.setAttribute("data-layout", "stack");
+    form.setAttribute("data-layout-gap", "m");
+    const heading = document.createElement("h3");
+    heading.textContent = SECTION_TITLES[axis];
+    form.append(heading);
+    for (const def of FIELD_DEFS[axis]) {
+      form.append(buildFormField(axis, def, this.#value[axis]?.[def.key]));
+    }
+    const actions = document.createElement("div");
+    actions.setAttribute("data-layout", "cluster");
+    actions.setAttribute("data-layout-gap", "s");
+    actions.setAttribute("data-layout-justify", "end");
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.value = "cancel";
+    cancel.textContent = "Cancel";
+    cancel.addEventListener("click", () => dialog.close("cancel"));
+    const save = document.createElement("button");
+    save.type = "submit";
+    save.value = "save";
+    save.textContent = "Save";
+    actions.append(cancel, save);
+    form.append(actions);
+    dialog.append(form);
+    this.append(dialog);
+    this.#dialogs[axis] = dialog;
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      this.#captureDialog(axis, form);
+      dialog.close("save");
+      this.#recompute({ source: "dialog", field: axis });
+    });
+    return dialog;
+  }
+  #captureDialog(axis, form) {
+    const next = {};
+    for (const def of FIELD_DEFS[axis]) {
+      const input = form.querySelector(`[name="${axis}.${def.key}"]`);
+      if (!input) continue;
+      const raw = input.type === "checkbox" ? input.checked : input.value;
+      if (raw === "" || raw == null) continue;
+      if (def.type === "number") {
+        const n = Number(raw);
+        if (Number.isFinite(n)) next[def.key] = n;
+      } else {
+        next[def.key] = raw;
+      }
+    }
+    this.#value[axis] = next;
+  }
+  #syncDialogInputs() {
+    for (const axis of SECTIONS) {
+      const dialog = this.#dialogs[axis];
+      if (!dialog) continue;
+      for (const def of FIELD_DEFS[axis]) {
+        const input = (
+          /** @type {HTMLInputElement | null} */
+          dialog.querySelector(`[name="${axis}.${def.key}"]`)
+        );
+        if (!input) continue;
+        const v = this.#value[axis]?.[def.key];
+        input.value = v == null ? "" : String(v);
+      }
+    }
+  }
+  // ── Internal: capacity + viz ──────────────────────────────────────
+  #seedDefaults() {
+    for (const axis of SECTIONS) {
+      for (const def of FIELD_DEFS[axis]) {
+        if (def.value !== void 0 && this.#value[axis][def.key] === void 0) {
+          this.#value[axis][def.key] = def.value;
+        }
+      }
+    }
+    this.#recompute({ source: "init" });
+  }
+  /** @param {{ source?: string, field?: string }} [options] */
+  #recompute({ source, field } = {}) {
+    const focusFactor = Number(this.dataset.focusFactor ?? 0.6);
+    const minCapacity = Number(this.dataset.minCapacity ?? 1);
+    let points;
+    if (this.#value.capacitySource === "manual" && this.#manualPoints != null) {
+      points = this.#manualPoints;
+    } else {
+      points = defaultFormula(this.#value.time, this.#value.cost, focusFactor);
+    }
+    if (Number.isFinite(minCapacity) && points > 0 && points < minCapacity) {
+      points = minCapacity;
+    }
+    this.#value.capacityPoints = points;
+    this.#value.hash = triangleHash(this.#value);
+    this.#renderViz();
+    this.#syncStateFlags();
+    this.#publishFormValue();
+    this.dispatchEvent(new CustomEvent("iron-triangle:change", {
+      bubbles: true,
+      composed: true,
+      detail: { ...this.value, source, field }
+    }));
+  }
+  #renderViz() {
+    const svg = buildTriangleSvg({
+      value: this.#value,
+      vertices: triangleVertices(this.#value),
+      capacityPoints: this.#value.capacityPoints,
+      capacitySource: this.#value.capacitySource,
+      qualitySummary: this.#qualitySummary
+    });
+    const existing = this.querySelector(":scope > svg");
+    if (existing) existing.replaceWith(svg);
+    else this.prepend(svg);
+    this.dataset.capacityPoints = String(this.#value.capacityPoints);
+    this.dataset.capacitySource = this.#value.capacitySource;
+  }
+  #syncStateFlags() {
+    this.setState("formula", this.#value.capacitySource === "formula");
+    this.setState("manual", this.#value.capacitySource === "manual");
+    this.setState("unbudgeted", !(this.#value.capacityPoints > 0));
+    const deadline = this.#value.time?.deadline;
+    let overDeadline = false;
+    if (deadline) {
+      const target = new Date(deadline).getTime();
+      if (Number.isFinite(target)) overDeadline = target < Date.now();
+    }
+    this.setState("over-deadline", overDeadline);
+  }
+  #publishFormValue() {
+    try {
+      this.#internals.setFormValue(JSON.stringify(this.value));
+    } catch {
+    }
+  }
+  #syncDisabledLocked() {
+    const off = this.hasAttribute("disabled") || this.hasAttribute("locked");
+    for (const dialog of Object.values(this.#dialogs)) {
+      for (const el of dialog.querySelectorAll("input, select, textarea, button")) el.disabled = off;
+    }
+  }
+  // ── Internal: revise() field accessors ───────────────────────────
+  #getField(path) {
+    if (path === "capacityPoints") return this.#value.capacityPoints;
+    const [section, key] = path.split(".");
+    return section && key ? this.#value[section]?.[key] : void 0;
+  }
+  #setField(path, value) {
+    if (path === "capacityPoints") {
+      this.setManual(value);
+      return;
+    }
+    const [section, key] = path.split(".");
+    if (!section || !key) return;
+    if (!this.#value[section]) this.#value[section] = {};
+    this.#value[section][key] = value;
+  }
+};
+function buildFormField(axis, def, currentValue) {
+  const ff = document.createElement("form-field");
+  const id = `${axis}-${def.key}`;
+  const label = document.createElement("label");
+  label.setAttribute("for", id);
+  label.textContent = def.label;
+  ff.append(label);
+  let control;
+  if (def.type === "select") {
+    control = document.createElement("select");
+    for (const [val, text] of def.options) {
+      const opt = document.createElement("option");
+      opt.value = val;
+      opt.textContent = text;
+      if (currentValue === val || currentValue == null && def.value === val) opt.selected = true;
+      control.append(opt);
+    }
+  } else if (def.type === "textarea") {
+    control = document.createElement("textarea");
+    if (def.rows) control.rows = def.rows;
+    if (def.maxlength) control.maxLength = def.maxlength;
+    if (currentValue != null) control.value = String(currentValue);
+  } else {
+    control = document.createElement("input");
+    control.type = def.type;
+    if (def.min != null) control.min = String(def.min);
+    if (def.max != null) control.max = String(def.max);
+    if (def.step != null) control.step = String(def.step);
+    if (currentValue != null) control.value = String(currentValue);
+    else if (def.value != null) control.value = String(def.value);
+  }
+  control.id = id;
+  control.name = `${axis}.${def.key}`;
+  if (def.width) control.style.inlineSize = def.width;
+  ff.append(control);
+  return ff;
+}
+registerComponent("iron-triangle", IronTriangle);
+
+// src/web-components/capacity-plan/_capacity-utils.js
+function workItemCost(el) {
+  if (!el) return 0;
+  const raw = el.dataset?.capacityCost ?? el.getAttribute?.("data-capacity-cost");
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+function sumWorkCosts(elements) {
+  let total = 0;
+  for (const el of elements || []) total += workItemCost(el);
+  return total;
+}
+function computeLedger({ capacityPoints, qualitySum, featureSum }) {
+  const cap = Number.isFinite(capacityPoints) ? capacityPoints : Infinity;
+  const q = Math.max(0, Number(qualitySum) || 0);
+  const f = Math.max(0, Number(featureSum) || 0);
+  const slack = Number.isFinite(cap) ? cap - q - f : Infinity;
+  return { capacity: cap, quality: q, features: f, slack };
+}
+function barProportions({ capacity, quality, features }) {
+  if (!Number.isFinite(capacity) || capacity <= 0) {
+    const total = quality + features;
+    if (total <= 0) return { quality: 0, features: 0, slack: 100 };
+    return {
+      quality: quality / total * 100,
+      features: features / total * 100,
+      slack: 0
+    };
+  }
+  const spend = quality + features;
+  const denom = Math.max(capacity, spend);
+  return {
+    quality: quality / denom * 100,
+    features: features / denom * 100,
+    slack: Math.max(0, (capacity - spend) / denom * 100)
+  };
+}
+
+// src/web-components/capacity-plan/logic.js
+var CapacityPlan = class extends VBElement {
+  static get observedAttributes() {
+    return ["data-bind-triangle", "data-bind-quality"];
+  }
+  /** @type {(() = void) | null} */
+  #unbindTriangle = null;
+  /** @type {(() = void) | null} */
+  #unbindQuality = null;
+  /** @type {MutationObserver | null} */
+  #slotObserver = null;
+  /** @type {number | null} */
+  #featureSumOverride = null;
+  /** @type {boolean} */
+  #wasOver = false;
+  setup() {
+    this.#bindTriangle();
+    this.#bindQuality();
+    this.#observeSlotted();
+    this.#render();
+  }
+  teardown() {
+    this.#unbindTriangle?.();
+    this.#unbindQuality?.();
+    this.#slotObserver?.disconnect();
+    this.#unbindTriangle = null;
+    this.#unbindQuality = null;
+    this.#slotObserver = null;
+  }
+  attributeChangedCallback(name) {
+    if (!this.isConnected) return;
+    if (name === "data-bind-triangle") {
+      this.#bindTriangle();
+      this.#render();
+    } else if (name === "data-bind-quality") {
+      this.#bindQuality();
+      this.#render();
+    }
+  }
+  // ── Public API ────────────────────────────────────────────────────
+  get capacityPoints() {
+    return this.#triangleCap();
+  }
+  get qualitySum() {
+    return this.#qualitySum();
+  }
+  get featureSum() {
+    if (this.#featureSumOverride != null) return this.#featureSumOverride;
+    return sumWorkCosts(this.querySelectorAll("[data-capacity-cost]"));
+  }
+  set featureSum(n) {
+    this.#featureSumOverride = Number.isFinite(+n) ? +n : null;
+    this.#render();
+  }
+  get slack() {
+    return computeLedger({
+      capacityPoints: this.#triangleCap(),
+      qualitySum: this.#qualitySum(),
+      featureSum: this.featureSum
+    }).slack;
+  }
+  // ── Internal: bindings ────────────────────────────────────────────
+  #findById(id) {
+    if (!id) return null;
+    const root = (
+      /** @type {any} */
+      this.getRootNode()
+    );
+    return root.getElementById ? root.getElementById(id) : document.getElementById(id);
+  }
+  #bindTriangle() {
+    this.#unbindTriangle?.();
+    this.#unbindTriangle = null;
+    const el = this.#findById(this.dataset.bindTriangle);
+    if (!el || el.localName !== "iron-triangle") return;
+    const handler = () => this.#render();
+    el.addEventListener("iron-triangle:change", handler);
+    this.#unbindTriangle = () => el.removeEventListener("iron-triangle:change", handler);
+  }
+  #bindQuality() {
+    this.#unbindQuality?.();
+    this.#unbindQuality = null;
+    const el = this.#findById(this.dataset.bindQuality);
+    if (!el || el.localName !== "quality-target") return;
+    const handler = () => this.#render();
+    el.addEventListener("quality-target:change", handler);
+    this.#unbindQuality = () => el.removeEventListener("quality-target:change", handler);
+  }
+  #observeSlotted() {
+    if (this.#slotObserver) return;
+    this.#slotObserver = new MutationObserver((records) => {
+      const meaningful = records.some((r) => {
+        const target = (
+          /** @type {any} */
+          r.target
+        );
+        return !target.closest?.("[data-capacity-table]");
+      });
+      if (meaningful) this.#render();
+    });
+    this.#slotObserver.observe(this, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-capacity-cost"]
+    });
+  }
+  #triangleCap() {
+    const el = this.#findById(this.dataset.bindTriangle);
+    if (!el || el.localName !== "iron-triangle") return Infinity;
+    const v = el.capacityPoints;
+    return Number.isFinite(v) && v > 0 ? v : Infinity;
+  }
+  #qualitySum() {
+    const el = this.#findById(this.dataset.bindQuality);
+    if (!el || el.localName !== "quality-target") return 0;
+    return Number(el.criticalSum) || 0;
+  }
+  // ── Internal: render ──────────────────────────────────────────────
+  #render() {
+    const ledger = computeLedger({
+      capacityPoints: this.#triangleCap(),
+      qualitySum: this.#qualitySum(),
+      featureSum: this.featureSum
+    });
+    const bars = barProportions(ledger);
+    let table = (
+      /** @type {HTMLElement | null} */
+      this.querySelector(":scope > [data-capacity-table]")
+    );
+    if (!table) {
+      table = document.createElement("section");
+      table.dataset.capacityTable = "";
+      this.prepend(table);
+    }
+    const capCell = formatPts(ledger.capacity);
+    const qCell = ledger.quality > 0 ? `\u2212${ledger.quality} pts` : "0 pts";
+    const fCell = ledger.features > 0 ? `\u2212${ledger.features} pts` : "0 pts";
+    const slackCell = formatSignedSlack(ledger.slack);
+    table.innerHTML = `
+      <dl data-layout="grid" class="capacity-ledger" aria-label="Capacity ledger">
+        <div data-row="capacity">
+          <dt>Capacity</dt>
+          <dd class="num">${capCell}</dd>
+          <dd class="bar"><span class="bar-track"><span class="bar-fill bar-capacity" style="--w:100%"></span></span></dd>
+        </div>
+        <div data-row="quality">
+          <dt>Quality</dt>
+          <dd class="num">${qCell}</dd>
+          <dd class="bar"><span class="bar-track"><span class="bar-fill bar-quality" style="--w:${bars.quality.toFixed(1)}%"></span></span></dd>
+        </div>
+        <div data-row="features">
+          <dt>Features</dt>
+          <dd class="num">${fCell}</dd>
+          <dd class="bar"><span class="bar-track"><span class="bar-fill bar-features" style="--w:${bars.features.toFixed(1)}%"></span></span></dd>
+        </div>
+        <div data-row="slack" data-state="${ledger.slack < 0 ? "over" : "under"}">
+          <dt>Slack</dt>
+          <dd class="num">${slackCell}</dd>
+          <dd class="bar"><span class="bar-track"><span class="bar-fill bar-slack" style="--w:${bars.slack.toFixed(1)}%"></span></span></dd>
+        </div>
+      </dl>
+    `;
+    this.setState("overdrawn", ledger.slack < 0);
+    const isOver = ledger.slack < 0;
+    if (isOver !== this.#wasOver) {
+      this.dispatchEvent(new CustomEvent("capacity-plan:overdrawn", {
+        bubbles: true,
+        composed: true,
+        detail: { ledger, source: "render" }
+      }));
+      this.#wasOver = isOver;
+    }
+  }
+};
+function formatPts(n) {
+  if (!Number.isFinite(n)) return "\u221E";
+  return `${n} pts`;
+}
+function formatSignedSlack(n) {
+  if (!Number.isFinite(n)) return "\u221E";
+  if (n === 0) return "0 pts";
+  if (n > 0) return `+${n} pts`;
+  return `${n} pts`;
+}
+registerComponent("capacity-plan", CapacityPlan);
+
+// src/web-components/quality-target/_quality-utils.js
+var DEFAULT_ILITIES = Object.freeze([
+  "performance",
+  "accessibility",
+  "security",
+  "reliability",
+  "maintainability",
+  "observability",
+  "compatibility",
+  "scalability",
+  "portability",
+  "internationalization",
+  "privacy"
+]);
+var LEVELS = Object.freeze(["critical", "important", "acceptable", "not-relevant"]);
+var LEVEL_LABELS = Object.freeze({
+  "critical": "Critical",
+  "important": "Important",
+  "acceptable": "Acceptable",
+  "not-relevant": "Not relevant"
+});
+var DEFAULT_COST_WEIGHTS = Object.freeze({
+  accessibility: 3,
+  performance: 5,
+  security: 5,
+  reliability: 4,
+  observability: 3,
+  internationalization: 4,
+  compatibility: 2,
+  portability: 3,
+  privacy: 4,
+  scalability: 5,
+  maintainability: 2
+});
+var ILITY_LABELS = Object.freeze({
+  performance: "Performance",
+  accessibility: "Accessibility",
+  security: "Security",
+  reliability: "Reliability",
+  maintainability: "Maintainability",
+  observability: "Observability",
+  compatibility: "Compatibility",
+  scalability: "Scalability",
+  portability: "Portability",
+  internationalization: "Internationalization",
+  privacy: "Privacy"
+});
+var ILITY_ABBR = Object.freeze({
+  accessibility: "a11y",
+  internationalization: "i18n",
+  maintainability: "maint",
+  observability: "obs",
+  compatibility: "compat",
+  portability: "porta",
+  performance: "perf",
+  reliability: "rely",
+  scalability: "scale",
+  security: "sec",
+  privacy: "priv"
+});
+var LEVEL_RATIO = Object.freeze({
+  critical: 1,
+  important: 0.6,
+  acceptable: 0.3,
+  "not-relevant": 0
+});
+function ilityLabel(ility) {
+  if (ILITY_LABELS[ility]) return ILITY_LABELS[ility];
+  return String(ility).replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+function mergeCostWeights(ilities, overrides = {}) {
+  const out = {};
+  for (const ility of ilities) {
+    if (Object.prototype.hasOwnProperty.call(overrides, ility) && Number.isFinite(Number(overrides[ility]))) {
+      out[ility] = Math.max(0, Math.floor(Number(overrides[ility])));
+    } else if (Object.prototype.hasOwnProperty.call(DEFAULT_COST_WEIGHTS, ility)) {
+      out[ility] = DEFAULT_COST_WEIGHTS[ility];
+    } else {
+      out[ility] = 1;
+    }
+  }
+  return Object.freeze(out);
+}
+function criticalSum(vector, costWeights) {
+  let sum = 0;
+  for (const [ility, level] of Object.entries(vector || {})) {
+    if (level === "critical") sum += Number(costWeights?.[ility] ?? 0);
+  }
+  return sum;
+}
+function criticalKeys(vector) {
+  return Object.keys(vector || {}).filter((k) => vector[k] === "critical");
+}
+function validateVector(input) {
+  const {
+    vector = {},
+    rationales = {},
+    costWeights = {},
+    capacityPoints = Infinity,
+    overrunRationale = "",
+    minRationale = 10,
+    minOverrunRationale = 10
+  } = input || {};
+  const errors = [];
+  const crits = criticalKeys(vector);
+  for (const k of crits) {
+    const r = rationales[k];
+    if (typeof r !== "string" || r.trim().length < minRationale) {
+      errors.push(`Critical "${k}" needs a rationale of at least ${minRationale} characters.`);
+    }
+  }
+  const sum = criticalSum(vector, costWeights);
+  if (Number.isFinite(capacityPoints) && sum > capacityPoints) {
+    if (typeof overrunRationale !== "string" || overrunRationale.trim().length < minOverrunRationale) {
+      errors.push(
+        `Over budget by ${sum - capacityPoints} points (${sum}/${capacityPoints}); overrunRationale of at least ${minOverrunRationale} characters required.`
+      );
+    }
+  }
+  return { valid: errors.length === 0, errors, criticalSum: sum };
+}
+function canSaveAxis({ level, rationale, minRationale = 10 }) {
+  if (!LEVELS.includes(level)) return { ok: false, reason: "pick-level" };
+  if (level === "critical") {
+    if (typeof rationale !== "string" || rationale.trim().length < minRationale) {
+      return { ok: false, reason: "rationale-too-short" };
+    }
+  }
+  return { ok: true };
+}
+function formatAxisTooltip({ ility, level, costWeight }) {
+  const name = ilityLabel(ility);
+  const lvl = level ? LEVEL_LABELS[level] || level : "unset";
+  const n = Number(costWeight);
+  const cost = Number.isFinite(n) ? `${n} pts` : "? pts";
+  return `${name} \u2014 ${lvl} \xB7 ${cost}`;
+}
+function parseJsonAttr(raw) {
+  if (!raw || typeof raw !== "string") return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function axisAngles(n) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    out.push(-Math.PI / 2 + 2 * Math.PI * i / n);
+  }
+  return out;
+}
+function vectorPoints({ ilities, vector = {}, radius }) {
+  const angles = axisAngles(ilities.length);
+  return ilities.map((k, i) => {
+    const level = vector[k] || null;
+    const ratio = LEVEL_RATIO[level] ?? 0;
+    return {
+      ility: k,
+      level,
+      x: round2(Math.cos(angles[i]) * radius * ratio),
+      y: round2(Math.sin(angles[i]) * radius * ratio)
+    };
+  });
+}
+function axisOuterPoints({ ilities, radius }) {
+  const angles = axisAngles(ilities.length);
+  return ilities.map((k, i) => ({
+    ility: k,
+    x: round2(Math.cos(angles[i]) * radius),
+    y: round2(Math.sin(angles[i]) * radius)
+  }));
+}
+var SVG_NS2 = "http://www.w3.org/2000/svg";
+var LEVEL_RING_RATIOS = Object.freeze([
+  { ratio: 1, label: "Critical", className: "ring-critical" },
+  { ratio: 0.6, label: "Important", className: "ring-important" },
+  { ratio: 0.3, label: "Acceptable", className: "ring-acceptable" }
+]);
+var CENTER_HOLE_RADIUS_RATIO = 0.22;
+function buildTargetSvg({
+  ilities = (
+    /** @type {any[]} */
+    []
+  ),
+  vector = (
+    /** @type {Recordstring, string} */
+    {}
+  ),
+  costWeights = (
+    /** @type {Recordstring, number} */
+    {}
+  ),
+  capacityPoints = 0,
+  radius = 100
+} = {}) {
+  const svg = document.createElementNS(SVG_NS2, "svg");
+  const labelRadius = radius + 14;
+  const padX = labelRadius + 140;
+  const padY = labelRadius + 30;
+  svg.setAttribute("viewBox", `${-padX} ${-padY} ${padX * 2} ${padY * 2}`);
+  svg.setAttribute("role", "group");
+  svg.setAttribute(
+    "aria-label",
+    `Quality target. ${criticalKeys(vector || {}).length} critical of ${ilities.length} ilities. Click any axis to edit.`
+  );
+  for (const r of LEVEL_RING_RATIOS) {
+    const ring = document.createElementNS(SVG_NS2, "polygon");
+    ring.setAttribute("class", `ring ${r.className}`);
+    const points = axisOuterPoints({ ilities, radius: radius * r.ratio });
+    ring.setAttribute("points", points.map((p) => `${p.x},${p.y}`).join(" "));
+    svg.append(ring);
+  }
+  const outer = axisOuterPoints({ ilities, radius });
+  for (const p of outer) {
+    const line = document.createElementNS(SVG_NS2, "line");
+    line.setAttribute("class", "spoke");
+    line.setAttribute("x1", "0");
+    line.setAttribute("y1", "0");
+    line.setAttribute("x2", String(p.x));
+    line.setAttribute("y2", String(p.y));
+    svg.append(line);
+  }
+  const vec = vectorPoints({ ilities, vector, radius });
+  const nonZero = vec.filter((p) => Math.hypot(p.x, p.y) > 0.5);
+  if (nonZero.length >= 3) {
+    const poly = document.createElementNS(SVG_NS2, "polygon");
+    poly.setAttribute("class", "vector");
+    poly.setAttribute("points", nonZero.map((p) => `${p.x},${p.y}`).join(" "));
+    svg.append(poly);
+  } else if (nonZero.length > 0) {
+    for (const p of nonZero) {
+      const line = document.createElementNS(SVG_NS2, "line");
+      line.setAttribute("class", "vector-spoke");
+      line.setAttribute("x1", "0");
+      line.setAttribute("y1", "0");
+      line.setAttribute("x2", String(p.x));
+      line.setAttribute("y2", String(p.y));
+      svg.append(line);
+    }
+  }
+  const labels = axisOuterPoints({ ilities, radius: labelRadius });
+  for (let i = 0; i < ilities.length; i++) {
+    const ility = ilities[i];
+    const dot = vec[i];
+    const label = labels[i];
+    const cost = Number(costWeights?.[ility] ?? 0);
+    const level = vector?.[ility] ?? null;
+    const g = document.createElementNS(SVG_NS2, "g");
+    g.setAttribute("class", "axis");
+    g.setAttribute("data-ility", ility);
+    if (level) g.setAttribute("data-level", String(level));
+    g.setAttribute("tabindex", "0");
+    g.setAttribute("role", "button");
+    g.setAttribute(
+      "aria-label",
+      `${formatAxisTooltip({ ility, level, costWeight: cost })}. Activate to edit.`
+    );
+    const hit = document.createElementNS(SVG_NS2, "rect");
+    hit.setAttribute("class", "hit");
+    const anchor = anchorFor(label);
+    const hitW = 100;
+    const hitH = 22;
+    const hitX = label.x + (anchor === "end" ? -hitW : anchor === "start" ? 0 : -hitW / 2);
+    const hitY = label.y - hitH / 2;
+    hit.setAttribute("x", String(round2(hitX)));
+    hit.setAttribute("y", String(round2(hitY)));
+    hit.setAttribute("width", String(hitW));
+    hit.setAttribute("height", String(hitH));
+    hit.setAttribute("rx", "4");
+    g.append(hit);
+    if (level) {
+      const marker = document.createElementNS(SVG_NS2, "circle");
+      marker.setAttribute("class", "marker");
+      marker.setAttribute("cx", String(dot.x));
+      marker.setAttribute("cy", String(dot.y));
+      marker.setAttribute("r", "4");
+      g.append(marker);
+    }
+    const text = document.createElementNS(SVG_NS2, "text");
+    text.setAttribute("class", "axis-label");
+    text.setAttribute("x", String(label.x));
+    text.setAttribute("y", String(label.y));
+    text.setAttribute("text-anchor", anchor);
+    text.setAttribute("dominant-baseline", "middle");
+    text.textContent = ilityLabel(ility);
+    g.append(text);
+    const title = document.createElementNS(SVG_NS2, "title");
+    title.textContent = formatAxisTooltip({ ility, level, costWeight: cost });
+    g.append(title);
+    svg.append(g);
+  }
+  const center = document.createElementNS(SVG_NS2, "g");
+  center.setAttribute("class", "center");
+  const sum = criticalSum(vector, costWeights);
+  const overBudget = Number.isFinite(capacityPoints) && sum > capacityPoints;
+  if (overBudget) center.setAttribute("data-over", "");
+  const holeRadius = radius * CENTER_HOLE_RADIUS_RATIO;
+  const backdrop = document.createElementNS(SVG_NS2, "circle");
+  backdrop.setAttribute("class", "capacity-backdrop");
+  backdrop.setAttribute("cx", "0");
+  backdrop.setAttribute("cy", "0");
+  backdrop.setAttribute("r", String(round2(holeRadius)));
+  center.append(backdrop);
+  const sumText = document.createElementNS(SVG_NS2, "text");
+  sumText.setAttribute("class", "capacity-sum");
+  sumText.setAttribute("x", "0");
+  sumText.setAttribute("y", "-3");
+  sumText.setAttribute("text-anchor", "middle");
+  sumText.setAttribute("dominant-baseline", "middle");
+  sumText.textContent = String(sum);
+  center.append(sumText);
+  const denom = document.createElementNS(SVG_NS2, "text");
+  denom.setAttribute("class", "capacity-denom");
+  denom.setAttribute("x", "0");
+  denom.setAttribute("y", "11");
+  denom.setAttribute("text-anchor", "middle");
+  denom.textContent = Number.isFinite(capacityPoints) ? `of ${capacityPoints}` : "unbounded";
+  center.append(denom);
+  svg.append(center);
+  return svg;
+}
+function round2(n) {
+  return Math.round(n * 100) / 100;
+}
+function anchorFor(p) {
+  if (Math.abs(p.x) < 4) return "middle";
+  return p.x > 0 ? "start" : "end";
+}
+
+// src/web-components/quality-target/logic.js
+var QualityTarget = class extends VBElement {
+  static formAssociated = true;
+  static get observedAttributes() {
+    return [
+      "data-bind-to",
+      "data-capacity-points",
+      "data-cost-weights",
+      "data-radius",
+      "data-show-envelope",
+      "data-min-rationale",
+      "data-max-rationale",
+      "data-min-overrun-rationale",
+      "data-max-overrun-rationale",
+      "disabled",
+      "locked"
+    ];
+  }
+  /** @type {ElementInternals} */
+  #internals;
+  /** @type {string[]} */
+  #ilities = [...DEFAULT_ILITIES];
+  /** @type {Recordstring, string} */
+  #vector = {};
+  /** @type {Recordstring, string} */
+  #rationales = {};
+  /** @type {ReadonlyRecord<string, number>} */
+  #costWeights = mergeCostWeights(DEFAULT_ILITIES);
+  /** @type {string} */
+  #overrunRationale = "";
+  /** @type {boolean} */
+  #wasOver = false;
+  /** @type {(() = void) | null} */
+  #unbindTriangle = null;
+  /** @type {number | null} */
+  #capacityPropOverride = null;
+  /** @type {Recordstring, HTMLDialogElement} */
+  #dialogs = {};
+  /** @type {HTMLElement | null} */
+  #footer = null;
+  constructor() {
+    super();
+    this.#internals = this.attachInternals();
+    this._adoptInternals(this.#internals);
+  }
+  setup() {
+    this.#refreshCostWeights();
+    this.#bindToTriangle();
+    this.#renderViz();
+    this.#ensureFooter();
+    this.listen(this, "click", (e) => this.#onClick(e));
+    this.listen(this, "keydown", (e) => this.#onKeydown(e));
+    this.listen(this, "input", (e) => this.#onFooterInput(e));
+  }
+  teardown() {
+    this.#unbindTriangle?.();
+    this.#unbindTriangle = null;
+  }
+  attributeChangedCallback(name) {
+    if (!this.isConnected) return;
+    if (name === "data-bind-to") {
+      this.#bindToTriangle();
+      this.#renderViz();
+    } else if (name === "data-capacity-points") {
+      this.#renderViz();
+    } else if (name === "data-cost-weights") {
+      this.#refreshCostWeights();
+      this.#renderViz();
+    } else if (name === "data-radius" || name === "data-show-envelope") {
+      this.#renderViz();
+    } else if (name === "disabled" || name === "locked") {
+      this.#syncDisabledLocked();
+    }
+  }
+  // ── Public API ────────────────────────────────────────────────────
+  get vector() {
+    return { ...this.#vector };
+  }
+  set vector(next) {
+    this.#applyVector(next);
+    this.#publish("property");
+  }
+  get rationales() {
+    return { ...this.#rationales };
+  }
+  set rationales(next) {
+    this.#applyRationales(next);
+    this.#publish("property");
+  }
+  get costWeights() {
+    return { ...this.#costWeights };
+  }
+  get capacityPoints() {
+    return this.#resolveCapacity();
+  }
+  set capacityPoints(n) {
+    this.#capacityPropOverride = Number.isFinite(+n) ? +n : null;
+    this.#publish("property");
+  }
+  get criticalSum() {
+    return criticalSum(this.#vector, this.#costWeights);
+  }
+  get overBudget() {
+    const cap = this.#resolveCapacity();
+    return Number.isFinite(cap) && this.criticalSum > cap;
+  }
+  get overrunRationale() {
+    return this.#overrunRationale;
+  }
+  set overrunRationale(s) {
+    this.#overrunRationale = String(s ?? "");
+    const ta = (
+      /** @type {HTMLTextAreaElement | null} */
+      this.querySelector("[data-quality-overrun] textarea")
+    );
+    if (ta) ta.value = this.#overrunRationale;
+    this.#publishFormValue();
+  }
+  get ilities() {
+    return [...this.#ilities];
+  }
+  set ilities(next) {
+    if (!Array.isArray(next) || next.length === 0) return;
+    this.#ilities = [...next];
+    this.#refreshCostWeights();
+    this.#publish("property");
+  }
+  get value() {
+    return {
+      vector: { ...this.#vector },
+      rationales: { ...this.#rationales },
+      costWeights: { ...this.#costWeights },
+      capacityPoints: this.#resolveCapacityForSerialize(),
+      capacitySource: this.#capacitySourceLabel(),
+      criticalSum: this.criticalSum,
+      overrunRationale: this.#overrunRationale || void 0,
+      ironTriangleHash: this.#readTriangleHash()
+    };
+  }
+  /** Imperatively open one axis's editor. */
+  openEditor(ility) {
+    if (!this.#ilities.includes(ility)) return;
+    const dialog = this.#ensureDialog(ility);
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+  }
+  checkValidity() {
+    const { valid, errors } = validateVector({
+      vector: this.#vector,
+      rationales: this.#rationales,
+      costWeights: this.#costWeights,
+      capacityPoints: this.#resolveCapacity(),
+      overrunRationale: this.#overrunRationale,
+      minRationale: this.#minRationale(),
+      minOverrunRationale: this.#minOverrunRationale()
+    });
+    this.setState("missing-rationale", !valid);
+    const errBox = this.querySelector("[data-quality-errors]");
+    if (errBox) errBox.textContent = errors.join(" ");
+    return valid;
+  }
+  // ── Internal: SVG hit-target click + keyboard ────────────────────
+  #onClick(event) {
+    const axis = event.target.closest?.(".axis[data-ility]");
+    if (axis && this.contains(axis)) {
+      event.preventDefault();
+      this.openEditor(axis.dataset.ility);
+    }
+  }
+  #onKeydown(event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const axis = event.target.closest?.(".axis[data-ility]");
+    if (axis && this.contains(axis)) {
+      event.preventDefault();
+      this.openEditor(axis.dataset.ility);
+    }
+  }
+  #onFooterInput(event) {
+    const target = event.target;
+    if (target?.matches?.("[data-quality-overrun] textarea")) {
+      this.#overrunRationale = target.value;
+      this.checkValidity();
+      this.#publishFormValue();
+    }
+  }
+  // ── Internal: per-axis dialog ────────────────────────────────────
+  #ensureDialog(ility) {
+    if (this.#dialogs[ility]) {
+      this.#syncDialogFromState(ility);
+      return this.#dialogs[ility];
+    }
+    const dialog = document.createElement("dialog");
+    dialog.className = `quality-dialog quality-dialog--${ility}`;
+    dialog.setAttribute("aria-label", `${ilityLabel(ility)} \u2014 edit priority`);
+    const form = document.createElement("form");
+    form.method = "dialog";
+    form.setAttribute("data-layout", "stack");
+    form.setAttribute("data-layout-gap", "m");
+    const heading = document.createElement("h3");
+    heading.textContent = ilityLabel(ility);
+    form.append(heading);
+    const fs = document.createElement("fieldset");
+    fs.setAttribute("data-layout", "stack");
+    fs.setAttribute("data-layout-gap", "2xs");
+    const lg = document.createElement("legend");
+    lg.textContent = "Priority";
+    fs.append(lg);
+    for (const level of LEVELS) {
+      const lbl = document.createElement("label");
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = "level";
+      input.value = level;
+      lbl.append(input, document.createTextNode(" " + LEVEL_LABELS[level]));
+      fs.append(lbl);
+    }
+    form.append(fs);
+    const ff = document.createElement("form-field");
+    const rl = document.createElement("label");
+    rl.setAttribute("for", `quality-${ility}-rationale`);
+    rl.textContent = "Rationale (required when Critical)";
+    const ta = document.createElement("textarea");
+    ta.id = `quality-${ility}-rationale`;
+    ta.name = "rationale";
+    ta.rows = 3;
+    ta.minLength = this.#minRationale();
+    ta.maxLength = this.#maxRationale();
+    ta.placeholder = `Why \u2265 ${this.#minRationale()} chars`;
+    ff.append(rl, ta);
+    form.append(ff);
+    const err = document.createElement("p");
+    err.className = "message message-error";
+    err.dataset.dialogError = "";
+    err.hidden = true;
+    form.append(err);
+    const actions = document.createElement("div");
+    actions.setAttribute("data-layout", "cluster");
+    actions.setAttribute("data-layout-gap", "s");
+    actions.setAttribute("data-layout-justify", "end");
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.textContent = "Cancel";
+    cancel.addEventListener("click", () => dialog.close("cancel"));
+    const save = document.createElement("button");
+    save.type = "submit";
+    save.textContent = "Save";
+    actions.append(cancel, save);
+    form.append(actions);
+    dialog.append(form);
+    this.append(dialog);
+    this.#dialogs[ility] = dialog;
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const levelInput = (
+        /** @type {HTMLInputElement | null} */
+        form.querySelector('input[name="level"]:checked')
+      );
+      const level = levelInput?.value;
+      const rationaleEl = (
+        /** @type {HTMLTextAreaElement | null} */
+        form.querySelector('textarea[name="rationale"]')
+      );
+      const rationale = rationaleEl?.value ?? "";
+      const result = canSaveAxis({ level, rationale, minRationale: this.#minRationale() });
+      if (!result.ok) {
+        err.hidden = false;
+        err.textContent = result.reason === "pick-level" ? "Pick a priority level." : `Rationale must be at least ${this.#minRationale()} characters.`;
+        return;
+      }
+      this.#vector[ility] = level ?? "";
+      if (level === "critical") this.#rationales[ility] = rationale.trim();
+      else delete this.#rationales[ility];
+      dialog.close("save");
+      this.#publish("dialog", ility);
+    });
+    this.#syncDialogFromState(ility);
+    return dialog;
+  }
+  #syncDialogFromState(ility) {
+    const dialog = this.#dialogs[ility];
+    if (!dialog) return;
+    const level = this.#vector[ility];
+    for (const rawRadio of dialog.querySelectorAll('input[name="level"]')) {
+      const radio = (
+        /** @type {HTMLInputElement} */
+        rawRadio
+      );
+      radio.checked = radio.value === level;
+    }
+    const ta = (
+      /** @type {HTMLTextAreaElement | null} */
+      dialog.querySelector('textarea[name="rationale"]')
+    );
+    if (ta) ta.value = this.#rationales[ility] || "";
+    const err = (
+      /** @type {HTMLElement | null} */
+      dialog.querySelector("[data-dialog-error]")
+    );
+    if (err) {
+      err.hidden = true;
+      err.textContent = "";
+    }
+  }
+  // ── Internal: footer (capacity + overrun rationale) ──────────────
+  #ensureFooter() {
+    if (this.#footer) return;
+    const footer = document.createElement("section");
+    footer.className = "quality-footer";
+    footer.dataset.qualityFooter = "";
+    footer.setAttribute("data-layout", "stack");
+    footer.setAttribute("data-layout-gap", "s");
+    const overrun = document.createElement("section");
+    overrun.dataset.qualityOverrun = "";
+    overrun.hidden = true;
+    overrun.innerHTML = `
+      <strong>Over budget \u2014 explain why.</strong>
+      <small data-overrun-prompt></small>
+      <form-field>
+        <label for="quality-overrun">Overrun rationale (\u2265 ${this.#minOverrunRationale()} chars)</label>
+        <textarea id="quality-overrun" name="overrunRationale"
+                  minlength="${this.#minOverrunRationale()}"
+                  maxlength="${this.#maxOverrunRationale()}"
+                  rows="3"></textarea>
+      </form-field>
+    `;
+    footer.append(overrun);
+    const errors = document.createElement("p");
+    errors.dataset.qualityErrors = "";
+    errors.className = "message message-error";
+    errors.setAttribute("role", "alert");
+    footer.append(errors);
+    this.append(footer);
+    this.#footer = footer;
+  }
+  #updateFooter() {
+    if (!this.#footer) return;
+    const cap = this.#resolveCapacity();
+    const sum = this.criticalSum;
+    const isOver = Number.isFinite(cap) && sum > cap;
+    const overrun = (
+      /** @type {HTMLElement | null} */
+      this.#footer.querySelector("[data-quality-overrun]")
+    );
+    if (overrun) {
+      overrun.hidden = !isOver;
+      const prompt = overrun.querySelector("[data-overrun-prompt]");
+      if (prompt && Number.isFinite(cap)) {
+        prompt.textContent = `You're over budget by ${sum - cap} points (${sum}/${cap}).`;
+      }
+    }
+  }
+  // ── Internal: ility / weight wiring ──────────────────────────────
+  #refreshCostWeights() {
+    const overrides = parseJsonAttr(this.getAttribute("data-cost-weights") || "");
+    this.#costWeights = mergeCostWeights(this.#ilities, overrides);
+  }
+  // ── Internal: vector / rationale setters ─────────────────────────
+  #applyVector(next) {
+    if (!next || typeof next !== "object") return;
+    for (const [ility, level] of Object.entries(next)) {
+      if (LEVELS.includes(level)) this.#vector[ility] = level;
+    }
+  }
+  #applyRationales(next) {
+    if (!next || typeof next !== "object") return;
+    for (const [ility, text] of Object.entries(next)) {
+      this.#rationales[ility] = String(text ?? "");
+    }
+  }
+  // ── Internal: capacity resolution ────────────────────────────────
+  #resolveCapacity() {
+    const triangle = this.#findTriangle();
+    if (triangle && Number.isFinite(triangle.capacityPoints) && triangle.capacityPoints > 0) {
+      return triangle.capacityPoints;
+    }
+    const attr = Number(this.getAttribute("data-capacity-points"));
+    if (Number.isFinite(attr) && attr > 0) return attr;
+    const override = this.#capacityPropOverride;
+    if (override !== null && Number.isFinite(override) && override > 0) {
+      return override;
+    }
+    return Infinity;
+  }
+  #resolveCapacityForSerialize() {
+    const cap = this.#resolveCapacity();
+    return Number.isFinite(cap) ? cap : null;
+  }
+  #capacitySourceLabel() {
+    const triangle = this.#findTriangle();
+    if (triangle?.capacitySource === "manual") return "manual";
+    if (triangle) return "formula";
+    if (this.getAttribute("data-capacity-points")) return "manual";
+    return "manual";
+  }
+  #findTriangle() {
+    const id = this.getAttribute("data-bind-to");
+    if (!id) return null;
+    const root = (
+      /** @type {any} */
+      this.getRootNode()
+    );
+    const found = root.getElementById ? root.getElementById(id) : document.getElementById(id);
+    return found && found.localName === "iron-triangle" ? found : null;
+  }
+  #readTriangleHash() {
+    return this.#findTriangle()?.hash || null;
+  }
+  #bindToTriangle() {
+    this.#unbindTriangle?.();
+    this.#unbindTriangle = null;
+    const triangle = this.#findTriangle();
+    if (!triangle) return;
+    const handler = () => this.#publish("iron-triangle");
+    triangle.addEventListener("iron-triangle:change", handler);
+    this.#unbindTriangle = () => triangle.removeEventListener("iron-triangle:change", handler);
+  }
+  // ── Internal: render + publish cycle ─────────────────────────────
+  #renderViz() {
+    const radius = clamp2(Number(this.dataset.radius ?? 100), 30, 400);
+    const cap = this.#resolveCapacity();
+    const svg = buildTargetSvg({
+      ilities: this.#ilities,
+      vector: this.#vector,
+      costWeights: this.#costWeights,
+      capacityPoints: cap,
+      radius
+    });
+    const existing = this.querySelector(":scope > svg");
+    if (existing) existing.replaceWith(svg);
+    else this.prepend(svg);
+  }
+  #publish(source, field) {
+    this.#renderViz();
+    this.#updateFooter();
+    const cap = this.#resolveCapacity();
+    const sum = this.criticalSum;
+    const isOver = Number.isFinite(cap) && sum > cap;
+    this.setState("over-budget", isOver);
+    this.#publishFormValue();
+    if (isOver !== this.#wasOver) {
+      const evt = isOver ? "quality-target:over-budget" : "quality-target:under-budget";
+      const detail = isOver ? { delta: sum - cap, criticalSum: sum, capacityPoints: cap } : { slack: cap - sum, criticalSum: sum, capacityPoints: cap };
+      this.dispatchEvent(new CustomEvent(evt, { bubbles: true, composed: true, detail }));
+      this.#wasOver = isOver;
+    }
+    this.dispatchEvent(new CustomEvent("quality-target:change", {
+      bubbles: true,
+      composed: true,
+      detail: { ...this.value, source, field }
+    }));
+  }
+  #publishFormValue() {
+    try {
+      this.#internals.setFormValue(JSON.stringify(this.value));
+    } catch {
+    }
+  }
+  #syncDisabledLocked() {
+    const off = this.hasAttribute("disabled") || this.hasAttribute("locked");
+    for (const dialog of Object.values(this.#dialogs)) {
+      for (const el of dialog.querySelectorAll("input, textarea, select, button")) {
+        el.disabled = off;
+      }
+    }
+  }
+  // ── Internal: config readers ──────────────────────────────────────
+  #minRationale() {
+    return Math.max(0, parseInt(this.dataset.minRationale ?? "10", 10) || 10);
+  }
+  #maxRationale() {
+    return Math.max(10, parseInt(this.dataset.maxRationale ?? "200", 10) || 200);
+  }
+  #minOverrunRationale() {
+    return Math.max(0, parseInt(this.dataset.minOverrunRationale ?? "10", 10) || 10);
+  }
+  #maxOverrunRationale() {
+    return Math.max(10, parseInt(this.dataset.maxOverrunRationale ?? "400", 10) || 400);
+  }
+};
+function clamp2(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+registerComponent("quality-target", QualityTarget);
+
+// src/web-components/requirement-card/styles.js
+var styles8 = `
+  :host {
+    --_padding:        var(--requirement-card-padding, var(--size-m, 1rem));
+    --_radius:         var(--requirement-card-radius, var(--radius-m, 0.5rem));
+    --_gap:            var(--requirement-card-gap, var(--size-2xs, 0.25rem));
+    --_surface:        var(--requirement-card-surface, var(--color-surface, #fff));
+    --_border:         var(--requirement-card-border, 1px solid var(--color-border, #e5e7eb));
+    --_text:           var(--requirement-card-text, var(--color-text, #1a1a1a));
+    --_muted:          var(--requirement-card-muted, var(--color-text-muted, #6b7280));
+    --_critical-bg:    var(--requirement-card-critical-bg,    var(--color-error-subtle, oklch(95% 0.05 27)));
+    --_critical-fg:    var(--requirement-card-critical-fg,    var(--color-error, #dc2626));
+    --_important-bg:   var(--requirement-card-important-bg,   var(--color-warning-subtle, oklch(95% 0.05 80)));
+    --_important-fg:   var(--requirement-card-important-fg,   var(--color-warning, #b45309));
+    --_acceptable-bg:  var(--requirement-card-acceptable-bg,  var(--color-success-subtle, oklch(95% 0.05 145)));
+    --_acceptable-fg:  var(--requirement-card-acceptable-fg,  var(--color-success, #15803d));
+    --_skipped-bg:     var(--requirement-card-skipped-bg,     var(--color-surface-raised, var(--color-surface, #f5f5f5)));
+    --_skipped-fg:     var(--requirement-card-skipped-fg,     var(--color-text-muted, #6b7280));
+    --_conflict:       var(--requirement-card-conflict-color, var(--color-error, #dc2626));
+
+    display: block;
+    padding: var(--_padding);
+    border-radius: var(--_radius);
+    background: var(--_surface);
+    border: var(--_border);
+    color: var(--_text);
+    container-type: inline-size;
+  }
+
+  .card {
+    display: grid;
+    gap: var(--_gap);
+  }
+
+  .head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--size-s, 0.75rem);
+  }
+
+  .name {
+    font-weight: var(--font-weight-semibold, 600);
+    font-size: var(--font-size-md, 1rem);
+  }
+
+  .badge ::slotted([slot="badge"]) {
+    font-size: var(--font-size-xs, 0.75em);
+    color: var(--_muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .pill ::slotted([slot="priority-pill"]),
+  .priority-default {
+    display: inline-block;
+    padding: 0.15em 0.6em;
+    border-radius: var(--radius-pill, 999px);
+    font-size: var(--font-size-xs, 0.75em);
+    font-weight: var(--font-weight-semibold, 600);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Priority-driven surface tinting on the card itself (when no slotted pill) */
+  :host(:state(priority-critical))     { border-color: var(--_critical-fg); }
+  :host(:state(priority-important))    { border-color: var(--_important-fg); }
+  :host(:state(priority-acceptable))   { border-color: var(--_acceptable-fg); }
+  :host(:state(priority-not-relevant)) { opacity: 0.6; }
+
+  :host(:state(priority-critical))     .priority-default { background: var(--_critical-bg);    color: var(--_critical-fg); }
+  :host(:state(priority-important))    .priority-default { background: var(--_important-bg);   color: var(--_important-fg); }
+  :host(:state(priority-acceptable))   .priority-default { background: var(--_acceptable-bg);  color: var(--_acceptable-fg); }
+  :host(:state(priority-not-relevant)) .priority-default { background: var(--_skipped-bg);     color: var(--_skipped-fg); text-decoration: line-through; }
+
+  /* Hide the default pill when the author supplied one via slot */
+  :host(:state(has-priority-pill)) .priority-default { display: none; }
+
+  .rationale ::slotted([slot="rationale"]) {
+    color: var(--_muted);
+    font-size: var(--font-size-sm, 0.875rem);
+    line-height: 1.45;
+  }
+
+  .conflicts ::slotted([slot="conflicts"]) {
+    color: var(--_conflict);
+    font-size: var(--font-size-sm, 0.875rem);
+    font-weight: var(--font-weight-semibold, 600);
+  }
+
+  /* When no rationale or conflicts content, collapse the slot row */
+  :host(:not(:state(has-rationale))) .rationale,
+  :host(:not(:state(has-conflicts))) .conflicts { display: none; }
+
+  /* Conflict flag */
+  :host([data-conflict]) {
+    border-color: var(--_conflict);
+    box-shadow: inset 0 0 0 1px var(--_conflict);
+  }
+
+  /* Interactive: bubble click event so parents can wire up navigation */
+  :host { cursor: default; }
+  :host(:state(interactive)) { cursor: pointer; }
+  :host(:state(interactive)):hover { background: color-mix(in oklab, var(--_surface) 92%, currentColor 8%); }
+  :host(:focus-visible) {
+    outline: 2px solid var(--color-focus-ring, var(--color-interactive, currentColor));
+    outline-offset: 2px;
+  }
+`;
+
+// src/web-components/requirement-card/logic.js
+var PRIORITIES2 = Object.freeze(["critical", "important", "acceptable", "not-relevant"]);
+var PRIORITY_LABELS = Object.freeze({
+  "critical": "Critical",
+  "important": "Important",
+  "acceptable": "Acceptable",
+  "not-relevant": "Not relevant"
+});
+var OPTIONAL_SLOTS = ["badge", "priority-pill", "rationale", "conflicts"];
+var TEMPLATE = `
+  <style>${styles8}</style>
+  <article class="card" part="card">
+    <header class="head" part="head">
+      <span class="name" part="name"><slot name="name"></slot></span>
+      <span class="badge" part="badge"><slot name="badge"></slot></span>
+    </header>
+    <span class="pill" part="pill">
+      <slot name="priority-pill"><span class="priority-default" part="priority-default" data-priority-default></span></slot>
+    </span>
+    <p class="rationale" part="rationale"><slot name="rationale"></slot></p>
+    <p class="conflicts" part="conflicts"><slot name="conflicts"></slot></p>
+  </article>
+`;
+var RequirementCard = class extends VBElement {
+  static get observedAttributes() {
+    return ["data-priority", "data-conflict", "tabindex"];
+  }
+  setup() {
+    if (!this.shadowRoot) {
+      const root = this.attachShadow({ mode: "open" });
+      root.innerHTML = TEMPLATE;
+      for (const name of OPTIONAL_SLOTS) {
+        const slot = root.querySelector(`slot[name="${name}"]`);
+        slot?.addEventListener("slotchange", () => this.#syncSlot(name, slot));
+        this.#syncSlot(name, slot);
+      }
+    } else {
+      for (const name of OPTIONAL_SLOTS) {
+        const slot = this.shadowRoot.querySelector(`slot[name="${name}"]`);
+        this.#syncSlot(name, slot);
+      }
+    }
+    this.#syncPriority();
+    this.#syncDefaultPill();
+    this.#syncInteractive();
+    this.listen(this, "click", (e) => this.#onActivate(e));
+    this.listen(this, "keydown", (e) => {
+      const ke = (
+        /** @type {KeyboardEvent} */
+        e
+      );
+      if ((ke.key === "Enter" || ke.key === " ") && this.#interactive) {
+        ke.preventDefault();
+        this.#onActivate(ke);
+      }
+    });
+  }
+  attributeChangedCallback(name) {
+    if (!this.isConnected) return;
+    if (name === "data-priority") {
+      this.#syncPriority();
+      this.#syncDefaultPill();
+    } else if (name === "data-conflict") {
+    } else if (name === "tabindex") {
+      this.#syncInteractive();
+    }
+  }
+  // ── Public API ────────────────────────────────────────────────────
+  get priority() {
+    return (this.dataset.priority || "").toLowerCase();
+  }
+  set priority(v) {
+    const next = String(v || "").toLowerCase();
+    if (PRIORITIES2.includes(next)) this.dataset.priority = next;
+    else delete this.dataset.priority;
+  }
+  get hasConflict() {
+    return this.hasAttribute("data-conflict");
+  }
+  set hasConflict(v) {
+    if (v) this.setAttribute("data-conflict", "");
+    else this.removeAttribute("data-conflict");
+  }
+  // ── Internal ──────────────────────────────────────────────────────
+  get #interactive() {
+    return this.hasAttribute("tabindex") || this.closest("a[href], button");
+  }
+  #syncSlot(name, slot) {
+    const hasContent = !!slot && slot.assignedNodes({ flatten: true }).some(
+      (n) => n.nodeType === Node.ELEMENT_NODE || n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 0
+    );
+    this.setState(`has-${name}`, hasContent);
+  }
+  #syncPriority() {
+    const value = (this.dataset.priority || "").toLowerCase();
+    for (const p of PRIORITIES2) this.setState(`priority-${p}`, p === value);
+  }
+  #syncDefaultPill() {
+    const value = (this.dataset.priority || "").toLowerCase();
+    const el = this.shadowRoot?.querySelector("[data-priority-default]");
+    if (!el) return;
+    el.textContent = PRIORITY_LABELS[value] || "";
+  }
+  #syncInteractive() {
+    this.setState("interactive", !!this.#interactive);
+  }
+  #onActivate(event) {
+    if (!this.#interactive) return;
+    this.dispatchEvent(new CustomEvent("requirement-card:click", {
+      bubbles: true,
+      composed: true,
+      detail: {
+        priority: this.priority || null,
+        hasConflict: this.hasConflict,
+        originalEvent: event
+      }
+    }));
+  }
+};
+registerComponent("requirement-card", RequirementCard);

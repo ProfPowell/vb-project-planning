@@ -1,0 +1,61 @@
+---
+layout: element
+title: "capacity-plan"
+description: "Compact ledger that ties iron-triangle capacity, quality-target spend, and slotted work-item costs into a stacked-bar plan view."
+elementName: capacity-plan
+category: component
+currentPath: /docs/elements/web-components/capacity-plan/
+
+crumbHref: /docs/elements/web-components/
+crumbLabel: Web Components
+---
+
+<section>
+  <h2>Overview</h2>
+  <p>The <code>&lt;capacity-plan&gt;</code> stitches the planning chain together visibly. It reads three numbers — <strong>capacity</strong> from a paired <code>&lt;iron-triangle&gt;</code>, <strong>quality spend</strong> from a paired <code>&lt;quality-target&gt;</code>, and <strong>feature spend</strong> from slotted elements with <code>data-capacity-cost</code> — and renders a four-row ledger with proportional bars: capacity vs quality vs features vs slack.</p>
+  <p>It's the answer to "where did my capacity go?" Without it, the chain is implicit; with it, the math is the first thing the team sees on the requirements page.</p>
+
+  <browser-window url="capacity-plan-basic" src="/demos/capacity-plan-basic/"></browser-window>
+</section>
+
+<section>
+  <h2>The arithmetic</h2>
+  <p>Plain subtraction:</p>
+  <code-block language="text" label="Capacity ledger">slack = capacityPoints − qualityCriticalSum − featureCostSum</code-block>
+  <p>When <code>capacityPoints</code> is unbounded (no triangle bound and no <code>data-capacity-points</code> on the target), slack is reported as ∞ and the bar visualization scales against actual spend. The slack row turns red and <code>capacity-plan:overdrawn</code> fires when slack crosses zero.</p>
+</section>
+
+<section>
+  <h2>Two ways to supply feature spend</h2>
+  <p>The component sums any descendant element with <code>data-capacity-cost="N"</code>. Authors typically slot <code>&lt;work-item&gt;</code> children:</p>
+
+  <code-block language="html" label="Slotted work-items" data-escape><iron-triangle id="shape"></iron-triangle>
+<quality-target id="quality" data-bind-to="shape"></quality-target>
+
+<capacity-plan data-bind-triangle="shape" data-bind-quality="quality">
+  <work-item data-capacity-cost="3">Bulk import</work-item>
+  <work-item data-capacity-cost="2">API webhooks</work-item>
+</capacity-plan></code-block>
+
+  <p>For server-rendered planning surfaces or programmatic flows, set <code>featureSum</code> directly; property override wins over slot inference. Mutation observation re-renders automatically when a slotted child's <code>data-capacity-cost</code> changes.</p>
+</section>
+
+<section>
+  <h2>Attributes</h2>
+  {{ attributeTable("capacity-plan", apiRegistry) }}
+</section>
+
+<section>
+  <h2>Accessibility</h2>
+  <p>The ledger is read as labelled rows so the capacity / quality / features / slack breakdown is available without relying on the bar colors alone. Bars adopt VB theme tokens (<code>--color-text</code>, <code>--color-interactive</code>, <code>--color-success</code>, <code>--color-error</code>) so they auto-adapt across light, dark, and brand themes while preserving contrast; the overdrawn state is conveyed by the slack value going negative, not by color alone.</p>
+</section>
+
+<section>
+  <h2>Related</h2>
+  <ul>
+    <li><a href="/elements/iron-triangle/"><code>&lt;iron-triangle&gt;</code></a> &mdash; supplies <code>capacityPoints</code> via <code>data-bind-triangle</code>.</li>
+    <li><a href="/elements/quality-target/"><code>&lt;quality-target&gt;</code></a> &mdash; supplies the Critical-weight sum via <code>data-bind-quality</code>.</li>
+    <li><a href="/elements/work-item/"><code>&lt;work-item&gt;</code></a> &mdash; the slotted feature element whose <code>data-capacity-cost</code> the plan sums.</li>
+    <li><a href="/elements/requirement-card/"><code>&lt;requirement-card&gt;</code></a> &mdash; displays a single quality decision the plan accounts for.</li>
+  </ul>
+</section>

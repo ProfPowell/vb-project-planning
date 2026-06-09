@@ -1,0 +1,59 @@
+---
+layout: element
+title: "iron-triangle"
+description: "Project-shape constraint surface — captures Time × Cost × Scope and computes a single capacityPoints budget that downstream planning components can spend on quality decisions."
+elementName: iron-triangle
+category: component
+currentPath: /docs/elements/web-components/iron-triangle/
+
+crumbHref: /docs/elements/web-components/
+crumbLabel: Web Components
+---
+
+<section>
+  <h2>Overview</h2>
+  <p>The <code>&lt;iron-triangle&gt;</code> component is the planning surface's <em>constraint</em> view, and it <em>is</em> the UI. Three vertex hit-targets — Scope (top), Time (bottom-left), Cost (bottom-right) — open native <code>&lt;dialog&gt;</code> editors on click. The center "Quality" target shows the live <code>capacityPoints</code> integer and routes to the quality decision when activated. Hover any target for a native tooltip preview of its current value.</p>
+  <p>The author writes a single empty element. The component generates the SVG and the per-vertex dialogs from a fixed schema; inputs inside the dialogs use VB primitives (<code>&lt;form-field&gt;</code>, <code>&lt;fieldset&gt;</code>, <code>data-layout</code>). The component is form-associated; <code>capacityPoints</code> plus the full T/C/S snapshot serialize as JSON for a containing <code>&lt;form&gt;</code>.</p>
+
+  <browser-window url="iron-triangle-basic" src="/demos/iron-triangle-basic/"></browser-window>
+</section>
+
+<section>
+  <h2>The triangle deforms with project shape</h2>
+  <p>Each vertex sits on an equilateral baseline ray and stretches outward by a factor in <code>[0.55, 1.45]</code> derived from that constraint's magnitude relative to the other two (time = total weeks, cost = FTE × hours/week, scope = weighted feature counts). A balanced project stays close to equilateral; a long-deadline project pushes Scope up; a tiny team pulls Cost toward the centroid. The capacity number anchors at the centroid, so the integer never moves when the shape changes.</p>
+</section>
+
+<section>
+  <h2>The capacity formula</h2>
+  <p>Capacity is one integer the team picked together. The default formula is intentionally tiny:</p>
+
+  <code-block language="text" label="Default formula">capacityPoints = ceil(sprintWeeks × sprintCount × teamFTE × focusFactor)
+                  defaults: focusFactor = 0.6</code-block>
+
+  <p>The <strong>focus factor</strong> represents the share of FTE actually available for engineering quality work — the remaining 40% goes to feature delivery, meetings, ops, and the unknowns. <code>0.6</code> is the middle of the 50–70% range most teams settle on; tune per project with <code>data-focus-factor</code>. Flip to manual mode and the integer becomes editable directly (for a board commitment or a carried-over OKR); the T/C/S inputs stay visible and saved but no longer drive the readout, and <code>capacitySource</code> records which path produced the number.</p>
+</section>
+
+<section>
+  <h2>The center "Quality" target</h2>
+  <p>The capacity number is the headline; clicking it opens the quality decision. The component dispatches a cancelable <code>iron-triangle:open-quality</code> event with <code>{ qualitySummary, capacityPoints }</code>. If the event isn't <code>preventDefault()</code>'d and <code>data-quality-href</code> is set, the page navigates to that URL — SPAs intercept the event and route in-app, static pages just set the href and let the fallback navigate. Set <code>data-quality-summary</code> to surface the saved picks on hover. Every change also recomputes a stable FNV-1a hash of the T/C/S object (exposed via <code>.hash</code>), which downstream consumers stamp into their saved vector so a CI guard can detect drift against a since-changed project shape.</p>
+</section>
+
+<section>
+  <h2>Attributes</h2>
+  {{ attributeTable("iron-triangle", apiRegistry) }}
+</section>
+
+<section>
+  <h2>Accessibility</h2>
+  <p>Native form semantics throughout: real <code>&lt;fieldset&gt;</code> / <code>&lt;legend&gt;</code> grouping, and the capacity readout is an <code>&lt;output&gt;</code> with <code>aria-live="polite"</code>. The formula / manual switch is a real <code>&lt;button aria-pressed&gt;</code>, not a checkbox-and-label hack. Warnings are never color-only — the deadline-in-past warning includes the literal text "Deadline has passed" alongside any styling. Logical properties throughout keep RTL and writing-mode support clean. Without JavaScript the form still works: three <code>&lt;fieldset&gt;</code>s of native inputs submit raw T/C/S values to the form's <code>action</code>.</p>
+</section>
+
+<section>
+  <h2>Related</h2>
+  <ul>
+    <li><a href="/elements/quality-target/"><code>&lt;quality-target&gt;</code></a> &mdash; primary consumer; spends <code>capacityPoints</code> on quality picks and stamps the triangle's hash for drift detection.</li>
+    <li><a href="/elements/capacity-plan/"><code>&lt;capacity-plan&gt;</code></a> &mdash; reconciles this capacity against quality spend and slotted feature costs in a stacked-bar ledger.</li>
+    <li><a href="/elements/requirement-card/"><code>&lt;requirement-card&gt;</code></a> &mdash; renders a single ility's priority row downstream of the quality decision.</li>
+    <li><a href="/elements/adr-wc/"><code>&lt;adr-wc&gt;</code></a> &mdash; record the iron-triangle decision itself as an ADR.</li>
+  </ul>
+</section>

@@ -1,0 +1,64 @@
+---
+layout: element
+title: "requirement-card"
+description: "Display-only card for one NFR ility row. Renders priority + rationale + optional conflict flag for status dashboards and ADR appendices."
+elementName: requirement-card
+category: component
+currentPath: /docs/elements/web-components/requirement-card/
+
+crumbHref: /docs/elements/web-components/
+crumbLabel: Web Components
+---
+
+<section>
+  <h2>Overview</h2>
+  <p>The <code>&lt;requirement-card&gt;</code> component is a <em>display-only</em> tile for a single Non-Functional Requirement (ility) row &mdash; performance, security, accessibility, observability, and so on. It renders the chosen priority, a rationale, and an optional conflict flag for status dashboards, ADR appendices, and review surfaces.</p>
+  <p>The prioritization <em>decision</em> happens in <a href="/elements/quality-target/"><code>&lt;quality-target&gt;</code></a>. Use <code>&lt;requirement-card&gt;</code> downstream of that decision &mdash; in the documents that consume the choice. It is shadow-DOM encapsulated, with the ility name, an optional badge, the rationale, and any conflict note supplied through named slots.</p>
+
+  <browser-window url="requirement-card-basic" src="/demos/requirement-card-basic/"></browser-window>
+</section>
+
+<section>
+  <h2>Basic example</h2>
+  <code-block language="html" show-lines data-escape><requirement-card data-priority="critical">
+  <span slot="name">Performance</span>
+  <span slot="badge">SLA</span>
+  <p slot="rationale">Pages must paint LCP &lt; 2.5s on 3G — a hard ad-network constraint.</p>
+</requirement-card>
+
+<requirement-card data-priority="important">
+  <span slot="name">Accessibility</span>
+  <p slot="rationale">WCAG 2.2 AA across all customer-facing flows.</p>
+</requirement-card>
+
+<requirement-card data-priority="acceptable" data-conflict>
+  <span slot="name">Internationalization</span>
+  <p slot="rationale">English-only at launch; defer i18n to v2.</p>
+  <p slot="conflicts">Conflicts with the marketing team's APAC-launch ask — needs an ADR.</p>
+</requirement-card></code-block>
+</section>
+
+<section>
+  <h2>How it works</h2>
+  <p>The <code>data-priority</code> enum drives a <code>:state(priority-*)</code> hook, the default pill text, and the accent color. Add <code>data-conflict</code> to flag a drift or contradiction note; the card renders an emphasized border and exposes the <code>conflicts</code> slot. The card is inert by default — set <code>tabindex="0"</code> (or wrap it in an <code>&lt;a&gt;</code> / <code>&lt;button&gt;</code>) to make it activatable, at which point it emits <code>requirement-card:click</code> with <code>{ priority, hasConflict, originalEvent }</code>.</p>
+</section>
+
+<section>
+  <h2>Attributes</h2>
+  {{ attributeTable("requirement-card", apiRegistry) }}
+</section>
+
+<section>
+  <h2>Accessibility</h2>
+  <p>Priority is conveyed by the pill's text label, not by accent color alone, so the critical / important / acceptable / not-relevant distinction survives for low-vision and color-blind readers. The card stays non-interactive (no spurious focus stop) until you opt in with <code>tabindex</code> or a wrapping <code>&lt;a&gt;</code> / <code>&lt;button&gt;</code>; when interactive it activates by mouse, keyboard, and touch alike. The conflict note is real slotted prose, so screen readers announce <em>why</em> a row is flagged rather than just seeing an emphasized border.</p>
+</section>
+
+<section>
+  <h2>Related</h2>
+  <ul>
+    <li><a href="/elements/quality-target/"><code>&lt;quality-target&gt;</code></a> &mdash; the polygon-as-UI surface that produces the priorities this card displays.</li>
+    <li><a href="/elements/iron-triangle/"><code>&lt;iron-triangle&gt;</code></a> &mdash; project-shape decision (scope / time / cost) that sets the capacity those priorities are spent against.</li>
+    <li><a href="/elements/capacity-plan/"><code>&lt;capacity-plan&gt;</code></a> &mdash; ledger view of the same capacity-versus-quality math.</li>
+    <li><a href="https://vanilla-breeze.com/docs/elements/web-components/score-card/"><code>&lt;score-card&gt;</code></a> &mdash; KPI tile (a different shape with a numeric value + change indicator).</li>
+  </ul>
+</section>

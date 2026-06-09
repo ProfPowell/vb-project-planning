@@ -6,22 +6,26 @@ Project- and UX-planning Web Components for the research, planning, and delivery
 
 | Tag | Purpose |
 |-----|---------|
+| `<adr-wc>` | Architecture Decision Record |
+| `<burndown-chart>` | Sprint/release burndown |
+| `<capacity-plan>` | Capacity ledger: capacity − quality − features = slack |
+| `<empathy-map>` | Says / thinks / does / feels quadrants |
+| `<gantt-chart>` | Gantt schedule |
+| `<impact-effort>` | Impact vs. effort prioritization matrix |
+| `<iron-triangle>` | Scope / time / cost project-shape constraint surface |
+| `<kanban-board>` | Kanban board with drag-to-reorder |
+| `<product-roadmap>` | Time-phased roadmap |
+| `<quadrant-grid>` | Generic 2×2 quadrant plotting surface |
+| `<quality-target>` | Quality-attribute prioritization radar |
+| `<requirement-card>` | Single NFR ("ility") card |
+| `<review-surface>` | Annotated review/feedback surface |
+| `<risk-register>` | Risk log with likelihood/impact |
+| `<story-map>` | User-story map |
+| `<traceability-matrix>` | Requirement ↔ artifact traceability grid |
+| `<user-journey>` | Journey map with stages and emotion curve |
 | `<user-persona>` | Persona card |
 | `<user-story>` | User story card |
-| `<user-journey>` | Journey map with stages and emotion curve |
-| `<empathy-map>` | Says / thinks / does / feels quadrants |
-| `<impact-effort>` | Impact vs. effort prioritization matrix |
-| `<quadrant-grid>` | Generic 2×2 quadrant plotting surface |
-| `<risk-register>` | Risk log with likelihood/impact |
-| `<traceability-matrix>` | Requirement ↔ artifact traceability grid |
-| `<burndown-chart>` | Sprint/release burndown |
-| `<product-roadmap>` | Time-phased roadmap |
-| `<kanban-board>` | Kanban board with drag-to-reorder |
-| `<story-map>` | User-story map |
-| `<review-surface>` | Annotated review/feedback surface |
-| `<gantt-chart>` | Gantt schedule |
 | `<work-item>` | Work-item card |
-| `<adr-wc>` | Architecture Decision Record |
 
 ## Install
 

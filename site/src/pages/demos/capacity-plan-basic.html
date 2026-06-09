@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capacity Plan — Basic Demo</title>
+  <link rel="stylesheet" href="/assets/vendor/vanilla-breeze.css" />
+  <link rel="stylesheet" href="/assets/pack/vb-project-planning.css" />
+  <style>
+    body { padding: var(--size-l); background: var(--color-surface); }
+    p { color: var(--color-text-muted); margin-block-end: var(--size-l); }
+    section { margin-block: var(--size-l); }
+  </style>
+</head>
+<body data-layout="stack" data-layout-gap="l">
+  <header>
+    <h1>Capacity Plan</h1>
+    <p>The ledger ties the planning chain together: capacity (from <code>&lt;iron-triangle&gt;</code>) &minus; quality spend (from <code>&lt;quality-target&gt;</code>'s critical sum) &minus; feature spend (slotted <code>&lt;work-item data-capacity-cost&gt;</code>) = slack. Edit any input above and watch the bars rebalance.</p>
+  </header>
+
+  <section><iron-triangle id="shape"></iron-triangle></section>
+  <section><quality-target id="quality" data-bind-to="shape"></quality-target></section>
+
+  <section data-layout="stack" data-layout-gap="s">
+    <h2>Plan</h2>
+    <capacity-plan data-bind-triangle="shape" data-bind-quality="quality">
+      <work-item data-capacity-cost="3" detail="compact"><h2 slot="title">Bulk import</h2></work-item>
+      <work-item data-capacity-cost="2" detail="compact"><h2 slot="title">API webhooks</h2></work-item>
+    </capacity-plan>
+  </section>
+
+  <script type="module" src="/assets/pack/vb-project-planning.js"></script>
+</body>
+</html>

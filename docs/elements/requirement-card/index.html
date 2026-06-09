@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en" data-page="docs" data-theme="modern" data-mode="light" data-fluid="" data-sticky="" data-icon-path="/vb-project-planning/cdn/icons">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Tell VB's theme-loader / icon-wc where things live under the Pages subpath
+       (/vb-project-planning is replaced at publish; empty for local root). -->
+  <script>window.__VB_THEME_BASE="/vb-project-planning/cdn";document.documentElement.dataset.iconPath="/vb-project-planning/cdn/icons";</script>
+  <title>requirement-card — VB Project Planning</title>
+  <meta name="description" content="Display-only card for one NFR ility row. Renders priority + rationale + optional conflict flag for status dashboards and ADR appendices.">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mq6vobtl">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mq6vobtl">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mq6vobtl">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mq6vobtl">
+  
+</head>
+<body style="overflow-x: clip;">
+
+  <header class="site" data-sticky="" data-vt="header">
+  <a href="/vb-project-planning/"><brand-mark>VB Project Planning</brand-mark></a>
+  <nav-bar aria-label="Main navigation">
+    <nav class="horizontal pills">
+      <ul>
+        <li><a href="/vb-project-planning/" data-nav-link="">Home</a></li>
+        <li><a class="active-parent" href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
+        <li><a href="/vb-project-planning/demos/" data-nav-link="">Demos</a></li>
+        <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
+      </ul>
+    </nav>
+  </nav-bar>
+  <site-tools>
+    <site-search>
+      <button type="button" data-trigger="" class="ghost">
+        <icon-wc name="search" size="sm"></icon-wc>
+        Search
+      </button>
+    </site-search>
+    <theme-picker compact="">
+      <button type="button" data-trigger="" class="ghost">
+        <icon-wc name="palette" size="sm"></icon-wc>
+        Theme
+      </button>
+    </theme-picker>
+  </site-tools>
+  <mobile-menu breakpoint="52rem">
+    <button type="button" data-trigger="" popovertarget="mobile-menu" aria-label="Menu">
+      <icon-wc name="menu"></icon-wc>
+    </button>
+    <nav popover="" id="mobile-menu" class="mobile-menu-panel">
+      <button type="button" class="mobile-menu-close" popovertarget="mobile-menu" popovertargetaction="hide" aria-label="Close menu">
+        <icon-wc name="x"></icon-wc>
+      </button>
+      <div class="mobile-menu-search">
+        <site-search>
+          <button type="button" data-trigger="" class="ghost" style="inline-size: 100%">
+            <icon-wc name="search" size="sm"></icon-wc>
+            Search
+          </button>
+        </site-search>
+      </div>
+      <ul>
+        <li class="mobile-section">
+          <strong class="mobile-section-title">Pages</strong>
+          <ul>
+            <li><a href="/vb-project-planning/">Home</a></li>
+            <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+            <li><a href="/vb-project-planning/demos/">Demos</a></li>
+            <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
+          </ul>
+        </li>
+      </ul>
+      <div class="mobile-menu-theme">
+        <strong class="mobile-section-title">Theme</strong>
+        <theme-picker variant="inline" compact=""></theme-picker>
+      </div>
+    </nav>
+  </mobile-menu>
+</header>
+
+
+  <main data-pagefind-body="" style="overflow-x: clip;">
+    <input type="checkbox" id="nav-drawer-toggle" class="nav-drawer-checkbox" data-pagefind-ignore="">
+    <label for="nav-drawer-toggle" class="nav-drawer-toggle" data-pagefind-ignore="">
+      <icon-wc name="list-tree" size="sm"></icon-wc>
+      Navigation
+    </label>
+    <label for="nav-drawer-toggle" class="nav-drawer-backdrop" data-pagefind-ignore=""></label>
+
+    <layout-sidebar data-layout-gap="xl" data-layout-sidebar-width="narrow" data-layout-content-min="60">
+      <nav class="tree" id="nav-drawer" data-layout-density="compact" data-layout-sticky="" aria-label="Elements navigation" data-pagefind-ignore="">
+        <label for="nav-drawer-toggle" class="nav-drawer-close" aria-label="Close navigation">
+          <icon-wc name="x"></icon-wc>
+        </label>
+        <p class="sidebar-title"><a class="active-parent" href="/vb-project-planning/elements/">All elements</a></p>
+
+<ul>
+  <li><a href="/vb-project-planning/elements/adr-wc/">adr-wc</a></li>
+  <li><a href="/vb-project-planning/elements/burndown-chart/">burndown-chart</a></li>
+  <li><a href="/vb-project-planning/elements/capacity-plan/">capacity-plan</a></li>
+  <li><a href="/vb-project-planning/elements/empathy-map/">empathy-map</a></li>
+  <li><a href="/vb-project-planning/elements/gantt-chart/">gantt-chart</a></li>
+  <li><a href="/vb-project-planning/elements/impact-effort/">impact-effort</a></li>
+  <li><a href="/vb-project-planning/elements/iron-triangle/">iron-triangle</a></li>
+  <li><a href="/vb-project-planning/elements/kanban-board/">kanban-board</a></li>
+  <li><a href="/vb-project-planning/elements/product-roadmap/">product-roadmap</a></li>
+  <li><a href="/vb-project-planning/elements/quadrant-grid/">quadrant-grid</a></li>
+  <li><a href="/vb-project-planning/elements/quality-target/">quality-target</a></li>
+  <li><a class="active" href="/vb-project-planning/elements/requirement-card/">requirement-card</a></li>
+  <li><a href="/vb-project-planning/elements/review-surface/">review-surface</a></li>
+  <li><a href="/vb-project-planning/elements/risk-register/">risk-register</a></li>
+  <li><a href="/vb-project-planning/elements/story-map/">story-map</a></li>
+  <li><a href="/vb-project-planning/elements/traceability-matrix/">traceability-matrix</a></li>
+  <li><a href="/vb-project-planning/elements/user-journey/">user-journey</a></li>
+  <li><a href="/vb-project-planning/elements/user-persona/">user-persona</a></li>
+  <li><a href="/vb-project-planning/elements/user-story/">user-story</a></li>
+  <li><a href="/vb-project-planning/elements/work-item/">work-item</a></li>
+</ul>
+
+      </nav>
+
+      <layout-sidebar data-layout-side="end" data-layout-sidebar-width="narrow" data-layout-gap="xl">
+        <aside data-layout-sticky="" data-pagefind-ignore="">
+          <page-toc levels="h2,h3" scope="main article"></page-toc>
+          <page-tools data-orientation="horizontal">
+            <print-page></print-page>
+            <share-wc variant="icon" size="s"></share-wc>
+            <text-reader variant="icon" for="doc-article"></text-reader>
+          </page-tools>
+        </aside>
+        <article id="doc-article">
+          <nav class="breadcrumb" aria-label="Breadcrumb" data-pagefind-ignore="">
+            <ol>
+              <li><a href="/vb-project-planning/">Home</a></li>
+              <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+              <li><span aria-current="page">requirement-card</span></li>
+            </ol>
+          </nav>
+          <h1><code>&lt;requirement-card&gt;</code></h1>
+          <p class="lead">Display-only card for one NFR ility row. Renders priority + rationale + optional conflict flag for status dashboards and ADR appendices.</p>
+
+          <heading-links levels="h2,h3">
+            <section>
+  <h2>Overview</h2>
+  <p>The <code>&lt;requirement-card&gt;</code> component is a <em>display-only</em> tile for a single Non-Functional Requirement (ility) row — performance, security, accessibility, observability, and so on. It renders the chosen priority, a rationale, and an optional conflict flag for status dashboards, ADR appendices, and review surfaces.</p>
+  <p>The prioritization <em>decision</em> happens in <a href="/vb-project-planning/elements/quality-target/"><code>&lt;quality-target&gt;</code></a>. Use <code>&lt;requirement-card&gt;</code> downstream of that decision — in the documents that consume the choice. It is shadow-DOM encapsulated, with the ility name, an optional badge, the rationale, and any conflict note supplied through named slots.</p>
+
+  <browser-window url="requirement-card-basic" src="/vb-project-planning/demos/requirement-card-basic/"></browser-window>
+</section>
+
+<section>
+  <h2>Basic example</h2>
+  <code-block language="html" data-ssr show-lines><template shadowrootmode="open"><style>
+      :host {
+        --_cb-bg: var(--color-surface-raised, #f6f8fa);
+        --_cb-code-bg: var(--color-surface, #fff);
+        --_cb-header-bg: var(--color-surface-raised, #e1e4e8);
+        --_cb-text-color: var(--color-text, #24292e);
+        --_cb-border-color: var(--color-border, #e1e4e8);
+        --_cb-comment: var(--color-text-muted, #6a737d);
+        --_cb-button-bg: #fff;
+        --_cb-button-color: var(--color-text, #24292e);
+        --_cb-scrollbar-track: #f6f8fa;
+        --_cb-scrollbar-thumb: #d1d5da;
+
+        display: block;
+        margin: var(--cb-margin, 1rem 0);
+        border-radius: var(--cb-border-radius, 8px);
+        overflow: hidden;
+        border: 1px solid var(--cb-border-color, var(--_cb-border-color));
+        background: var(--cb-bg, var(--_cb-bg));
+        font-family: var(--cb-font-family, 'Consolas', 'Monaco', 'Courier New', monospace);
+        font-size: var(--cb-font-size, 0.875rem);
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--cb-header-padding, 0.5rem 1rem);
+        background: var(--cb-header-bg, var(--_cb-header-bg));
+        border-bottom: 1px solid var(--cb-border-color, var(--_cb-border-color));
+        gap: 1rem;
+      }
+
+      .label-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+        flex: 1;
+      }
+
+      .label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--cb-label-color, #586069);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        flex-shrink: 0;
+      }
+
+      .filename {
+        font-size: 0.8rem;
+        color: var(--cb-filename-color, #24292e);
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-family: var(--cb-font-family, 'Consolas', 'Monaco', 'Courier New', monospace);
+      }
+
+      .copy-button {
+        background: var(--cb-button-bg, var(--_cb-button-bg));
+        border-width: var(--cb-button-border-width, 1px);
+        border-style: var(--cb-button-border-style, solid);
+        border-color: var(--cb-button-border, #d1d5da);
+        border-radius: var(--cb-button-radius, 4px);
+        padding: var(--cb-button-padding, 4px 12px);
+        font-size: var(--cb-button-font-size, 0.75rem);
+        font-weight: 500;
+        color: var(--cb-button-color, var(--_cb-button-color));
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: var(--cb-ui-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+        flex-shrink: 0;
+      }
+
+      .copy-button:hover {
+        background: var(--cb-button-hover-bg, #f3f4f6);
+        border-color: var(--cb-button-hover-border, #959da5);
+      }
+
+      .copy-button:focus {
+        outline: 2px solid var(--cb-focus-color, #0366d6);
+        outline-offset: 2px;
+      }
+
+      .copy-button:active {
+        transform: scale(0.98);
+      }
+
+      .copy-button.copied {
+        background: var(--cb-success-color, #238636);
+        color: white;
+        border-color: var(--cb-success-color, #238636);
+      }
+
+      .copy-button.failed {
+        background: var(--cb-error-color, #da3633);
+        color: white;
+        border-color: var(--cb-error-color, #da3633);
+      }
+
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .action-button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--cb-label-color, #57606a);
+        transition: all 0.15s ease;
+        border-radius: var(--cb-button-radius, 4px);
+      }
+
+      .action-button:hover {
+        color: var(--cb-button-color, var(--_cb-button-color));
+        background: var(--cb-action-button-hover-bg, rgba(0,0,0,0.05));
+      }
+
+      .action-button:active {
+        transform: scale(0.95);
+      }
+
+      .action-button.active {
+        color: var(--cb-focus-color, #0969da);
+        background: rgba(9, 105, 218, 0.1);
+      }
+
+      .action-button svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .share-container {
+        position: relative;
+        display: inline-block;
+      }
+
+      .share-menu {
+        display: none;
+        position: absolute;
+        top: calc(100% + 4px);
+        right: 0;
+        background: var(--cb-header-bg, var(--_cb-header-bg));
+        border: 1px solid var(--cb-border-color, var(--_cb-border-color));
+        border-radius: var(--cb-menu-radius, 8px);
+        box-shadow: var(--cb-shadow, 0 4px 12px rgba(0, 0, 0, 0.15));
+        min-width: 160px;
+        z-index: 1000;
+        overflow: hidden;
+      }
+
+      .share-menu-item {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        background: none;
+        border: none;
+        color: var(--cb-text-color, var(--_cb-text-color));
+        font-size: 0.8125rem;
+        font-weight: 500;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.15s ease;
+        border-bottom: 1px solid var(--cb-border-color, var(--_cb-border-color));
+        font-family: var(--cb-ui-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+      }
+
+      .share-menu-item:last-child {
+        border-bottom: none;
+      }
+
+      .share-menu-item:hover {
+        background: rgba(0,0,0,0.03);
+      }
+
+      .share-menu-item:active {
+        background: rgba(9, 105, 218, 0.1);
+      }
+
+      .share-menu-item svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+      }
+
+      .code-container {
+        display: flex;
+        overflow-x: auto;
+        background: var(--cb-code-bg, var(--_cb-code-bg));
+      }
+
+      .line-numbers {
+        padding: var(--cb-code-padding, 1rem) 0;
+        text-align: right;
+        user-select: none;
+        background: var(--cb-line-numbers-bg, #f6f8fa);
+        border-right: 1px solid var(--cb-border-color, var(--_cb-border-color));
+        color: var(--cb-line-numbers-color, #959da5);
+        line-height: var(--cb-line-height, 1.6);
+        flex-shrink: 0;
+      }
+
+      .line-numbers span {
+        display: block;
+        padding: 0 0.75rem;
+        min-width: 2.5rem;
+      }
+
+      .line-numbers span.highlighted {
+        background: var(--cb-highlight-gutter, rgba(255, 235, 59, 0.3));
+        color: var(--cb-line-numbers-highlight-color, #24292e);
+      }
+
+      pre {
+        margin: 0;
+        padding: 0;
+        flex: 1;
+        overflow-x: auto;
+      }
+
+      code {
+        display: block;
+        font-family: inherit;
+        color: var(--cb-text-color, var(--_cb-text-color));
+        background: transparent;
+        padding: var(--cb-code-padding, 1rem);
+      }
+
+      .code-line {
+        display: block;
+        line-height: var(--cb-line-height, 1.6);
+        padding: 0 0.5rem;
+        margin: 0 -0.5rem;
+        white-space: pre;
+      }
+
+      .code-line.highlighted {
+        background: var(--cb-highlight-bg, rgba(255, 235, 59, 0.3));
+        border-left: 3px solid var(--cb-highlight-border, #f9a825);
+        margin-left: calc(-0.5rem - 3px);
+        padding-left: calc(0.5rem + 3px);
+      }
+
+      :host([focus-mode]) .code-line:not(.highlighted) {
+        opacity: var(--cb-focus-dim-opacity, 0.4);
+        filter: blur(var(--cb-focus-blur, 0.5px));
+        transition: opacity 0.2s ease, filter 0.2s ease;
+      }
+
+      :host([focus-mode]) .code-line.highlighted {
+        opacity: 1;
+        filter: none;
+      }
+
+      :host([focus-mode]) .line-numbers span:not(.highlighted) {
+        opacity: var(--cb-focus-dim-opacity, 0.4);
+      }
+
+      .hljs-comment,
+      .hljs-quote {
+        color: var(--cb-comment, var(--_cb-comment));
+        font-style: italic;
+      }
+
+      .hljs-keyword,
+      .hljs-selector-tag,
+      .hljs-addition {
+        color: var(--cb-keyword, #d73a49);
+      }
+
+      .hljs-number,
+      .hljs-literal,
+      .hljs-doctag,
+      .hljs-regexp {
+        color: var(--cb-number, #005cc5);
+      }
+
+      .hljs-string,
+      .hljs-meta .hljs-meta-string {
+        color: var(--cb-string, #22863a);
+      }
+
+      .hljs-title,
+      .hljs-section,
+      .hljs-name,
+      .hljs-selector-id,
+      .hljs-selector-class {
+        color: var(--cb-function, #6f42c1);
+      }
+
+      .hljs-attribute,
+      .hljs-attr,
+      .hljs-variable,
+      .hljs-template-variable,
+      .hljs-class .hljs-title,
+      .hljs-type {
+        color: var(--cb-attribute, #005cc5);
+      }
+
+      .hljs-symbol,
+      .hljs-bullet,
+      .hljs-subst,
+      .hljs-meta,
+      .hljs-meta .hljs-keyword,
+      .hljs-selector-attr,
+      .hljs-selector-pseudo,
+      .hljs-link {
+        color: var(--cb-meta, #e36209);
+      }
+
+      .hljs-built_in,
+      .hljs-deletion {
+        color: var(--cb-builtin, #d73a49);
+      }
+
+      .hljs-tag {
+        color: var(--cb-tag, #22863a);
+      }
+
+      .hljs-tag .hljs-name {
+        color: var(--cb-tag, #22863a);
+      }
+
+      .hljs-tag .hljs-attr {
+        color: var(--cb-attribute, #005cc5);
+      }
+
+      .hljs-emphasis {
+        font-style: italic;
+      }
+
+      .hljs-strong {
+        font-weight: bold;
+      }
+
+      .code-line.diff-add {
+        background: var(--cb-diff-add-bg, rgba(46, 160, 67, 0.15));
+        border-left: 3px solid var(--cb-diff-add-border, #22863a);
+        margin-left: calc(-0.5rem - 3px);
+        padding-left: calc(0.5rem + 3px);
+      }
+
+      .code-line.diff-remove {
+        background: var(--cb-diff-remove-bg, rgba(248, 81, 73, 0.15));
+        border-left: 3px solid var(--cb-diff-remove-border, #cb2431);
+        margin-left: calc(-0.5rem - 3px);
+        padding-left: calc(0.5rem + 3px);
+      }
+
+      .line-numbers span.diff-add {
+        background: var(--cb-diff-add-gutter, rgba(46, 160, 67, 0.1));
+        color: var(--cb-diff-add-color, #22863a);
+      }
+
+      .line-numbers span.diff-remove {
+        background: var(--cb-diff-remove-gutter, rgba(248, 81, 73, 0.1));
+        color: var(--cb-diff-remove-color, #cb2431);
+      }
+
+      .hljs-addition {
+        color: var(--cb-diff-add-text, #22863a);
+        background: transparent;
+      }
+
+      .hljs-deletion {
+        color: var(--cb-diff-remove-text, #cb2431);
+        background: transparent;
+      }
+
+      :host([collapsed]) .code-container {
+        position: relative;
+      }
+
+      :host([collapsed]) .code-container::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: linear-gradient(transparent, var(--cb-code-bg, var(--_cb-code-bg)));
+        pointer-events: none;
+      }
+
+      :host([collapsed]) pre {
+        overflow: hidden;
+      }
+
+      :host([collapsed]) code {
+        display: block;
+        overflow: hidden;
+      }
+
+      .expand-button {
+        display: none;
+        width: 100%;
+        padding: 0.5rem 1rem;
+        background: var(--cb-expand-bg, #f6f8fa);
+        border: none;
+        border-top: 1px solid var(--cb-border-color, var(--_cb-border-color));
+        color: var(--cb-expand-color, #0366d6);
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        font-family: var(--cb-ui-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+        transition: background 0.2s;
+      }
+
+      .expand-button:hover {
+        background: var(--cb-expand-hover-bg, #e1e4e8);
+      }
+
+      .expand-button:focus {
+        outline: 2px solid var(--cb-focus-color, #0366d6);
+        outline-offset: -2px;
+      }
+
+      :host([collapsed]) .expand-button,
+      :host([data-expandable]) .expand-button {
+        display: block;
+      }
+
+      :host([max-height]) .code-container {
+        max-height: var(--cb-max-height);
+        overflow-y: auto;
+      }
+
+      :host([max-height]) .code-container::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      :host([max-height]) .code-container::-webkit-scrollbar-track {
+        background: var(--cb-scrollbar-track, var(--_cb-scrollbar-track));
+      }
+
+      :host([max-height]) .code-container::-webkit-scrollbar-thumb {
+        background: var(--cb-scrollbar-thumb, var(--_cb-scrollbar-thumb));
+        border-radius: var(--cb-button-radius, 4px);
+      }
+
+      :host([max-height]) .code-container::-webkit-scrollbar-thumb:hover {
+        background: var(--cb-scrollbar-thumb-hover, #959da5);
+      }
+
+      :host([wrap]) code {
+        white-space: pre-wrap;
+        word-break: break-word;
+        overflow-wrap: break-word;
+      }
+
+      :host([wrap]) .code-line {
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      :host([no-copy]) code {
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+      }
+
+      :host([no-copy]) .code-line {
+        user-select: none;
+        -webkit-user-select: none;
+      }
+    </style>
+      <div class="header">
+        <div class="label-container" id="code-label"><span class="label">HTML</span></div>
+        <div class="header-actions"><button class="copy-button" aria-label="Copy code to clipboard" title="Copy code">Copy</button></div>
+      </div>
+      <div class="code-container" role="region" aria-labelledby="code-label" style="">
+        <div class="line-numbers" aria-hidden="true"><span class="">1</span><span class="">2</span><span class="">3</span><span class="">4</span><span class="">5</span><span class="">6</span><span class="">7</span><span class="">8</span><span class="">9</span><span class="">10</span><span class="">11</span><span class="">12</span><span class="">13</span><span class="">14</span><span class="">15</span><span class="">16</span></div>
+        <pre><code class="language-html" tabindex="0"><span class="code-line"><span class="hljs-tag">&lt;<span class="hljs-name">requirement-card</span> <span class="hljs-attr">data-priority</span>=<span class="hljs-string">&quot;critical&quot;</span>&gt;</span></span><span class="code-line">  <span class="hljs-tag">&lt;<span class="hljs-name">span</span> <span class="hljs-attr">slot</span>=<span class="hljs-string">&quot;name&quot;</span>&gt;</span>Performance<span class="hljs-tag">&lt;/<span class="hljs-name">span</span>&gt;</span></span><span class="code-line">  <span class="hljs-tag">&lt;<span class="hljs-name">span</span> <span class="hljs-attr">slot</span>=<span class="hljs-string">&quot;badge&quot;</span>&gt;</span>SLA<span class="hljs-tag">&lt;/<span class="hljs-name">span</span>&gt;</span></span><span class="code-line">  <span class="hljs-tag">&lt;<span class="hljs-name">p</span> <span class="hljs-attr">slot</span>=<span class="hljs-string">&quot;rationale&quot;</span>&gt;</span>Pages must paint LCP <span class="hljs-symbol">&amp;lt;</span> 2.5s on 3G — a hard ad-network constraint.<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span></span><span class="code-line"><span class="hljs-tag">&lt;/<span class="hljs-name">requirement-card</span>&gt;</span></span><span class="code-line"> </span><span class="code-line"><span class="hljs-tag">&lt;<span class="hljs-name">requirement-card</span> <span class="hljs-attr">data-priority</span>=<span class="hljs-string">&quot;important&quot;</span>&gt;</span></span><span class="code-line">  <span class="hljs-tag">&lt;<span class="hljs-name">span</span> <span class="hljs-attr">slot</span>=<span class="hljs-string">&quot;name&quot;</span>&gt;</span>Accessibility<span class="hljs-tag">&lt;/<span class="hljs-name">span</span>&gt;</span></span><span class="code-line">  <span class="hljs-tag">&lt;<span class="hljs-name">p</span> <span class="hljs-attr">slot</span>=<span class="hljs-string">&quot;rationale&quot;</span>&gt;</span>WCAG 2.2 AA across all customer-facing flows.<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span></span><span class="code-line"><span class="hljs-tag">&lt;/<span class="hljs-name">requirement-card</span>&gt;</span></span><span class="code-line"> </span><span class="code-line"><span class="hljs-tag">&lt;<span class="hljs-name">requirement-card</span> <span class="hljs-attr">data-priority</span>=<span class="hljs-string">&quot;acceptable&quot;</span> <span class="hljs-attr">data-conflict</span>&gt;</span></span><span class="code-line">  <span class="hljs-tag">&lt;<span class="hljs-name">span</span> <span class="hljs-attr">slot</span>=<span class="hljs-string">&quot;name&quot;</span>&gt;</span>Internationalization<span class="hljs-tag">&lt;/<span class="hljs-name">span</span>&gt;</span></span><span class="code-line">  <span class="hljs-tag">&lt;<span class="hljs-name">p</span> <span class="hljs-attr">slot</span>=<span class="hljs-string">&quot;rationale&quot;</span>&gt;</span>English-only at launch; defer i18n to v2.<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span></span><span class="code-line">  <span class="hljs-tag">&lt;<span class="hljs-name">p</span> <span class="hljs-attr">slot</span>=<span class="hljs-string">&quot;conflicts&quot;</span>&gt;</span>Conflicts with the marketing team&#x27;s APAC-launch ask — needs an ADR.<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span></span><span class="code-line"><span class="hljs-tag">&lt;/<span class="hljs-name">requirement-card</span>&gt;</span></span></code></pre>
+      </div>
+      </template><textarea style="display:none">&lt;requirement-card data-priority=&quot;critical&quot;&gt;
+  &lt;span slot=&quot;name&quot;&gt;Performance&lt;/span&gt;
+  &lt;span slot=&quot;badge&quot;&gt;SLA&lt;/span&gt;
+  &lt;p slot=&quot;rationale&quot;&gt;Pages must paint LCP &amp;lt; 2.5s on 3G — a hard ad-network constraint.&lt;/p&gt;
+&lt;/requirement-card&gt;
+
+&lt;requirement-card data-priority=&quot;important&quot;&gt;
+  &lt;span slot=&quot;name&quot;&gt;Accessibility&lt;/span&gt;
+  &lt;p slot=&quot;rationale&quot;&gt;WCAG 2.2 AA across all customer-facing flows.&lt;/p&gt;
+&lt;/requirement-card&gt;
+
+&lt;requirement-card data-priority=&quot;acceptable&quot; data-conflict&gt;
+  &lt;span slot=&quot;name&quot;&gt;Internationalization&lt;/span&gt;
+  &lt;p slot=&quot;rationale&quot;&gt;English-only at launch; defer i18n to v2.&lt;/p&gt;
+  &lt;p slot=&quot;conflicts&quot;&gt;Conflicts with the marketing team&#39;s APAC-launch ask — needs an ADR.&lt;/p&gt;
+&lt;/requirement-card&gt;</textarea></code-block>
+</section>
+
+<section>
+  <h2>How it works</h2>
+  <p>The <code>data-priority</code> enum drives a <code>:state(priority-*)</code> hook, the default pill text, and the accent color. Add <code>data-conflict</code> to flag a drift or contradiction note; the card renders an emphasized border and exposes the <code>conflicts</code> slot. The card is inert by default — set <code>tabindex="0"</code> (or wrap it in an <code>&lt;a&gt;</code> / <code>&lt;button&gt;</code>) to make it activatable, at which point it emits <code>requirement-card:click</code> with <code>{ priority, hasConflict, originalEvent }</code>.</p>
+</section>
+
+<section>
+  <h2>Attributes</h2>
+  <table class="props-table"><thead><tr><th>Attribute</th><th>Values</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>data-priority</code></td><td><code>"critical"</code>, <code>"important"</code>, <code>"acceptable"</code>, <code>"not-relevant"</code></td><td>—</td><td>Drives :state(priority-*), default pill text, and accent color</td></tr>
+<tr><td><code>data-conflict</code></td><td>boolean</td><td>—</td><td>Flag a conflict / drift note; renders an emphasized border</td></tr>
+<tr><td><code>tabindex</code></td><td>number</td><td>—</td><td>Set to 0 to make the card directly focusable + activatable (otherwise wrap in &lt;a&gt;/&lt;button&gt;)</td></tr></tbody></table>
+</section>
+
+<section>
+  <h2>Accessibility</h2>
+  <p>Priority is conveyed by the pill's text label, not by accent color alone, so the critical / important / acceptable / not-relevant distinction survives for low-vision and color-blind readers. The card stays non-interactive (no spurious focus stop) until you opt in with <code>tabindex</code> or a wrapping <code>&lt;a&gt;</code> / <code>&lt;button&gt;</code>; when interactive it activates by mouse, keyboard, and touch alike. The conflict note is real slotted prose, so screen readers announce <em>why</em> a row is flagged rather than just seeing an emphasized border.</p>
+</section>
+
+<section>
+  <h2>Related</h2>
+  <ul>
+    <li><a href="/vb-project-planning/elements/quality-target/"><code>&lt;quality-target&gt;</code></a> — the polygon-as-UI surface that produces the priorities this card displays.</li>
+    <li><a href="/vb-project-planning/elements/iron-triangle/"><code>&lt;iron-triangle&gt;</code></a> — project-shape decision (scope / time / cost) that sets the capacity those priorities are spent against.</li>
+    <li><a href="/vb-project-planning/elements/capacity-plan/"><code>&lt;capacity-plan&gt;</code></a> — ledger view of the same capacity-versus-quality math.</li>
+    <li><a href="https://vanilla-breeze.com/docs/elements/web-components/score-card/"><code>&lt;score-card&gt;</code></a> — KPI tile (a different shape with a numeric value + change indicator).</li>
+  </ul>
+</section>
+          </heading-links>
+        </article>
+      </layout-sidebar>
+    </layout-sidebar>
+  </main>
+
+  <footer>
+  <layout-center data-layout-max="wide">
+    <div data-layout="cluster" data-layout-justify="between" data-layout-gap="l" style="align-items: flex-start;">
+      <p data-layout="stack" data-layout-gap="3xs" style="margin: 0;">
+        <strong>VB Project Planning</strong>
+        <small>Project- and UX-planning Web Components for Vanilla Breeze.</small>
+      </p>
+      <nav data-layout="cluster" data-layout-gap="m" aria-label="Footer">
+        <a class="active-parent" href="/vb-project-planning/elements/">Elements</a>
+        <a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a>
+      </nav>
+    </div>
+    <p style="margin-block-start: var(--size-m); color: var(--color-text-muted);">
+      <small>Part of the Vanilla Breeze ecosystem · MIT licensed.</small>
+    </p>
+  </layout-center>
+</footer>
+
+
+  <fab-stack>
+    <settings-panel></settings-panel>
+    <a href="#" data-back-to-top="" aria-label="Back to top">↑</a>
+  </fab-stack>
+
+  <script>
+  // Mark the active sidebar link (matches the rewritten href under the Pages
+  // subpath via the anchor's resolved .pathname) and open its <details> chain.
+  (function () {
+    var here = location.pathname.replace(/\/+$/, '');
+    var links = document.querySelectorAll('.tree a');
+    for (var i = 0; i < links.length; i++) {
+      if (links[i].pathname.replace(/\/+$/, '') === here) {
+        links[i].setAttribute('aria-current', 'page');
+        var el = links[i].closest('details');
+        while (el) { el.open = true; el = el.parentElement.closest('details'); }
+        break;
+      }
+    }
+  })();
+  </script>
+
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mq6vobtl"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mq6vobtl"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mq6vobtl"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mq6vobtl"></script>
+  
+</body>
+</html>

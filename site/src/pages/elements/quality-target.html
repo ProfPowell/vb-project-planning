@@ -1,0 +1,53 @@
+---
+layout: element
+title: "quality-target"
+description: "Polygon-as-UI quality prioritization surface. Click any axis to set its level + rationale; the radar visualizes the chosen vector against the project's capacity envelope. Pairs with iron-triangle via data-bind-to."
+elementName: quality-target
+category: component
+currentPath: /docs/elements/web-components/quality-target/
+
+crumbHref: /docs/elements/web-components/
+crumbLabel: Web Components
+---
+
+<section>
+  <h2>Overview</h2>
+  <p>The <code>&lt;quality-target&gt;</code> component is the planning surface's <em>quality decision</em>. The polygon IS the picker — each of the 11 ility axes is a clickable hit-target that opens a per-ility <code>&lt;dialog&gt;</code> with a level radio group (Critical / Important / Acceptable / Not relevant) plus a required rationale when Critical. The same SVG visualizes the chosen vector against the project's capacity envelope, so picking and reading happen on the same surface.</p>
+  <p>Pair it with <code>&lt;iron-triangle&gt;</code> via <code>data-bind-to</code> and the envelope reads from project shape. "Quality" is the word the surface uses; the older "NFR" jargon and its separate compass + radar pair collapse into this one component, two roles.</p>
+
+  <browser-window url="quality-target-basic" src="/demos/quality-target-basic/"></browser-window>
+</section>
+
+<section>
+  <h2>Per-axis editors</h2>
+  <p>Click an axis (or focus it and press Enter / Space) to open its dialog. Each editor has a radio group for the four priority levels, a <code>&lt;form-field&gt;</code>-wrapped rationale textarea (required when Critical, ≥10 chars by default), and Cancel + Save buttons; the dialog uses <code>method="dialog"</code> so submit closes it. The marker color follows the level: red Critical, amber Important, green Acceptable, muted Not relevant. The polygon is the closed shape across all picked axes; unpicked ilities don't pull the shape toward the centroid.</p>
+</section>
+
+<section>
+  <h2>Capacity envelope</h2>
+  <p>When paired with <code>&lt;iron-triangle&gt;</code> via <code>data-bind-to</code>, the soft green polygon shows the budget envelope: <code>radius × min(1, capacityPoints / sum(costWeights))</code> on each axis. Going outside the envelope is allowed but reveals an inline overrun rationale field below the polygon — the form's <code>checkValidity()</code> returns false until that field is filled. The component fires <code>quality-target:over-budget</code> and <code>quality-target:under-budget</code> as the selection crosses the capacity line.</p>
+</section>
+
+<section>
+  <h2>Default ility list and cost weights</h2>
+  <p>The 11 default ilities (cost dropped — that's <code>&lt;iron-triangle&gt;</code>'s job): performance, accessibility, security, reliability, maintainability, observability, compatibility, scalability, portability, internationalization, privacy. Default cost-when-Critical weights sum to 40 — against a realistic budget of 10–15 that forces real trade-offs. Override with <code>data-cost-weights='{"performance": 8, "scalability": 8}'</code> or set the <code>ilities</code> property to a custom array.</p>
+</section>
+
+<section>
+  <h2>Attributes</h2>
+  {{ attributeTable("quality-target", apiRegistry) }}
+</section>
+
+<section>
+  <h2>Accessibility</h2>
+  <p>Each axis is a real focusable hit-target activatable by Enter / Space, and its dialog is a native <code>&lt;dialog&gt;</code> with proper focus management and an escape-to-close path. Priority levels are conveyed by the radio-group label text, not by marker color alone, so the red/amber/green/muted coding is reinforcement rather than the sole signal. The over-budget state surfaces as a required, labelled rationale field (and a <code>:state(missing-rationale)</code> hook) instead of a color-only warning.</p>
+</section>
+
+<section>
+  <h2>Related</h2>
+  <ul>
+    <li><a href="/elements/iron-triangle/"><code>&lt;iron-triangle&gt;</code></a> &mdash; supplies <code>capacityPoints</code>; the target reads it via <code>data-bind-to</code>.</li>
+    <li><a href="/elements/capacity-plan/"><code>&lt;capacity-plan&gt;</code></a> &mdash; reads <code>criticalSum</code> from the target and reconciles it against capacity plus slotted feature costs.</li>
+    <li><a href="/elements/requirement-card/"><code>&lt;requirement-card&gt;</code></a> &mdash; renders a single ility's row outside the target for status dashboards and ADR appendices.</li>
+  </ul>
+</section>

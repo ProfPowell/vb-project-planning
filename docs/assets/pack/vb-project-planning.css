@@ -1223,4 +1223,381 @@ gantt-chart[compact] .gc-group-spacer {
   animation-timing-function: ease-out;
 }
 
+/* src/web-components/iron-triangle/styles.css */
+iron-triangle {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: var(--iron-triangle-max, 26rem);
+  margin-inline: auto;
+  container-type: inline-size;
+}
+iron-triangle > svg {
+  inline-size: 100%;
+  block-size: auto;
+  display: block;
+}
+iron-triangle svg .triangle {
+  fill: var(--iron-triangle-fill, color-mix(in oklab, var(--color-interactive) 8%, transparent));
+  stroke: var(--iron-triangle-stroke, var(--color-interactive));
+  stroke-width: var(--iron-triangle-stroke-width, 1.5);
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+iron-triangle svg .vertex,
+iron-triangle svg .center {
+  cursor: pointer;
+  outline: none;
+}
+iron-triangle svg .vertex .hit,
+iron-triangle svg .center .hit {
+  fill: transparent;
+  stroke: transparent;
+  transition: fill 120ms ease, stroke 120ms ease;
+}
+iron-triangle svg .vertex:hover .hit,
+iron-triangle svg .vertex:focus-visible .hit,
+iron-triangle svg .center:hover .hit,
+iron-triangle svg .center:focus-visible .hit {
+  fill: color-mix(in oklab, var(--color-interactive) 8%, transparent);
+  stroke: var(--color-interactive);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+iron-triangle svg .vertex-name {
+  font-size: 0.85rem;
+  font-weight: var(--font-weight-semibold, 600);
+  fill: var(--color-text);
+  pointer-events: none;
+}
+iron-triangle svg .vertex:hover .vertex-name,
+iron-triangle svg .vertex:focus-visible .vertex-name {
+  fill: var(--color-interactive);
+}
+iron-triangle svg .vertex-summary {
+  font-size: 0.7rem;
+  fill: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+iron-triangle svg .capacity-backdrop {
+  fill: var(--color-surface);
+  stroke: var(--color-border-muted, var(--color-border, #e5e7eb));
+  stroke-width: 1;
+  pointer-events: none;
+}
+iron-triangle svg .quality-label {
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-semibold, 600);
+  fill: var(--color-interactive);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+}
+iron-triangle svg .capacity {
+  font-size: var(--iron-triangle-capacity-size, 1.6rem);
+  font-weight: var(--font-weight-bold, 700);
+  fill: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+iron-triangle svg .capacity-unit {
+  font-size: 0.6rem;
+  fill: var(--color-text-muted);
+  pointer-events: none;
+}
+iron-triangle svg .center .hit {
+  fill: transparent;
+  stroke: transparent;
+  transition: fill 120ms ease, stroke 120ms ease;
+}
+iron-triangle svg .center:hover .hit,
+iron-triangle svg .center:focus-visible .hit {
+  fill: color-mix(in oklab, var(--color-interactive) 8%, transparent);
+  stroke: var(--color-interactive);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+iron-triangle svg .center:hover .quality-label,
+iron-triangle svg .center:focus-visible .quality-label {
+  fill: var(--color-interactive);
+}
+iron-triangle:state(over-deadline) svg .triangle {
+  stroke: var(--color-warning);
+}
+iron-triangle:state(unbudgeted) svg .capacity {
+  fill: var(--color-warning);
+}
+iron-triangle:state(manual) svg .quality-label::after {
+  content: " (manual)";
+}
+iron-triangle[disabled],
+iron-triangle[locked] {
+  opacity: 0.85;
+  pointer-events: none;
+}
+iron-triangle > dialog.iron-triangle-dialog {
+  inline-size: min(28rem, 92vw);
+  border: var(--border-width-thin, 1px) solid var(--color-border);
+  border-radius: var(--radius-l, 0.75rem);
+  padding: var(--size-l, 1.5rem);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+iron-triangle > dialog.iron-triangle-dialog::backdrop {
+  background: oklch(from var(--color-surface) l c h / 0.5);
+  backdrop-filter: blur(2px);
+}
+iron-triangle > dialog.iron-triangle-dialog h3 {
+  margin: 0 0 var(--size-m) 0;
+  font-size: var(--font-size-l, 1.125rem);
+}
+
+/* src/web-components/capacity-plan/styles.css */
+capacity-plan {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: var(--capacity-plan-max, 32rem);
+  margin-inline: auto;
+}
+capacity-plan .capacity-ledger {
+  display: grid;
+  grid-template-columns: minmax(8rem, 14rem) 1fr;
+  gap: var(--size-2xs, 0.25rem) var(--size-m, 1rem);
+  margin: 0;
+}
+capacity-plan .capacity-ledger > div {
+  display: contents;
+}
+capacity-plan .capacity-ledger dt {
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--color-text);
+}
+capacity-plan .capacity-ledger .num {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+  text-align: end;
+  padding-inline-end: var(--size-s);
+}
+capacity-plan .capacity-ledger .bar {
+  margin: 0;
+  align-self: center;
+}
+capacity-plan .bar-track {
+  display: block;
+  inline-size: 100%;
+  block-size: 0.6rem;
+  background: var(--color-surface-raised, color-mix(in oklab, var(--color-surface) 92%, currentColor 8%));
+  border-radius: var(--radius-pill, 999px);
+  overflow: hidden;
+}
+capacity-plan .bar-fill {
+  display: block;
+  block-size: 100%;
+  inline-size: var(--w, 0%);
+  border-radius: inherit;
+  transition: inline-size 200ms ease;
+}
+capacity-plan .bar-capacity {
+  background: color-mix(in oklab, var(--color-text) 25%, transparent);
+}
+capacity-plan .bar-quality {
+  background: var(--color-interactive);
+}
+capacity-plan .bar-features {
+  background: var(--color-success);
+}
+capacity-plan .bar-slack {
+  background: color-mix(in oklab, var(--color-text-muted) 35%, transparent);
+}
+capacity-plan [data-row=slack][data-state=over] .num {
+  color: var(--color-error);
+  font-weight: var(--font-weight-semibold, 600);
+}
+capacity-plan [data-row=slack][data-state=over] .bar-slack {
+  background: var(--color-error);
+}
+capacity-plan:state(overdrawn) .capacity-ledger {
+  outline: 2px solid var(--color-error);
+  outline-offset: var(--size-2xs);
+  border-radius: var(--radius-m);
+}
+
+/* src/web-components/quality-target/styles.css */
+quality-target {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: var(--quality-target-max, 36rem);
+  margin-inline: auto;
+  container-type: inline-size;
+}
+quality-target > svg {
+  inline-size: 100%;
+  block-size: auto;
+  display: block;
+}
+quality-target svg .ring {
+  fill: none;
+  stroke: var(--color-border-muted, var(--color-border, #e5e7eb));
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  pointer-events: none;
+}
+quality-target svg .ring-critical {
+  stroke: color-mix(in oklab, var(--color-error) 60%, transparent);
+}
+quality-target svg .ring-important {
+  stroke: color-mix(in oklab, var(--color-warning) 50%, transparent);
+}
+quality-target svg .ring-acceptable {
+  stroke: color-mix(in oklab, var(--color-success) 50%, transparent);
+}
+quality-target svg .spoke {
+  stroke: var(--color-border, #e5e7eb);
+  stroke-width: 0.75;
+  stroke-dasharray: 1 4;
+  pointer-events: none;
+}
+quality-target svg .vector {
+  fill: var(--quality-target-vector-fill, color-mix(in oklab, var(--color-interactive) 22%, transparent));
+  stroke: var(--quality-target-vector-stroke, var(--color-interactive));
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+quality-target svg .vector-spoke {
+  stroke: var(--quality-target-vector-stroke, var(--color-interactive));
+  stroke-width: 2;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+quality-target svg .axis {
+  cursor: pointer;
+  outline: none;
+}
+quality-target svg .axis .hit {
+  fill: transparent;
+  stroke: transparent;
+  transition: fill 120ms ease, stroke 120ms ease;
+}
+quality-target svg .axis:hover .hit,
+quality-target svg .axis:focus-visible .hit {
+  fill: color-mix(in oklab, var(--color-interactive) 8%, transparent);
+  stroke: var(--color-interactive);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+quality-target svg .axis-label {
+  font-size: var(--quality-target-label-size, 0.625rem);
+  fill: var(--color-text-muted);
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  font-weight: var(--font-weight-regular, 400);
+}
+quality-target svg .axis[data-level] .axis-label {
+  font-weight: var(--font-weight-semibold, 600);
+}
+quality-target svg .axis[data-level=critical] .axis-label {
+  fill: var(--color-error, #dc2626);
+}
+quality-target svg .axis[data-level=important] .axis-label {
+  fill: var(--color-warning, #b45309);
+}
+quality-target svg .axis[data-level=acceptable] .axis-label {
+  fill: var(--color-success, #15803d);
+}
+quality-target svg .axis[data-level=not-relevant] .axis-label {
+  fill: var(--color-text-muted, #6b7280);
+  text-decoration: line-through;
+  font-weight: var(--font-weight-regular, 400);
+}
+quality-target svg .axis .marker {
+  fill: var(--color-interactive);
+  stroke: var(--color-surface);
+  stroke-width: 1;
+  pointer-events: none;
+}
+quality-target svg .axis[data-level=critical] .marker {
+  fill: var(--color-error, #dc2626);
+}
+quality-target svg .axis[data-level=important] .marker {
+  fill: var(--color-warning, #b45309);
+}
+quality-target svg .axis[data-level=acceptable] .marker {
+  fill: var(--color-success, #16a34a);
+}
+quality-target svg .axis[data-level=not-relevant] .marker {
+  fill: var(--color-text-muted, #6b7280);
+  opacity: 0.5;
+}
+quality-target svg .capacity-backdrop {
+  fill: var(--color-surface);
+  stroke: var(--color-border-muted, var(--color-border, #e5e7eb));
+  stroke-width: 1;
+  pointer-events: none;
+}
+quality-target svg .capacity-sum {
+  font-size: var(--quality-target-capacity-size, 1.25rem);
+  font-weight: var(--font-weight-bold, 700);
+  fill: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+quality-target svg .capacity-denom {
+  font-size: 0.55rem;
+  fill: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+quality-target svg .center[data-over] .capacity-sum {
+  fill: var(--color-error);
+}
+quality-target:state(over-budget) svg .vector {
+  stroke: var(--color-warning);
+}
+quality-target .quality-footer {
+  margin-block-start: var(--size-m, 1rem);
+}
+quality-target [data-quality-overrun] {
+  padding: var(--size-m, 1rem);
+  border: var(--border-width-thin, 1px) solid var(--color-error);
+  border-radius: var(--radius-m);
+  background: var(--color-error-subtle, oklch(95% 0.05 27));
+  display: grid;
+  gap: var(--size-2xs, 0.25rem);
+}
+quality-target [data-quality-overrun][hidden] {
+  display: none;
+}
+quality-target [data-quality-errors] {
+  display: none;
+}
+quality-target:state(missing-rationale) [data-quality-errors] {
+  display: block;
+}
+quality-target > dialog.quality-dialog {
+  inline-size: min(28rem, 92vw);
+  border: var(--border-width-thin, 1px) solid var(--color-border);
+  border-radius: var(--radius-l, 0.75rem);
+  padding: var(--size-l, 1.5rem);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+quality-target > dialog.quality-dialog::backdrop {
+  background: oklch(from var(--color-surface) l c h / 0.5);
+  backdrop-filter: blur(2px);
+}
+quality-target > dialog.quality-dialog h3 {
+  margin: 0 0 var(--size-m) 0;
+  font-size: var(--font-size-l, 1.125rem);
+}
+quality-target > dialog.quality-dialog fieldset {
+  border: 1px solid var(--color-border-muted, var(--color-border));
+}
+quality-target[disabled],
+quality-target[locked] {
+  opacity: 0.85;
+  pointer-events: none;
+}
+
 /* src/index.css */
