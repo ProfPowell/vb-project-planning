@@ -9,10 +9,10 @@
   <script>window.__VB_THEME_BASE="/vb-project-planning/cdn";document.documentElement.dataset.iconPath="/vb-project-planning/cdn/icons";</script>
   <title>Demos — VB Project Planning</title>
   <meta name="description" content="Live, themeable demos of every VB Project Planning component, plus the Atlas sprint board showcase.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mq6478qa">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mq6478qa">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mq6478qa">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mq6478qa">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mq64kn5g">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mq64kn5g">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mq64kn5g">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mq64kn5g">
   
 </head>
 <body style="overflow-x: clip;">
@@ -149,6 +149,211 @@
 
       <section data-layout="stack" data-layout-gap="m">
         <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="adr-wc"><code>&lt;adr-wc&gt;</code></h3>
+          <p>Architecture Decision Record. <a href="/vb-project-planning/elements/adr-wc/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="25rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/adr-wc-basic/" url="vanilla-breeze.dev/demos/adr-wc-basic" title="adr-wc — Basic" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/adr-wc-basic/">Basic →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
+
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="burndown-chart"><code>&lt;burndown-chart&gt;</code></h3>
+          <p>Sprint / release burndown. <a href="/vb-project-planning/elements/burndown-chart/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="25rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/burndown-chart-basic/" url="vanilla-breeze.dev/demos/burndown-chart-basic" title="burndown-chart — Basic" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/burndown-chart-basic/">Basic →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
+
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="empathy-map"><code>&lt;empathy-map&gt;</code></h3>
+          <p>Says / thinks / does / feels. <a href="/vb-project-planning/elements/empathy-map/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="25rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/empathy-map-basic/" url="vanilla-breeze.dev/demos/empathy-map-basic" title="empathy-map — Basic" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/empathy-map-basic/">Basic →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/empathy-map-editable/" url="vanilla-breeze.dev/demos/empathy-map-editable" title="empathy-map — Editable" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/empathy-map-editable/">Editable →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
+
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="gantt-chart"><code>&lt;gantt-chart&gt;</code></h3>
+          <p>Gantt schedule. <a href="/vb-project-planning/elements/gantt-chart/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="25rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/gantt-chart-basic/" url="vanilla-breeze.dev/demos/gantt-chart-basic" title="gantt-chart — Basic" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/gantt-chart-basic/">Basic →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
+
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="impact-effort"><code>&lt;impact-effort&gt;</code></h3>
+          <p>Impact vs. effort matrix. <a href="/vb-project-planning/elements/impact-effort/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="25rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/impact-effort-basic/" url="vanilla-breeze.dev/demos/impact-effort-basic" title="impact-effort — Basic" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/impact-effort-basic/">Basic →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
+
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="kanban-board"><code>&lt;kanban-board&gt;</code></h3>
+          <p>Kanban board (drag to reorder). <a href="/vb-project-planning/elements/kanban-board/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="25rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/kanban-board-basic/" url="vanilla-breeze.dev/demos/kanban-board-basic" title="kanban-board — Basic" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/kanban-board-basic/">Basic →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/kanban-board-generic/" url="vanilla-breeze.dev/demos/kanban-board-generic" title="kanban-board — Generic cards" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/kanban-board-generic/">Generic cards →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/kanban-board-wip/" url="vanilla-breeze.dev/demos/kanban-board-wip" title="kanban-board — WIP limits" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/kanban-board-wip/">WIP limits →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/kanban-retrospective/" url="vanilla-breeze.dev/demos/kanban-retrospective" title="kanban-board — Retrospective" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/kanban-retrospective/">Retrospective →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
+
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="product-roadmap"><code>&lt;product-roadmap&gt;</code></h3>
+          <p>Time-phased roadmap. <a href="/vb-project-planning/elements/product-roadmap/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="25rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/product-roadmap-basic/" url="vanilla-breeze.dev/demos/product-roadmap-basic" title="product-roadmap — Basic" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/product-roadmap-basic/">Basic →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/product-roadmap-editable/" url="vanilla-breeze.dev/demos/product-roadmap-editable" title="product-roadmap — Editable" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/product-roadmap-editable/">Editable →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
+
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="quadrant-grid"><code>&lt;quadrant-grid&gt;</code></h3>
+          <p>2×2 quadrant plotting surface. <a href="/vb-project-planning/elements/quadrant-grid/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="25rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/quadrant-grid-basic/" url="vanilla-breeze.dev/demos/quadrant-grid-basic" title="quadrant-grid — Basic" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/quadrant-grid-basic/">Basic →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/quadrant-grid-stakeholders/" url="vanilla-breeze.dev/demos/quadrant-grid-stakeholders" title="quadrant-grid — Stakeholders" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/quadrant-grid-stakeholders/">Stakeholders →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/quadrant-grid-swot/" url="vanilla-breeze.dev/demos/quadrant-grid-swot" title="quadrant-grid — SWOT" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/quadrant-grid-swot/">SWOT →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
+
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="review-surface"><code>&lt;review-surface&gt;</code></h3>
+          <p>Annotated review surface. <a href="/vb-project-planning/elements/review-surface/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="25rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/review-surface-basic/" url="vanilla-breeze.dev/demos/review-surface-basic" title="review-surface — Basic" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/review-surface-basic/">Basic →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/review-surface-empathy/" url="vanilla-breeze.dev/demos/review-surface-empathy" title="review-surface — Empathy" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/review-surface-empathy/">Empathy →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
+
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="risk-register"><code>&lt;risk-register&gt;</code></h3>
+          <p>Risk log with likelihood / impact. <a href="/vb-project-planning/elements/risk-register/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="25rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/risk-register-basic/" url="vanilla-breeze.dev/demos/risk-register-basic" title="risk-register — Basic" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/risk-register-basic/">Basic →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
+
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="story-map"><code>&lt;story-map&gt;</code></h3>
+          <p>User-story map. <a href="/vb-project-planning/elements/story-map/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="25rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/story-map-basic/" url="vanilla-breeze.dev/demos/story-map-basic" title="story-map — Basic" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/story-map-basic/">Basic →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
+
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="traceability-matrix"><code>&lt;traceability-matrix&gt;</code></h3>
+          <p>Requirement ↔ artifact grid. <a href="/vb-project-planning/elements/traceability-matrix/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="25rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/traceability-matrix-basic/" url="vanilla-breeze.dev/demos/traceability-matrix-basic" title="traceability-matrix — Basic" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/traceability-matrix-basic/">Basic →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
+
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
+          <h3 id="user-journey"><code>&lt;user-journey&gt;</code></h3>
+          <p>Journey maps with emotion curve. <a href="/vb-project-planning/elements/user-journey/">View API →</a></p>
+        </header>
+        <layout-grid data-layout-min="25rem">
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/user-journey-basic/" url="vanilla-breeze.dev/demos/user-journey-basic" title="user-journey — Basic" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/user-journey-basic/">Basic →</a></figcaption>
+          </figure>
+          <figure data-layout="stack" data-layout-gap="2xs">
+            <browser-window src="/vb-project-planning/demos/user-journey-compact/" url="vanilla-breeze.dev/demos/user-journey-compact" title="user-journey — Compact" shadow=""></browser-window>
+            <figcaption><a href="/vb-project-planning/demos/user-journey-compact/">Compact →</a></figcaption>
+          </figure>
+        </layout-grid>
+      </section>
+
+      <section data-layout="stack" data-layout-gap="m">
+        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
           <h3 id="user-persona"><code>&lt;user-persona&gt;</code></h3>
           <p>Persona cards. <a href="/vb-project-planning/elements/user-persona/">View API →</a></p>
         </header>
@@ -195,198 +400,6 @@
 
       <section data-layout="stack" data-layout-gap="m">
         <header class="group-head" data-layout="stack" data-layout-gap="3xs">
-          <h3 id="user-journey"><code>&lt;user-journey&gt;</code></h3>
-          <p>Journey maps with emotion curve. <a href="/vb-project-planning/elements/user-journey/">View API →</a></p>
-        </header>
-        <layout-grid data-layout-min="25rem">
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/user-journey-basic/" url="vanilla-breeze.dev/demos/user-journey-basic" title="user-journey — Basic" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/user-journey-basic/">Basic →</a></figcaption>
-          </figure>
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/user-journey-compact/" url="vanilla-breeze.dev/demos/user-journey-compact" title="user-journey — Compact" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/user-journey-compact/">Compact →</a></figcaption>
-          </figure>
-        </layout-grid>
-      </section>
-
-      <section data-layout="stack" data-layout-gap="m">
-        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
-          <h3 id="empathy-map"><code>&lt;empathy-map&gt;</code></h3>
-          <p>Says / thinks / does / feels. <a href="/vb-project-planning/elements/empathy-map/">View API →</a></p>
-        </header>
-        <layout-grid data-layout-min="25rem">
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/empathy-map-basic/" url="vanilla-breeze.dev/demos/empathy-map-basic" title="empathy-map — Basic" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/empathy-map-basic/">Basic →</a></figcaption>
-          </figure>
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/empathy-map-editable/" url="vanilla-breeze.dev/demos/empathy-map-editable" title="empathy-map — Editable" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/empathy-map-editable/">Editable →</a></figcaption>
-          </figure>
-        </layout-grid>
-      </section>
-
-      <section data-layout="stack" data-layout-gap="m">
-        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
-          <h3 id="impact-effort"><code>&lt;impact-effort&gt;</code></h3>
-          <p>Impact vs. effort matrix. <a href="/vb-project-planning/elements/impact-effort/">View API →</a></p>
-        </header>
-        <layout-grid data-layout-min="25rem">
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/impact-effort-basic/" url="vanilla-breeze.dev/demos/impact-effort-basic" title="impact-effort — Basic" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/impact-effort-basic/">Basic →</a></figcaption>
-          </figure>
-        </layout-grid>
-      </section>
-
-      <section data-layout="stack" data-layout-gap="m">
-        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
-          <h3 id="quadrant-grid"><code>&lt;quadrant-grid&gt;</code></h3>
-          <p>2×2 quadrant plotting surface. <a href="/vb-project-planning/elements/quadrant-grid/">View API →</a></p>
-        </header>
-        <layout-grid data-layout-min="25rem">
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/quadrant-grid-basic/" url="vanilla-breeze.dev/demos/quadrant-grid-basic" title="quadrant-grid — Basic" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/quadrant-grid-basic/">Basic →</a></figcaption>
-          </figure>
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/quadrant-grid-stakeholders/" url="vanilla-breeze.dev/demos/quadrant-grid-stakeholders" title="quadrant-grid — Stakeholders" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/quadrant-grid-stakeholders/">Stakeholders →</a></figcaption>
-          </figure>
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/quadrant-grid-swot/" url="vanilla-breeze.dev/demos/quadrant-grid-swot" title="quadrant-grid — SWOT" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/quadrant-grid-swot/">SWOT →</a></figcaption>
-          </figure>
-        </layout-grid>
-      </section>
-
-      <section data-layout="stack" data-layout-gap="m">
-        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
-          <h3 id="risk-register"><code>&lt;risk-register&gt;</code></h3>
-          <p>Risk log with likelihood / impact. <a href="/vb-project-planning/elements/risk-register/">View API →</a></p>
-        </header>
-        <layout-grid data-layout-min="25rem">
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/risk-register-basic/" url="vanilla-breeze.dev/demos/risk-register-basic" title="risk-register — Basic" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/risk-register-basic/">Basic →</a></figcaption>
-          </figure>
-        </layout-grid>
-      </section>
-
-      <section data-layout="stack" data-layout-gap="m">
-        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
-          <h3 id="traceability-matrix"><code>&lt;traceability-matrix&gt;</code></h3>
-          <p>Requirement ↔ artifact grid. <a href="/vb-project-planning/elements/traceability-matrix/">View API →</a></p>
-        </header>
-        <layout-grid data-layout-min="25rem">
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/traceability-matrix-basic/" url="vanilla-breeze.dev/demos/traceability-matrix-basic" title="traceability-matrix — Basic" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/traceability-matrix-basic/">Basic →</a></figcaption>
-          </figure>
-        </layout-grid>
-      </section>
-
-      <section data-layout="stack" data-layout-gap="m">
-        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
-          <h3 id="burndown-chart"><code>&lt;burndown-chart&gt;</code></h3>
-          <p>Sprint / release burndown. <a href="/vb-project-planning/elements/burndown-chart/">View API →</a></p>
-        </header>
-        <layout-grid data-layout-min="25rem">
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/burndown-chart-basic/" url="vanilla-breeze.dev/demos/burndown-chart-basic" title="burndown-chart — Basic" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/burndown-chart-basic/">Basic →</a></figcaption>
-          </figure>
-        </layout-grid>
-      </section>
-
-      <section data-layout="stack" data-layout-gap="m">
-        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
-          <h3 id="product-roadmap"><code>&lt;product-roadmap&gt;</code></h3>
-          <p>Time-phased roadmap. <a href="/vb-project-planning/elements/product-roadmap/">View API →</a></p>
-        </header>
-        <layout-grid data-layout-min="25rem">
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/product-roadmap-basic/" url="vanilla-breeze.dev/demos/product-roadmap-basic" title="product-roadmap — Basic" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/product-roadmap-basic/">Basic →</a></figcaption>
-          </figure>
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/product-roadmap-editable/" url="vanilla-breeze.dev/demos/product-roadmap-editable" title="product-roadmap — Editable" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/product-roadmap-editable/">Editable →</a></figcaption>
-          </figure>
-        </layout-grid>
-      </section>
-
-      <section data-layout="stack" data-layout-gap="m">
-        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
-          <h3 id="kanban-board"><code>&lt;kanban-board&gt;</code></h3>
-          <p>Kanban board (drag to reorder). <a href="/vb-project-planning/elements/kanban-board/">View API →</a></p>
-        </header>
-        <layout-grid data-layout-min="25rem">
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/kanban-board-basic/" url="vanilla-breeze.dev/demos/kanban-board-basic" title="kanban-board — Basic" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/kanban-board-basic/">Basic →</a></figcaption>
-          </figure>
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/kanban-board-generic/" url="vanilla-breeze.dev/demos/kanban-board-generic" title="kanban-board — Generic cards" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/kanban-board-generic/">Generic cards →</a></figcaption>
-          </figure>
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/kanban-board-wip/" url="vanilla-breeze.dev/demos/kanban-board-wip" title="kanban-board — WIP limits" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/kanban-board-wip/">WIP limits →</a></figcaption>
-          </figure>
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/kanban-retrospective/" url="vanilla-breeze.dev/demos/kanban-retrospective" title="kanban-board — Retrospective" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/kanban-retrospective/">Retrospective →</a></figcaption>
-          </figure>
-        </layout-grid>
-      </section>
-
-      <section data-layout="stack" data-layout-gap="m">
-        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
-          <h3 id="story-map"><code>&lt;story-map&gt;</code></h3>
-          <p>User-story map. <a href="/vb-project-planning/elements/story-map/">View API →</a></p>
-        </header>
-        <layout-grid data-layout-min="25rem">
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/story-map-basic/" url="vanilla-breeze.dev/demos/story-map-basic" title="story-map — Basic" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/story-map-basic/">Basic →</a></figcaption>
-          </figure>
-        </layout-grid>
-      </section>
-
-      <section data-layout="stack" data-layout-gap="m">
-        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
-          <h3 id="review-surface"><code>&lt;review-surface&gt;</code></h3>
-          <p>Annotated review surface. <a href="/vb-project-planning/elements/review-surface/">View API →</a></p>
-        </header>
-        <layout-grid data-layout-min="25rem">
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/review-surface-basic/" url="vanilla-breeze.dev/demos/review-surface-basic" title="review-surface — Basic" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/review-surface-basic/">Basic →</a></figcaption>
-          </figure>
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/review-surface-empathy/" url="vanilla-breeze.dev/demos/review-surface-empathy" title="review-surface — Empathy" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/review-surface-empathy/">Empathy →</a></figcaption>
-          </figure>
-        </layout-grid>
-      </section>
-
-      <section data-layout="stack" data-layout-gap="m">
-        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
-          <h3 id="gantt-chart"><code>&lt;gantt-chart&gt;</code></h3>
-          <p>Gantt schedule. <a href="/vb-project-planning/elements/gantt-chart/">View API →</a></p>
-        </header>
-        <layout-grid data-layout-min="25rem">
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/gantt-chart-basic/" url="vanilla-breeze.dev/demos/gantt-chart-basic" title="gantt-chart — Basic" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/gantt-chart-basic/">Basic →</a></figcaption>
-          </figure>
-        </layout-grid>
-      </section>
-
-      <section data-layout="stack" data-layout-gap="m">
-        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
           <h3 id="work-item"><code>&lt;work-item&gt;</code></h3>
           <p>Work-item cards. <a href="/vb-project-planning/elements/work-item/">View API →</a></p>
         </header>
@@ -394,19 +407,6 @@
           <figure data-layout="stack" data-layout-gap="2xs">
             <browser-window src="/vb-project-planning/demos/work-item-basic/" url="vanilla-breeze.dev/demos/work-item-basic" title="work-item — Basic" shadow=""></browser-window>
             <figcaption><a href="/vb-project-planning/demos/work-item-basic/">Basic →</a></figcaption>
-          </figure>
-        </layout-grid>
-      </section>
-
-      <section data-layout="stack" data-layout-gap="m">
-        <header class="group-head" data-layout="stack" data-layout-gap="3xs">
-          <h3 id="adr-wc"><code>&lt;adr-wc&gt;</code></h3>
-          <p>Architecture Decision Record. <a href="/vb-project-planning/elements/adr-wc/">View API →</a></p>
-        </header>
-        <layout-grid data-layout-min="25rem">
-          <figure data-layout="stack" data-layout-gap="2xs">
-            <browser-window src="/vb-project-planning/demos/adr-wc-basic/" url="vanilla-breeze.dev/demos/adr-wc-basic" title="adr-wc — Basic" shadow=""></browser-window>
-            <figcaption><a href="/vb-project-planning/demos/adr-wc-basic/">Basic →</a></figcaption>
           </figure>
         </layout-grid>
       </section>
@@ -441,10 +441,10 @@
     <a href="#" data-back-to-top="" aria-label="Back to top">↑</a>
   </fab-stack>
 
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mq6478qa"></script>
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mq6478qa"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mq6478qa"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mq6478qa"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mq64kn5g"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mq64kn5g"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mq64kn5g"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mq64kn5g"></script>
   
 </body>
 </html>
