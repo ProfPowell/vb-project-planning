@@ -8,10 +8,10 @@
   <script>window.__VB_THEME_BASE="/vb-project-planning/cdn";document.documentElement.dataset.iconPath="/vb-project-planning/cdn/icons";</script>
   <title>product-roadmap — VB Project Planning</title>
   <meta name="description" content="Interactive themes × quarters product roadmap. Auto-discovers lane sections + initiative articles; editable mode wires drag-to-reschedule, drag-to-resize, and drop-on-lane.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mq6x63bn">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mq6x63bn">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mq6x63bn">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mq6x63bn">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mq6yfrc8">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mq6yfrc8">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mq6yfrc8">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mq6yfrc8">
   
 </head>
 <body style="overflow-x: clip;">
@@ -778,10 +778,12 @@
   })();
   </script>
 
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mq6x63bn"></script>
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mq6x63bn"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mq6x63bn"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mq6x63bn"></script>
+  <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
+       components register first; core then supplies the doc chrome. -->
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mq6yfrc8"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mq6yfrc8"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mq6yfrc8"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mq6yfrc8"></script>
   
 </body>
 </html>

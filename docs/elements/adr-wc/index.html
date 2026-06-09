@@ -8,10 +8,10 @@
   <script>window.__VB_THEME_BASE="/vb-project-planning/cdn";document.documentElement.dataset.iconPath="/vb-project-planning/cdn/icons";</script>
   <title>adr-wc — VB Project Planning</title>
   <meta name="description" content="Architectural Decision Record card in MADR format with status badges, slotted title/date content, context/decision/consequences sections, and supersedes chain linking.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mq6x63bn">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mq6x63bn">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mq6x63bn">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mq6x63bn">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mq6yfrc8">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mq6yfrc8">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mq6yfrc8">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mq6yfrc8">
   
 </head>
 <body style="overflow-x: clip;">
@@ -1797,10 +1797,12 @@ adr.data = {
   })();
   </script>
 
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mq6x63bn"></script>
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mq6x63bn"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mq6x63bn"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mq6x63bn"></script>
+  <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
+       components register first; core then supplies the doc chrome. -->
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mq6yfrc8"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mq6yfrc8"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mq6yfrc8"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mq6yfrc8"></script>
   
 </body>
 </html>

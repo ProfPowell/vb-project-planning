@@ -9,10 +9,10 @@
   <script>window.__VB_THEME_BASE="/vb-project-planning/cdn";document.documentElement.dataset.iconPath="/vb-project-planning/cdn/icons";</script>
   <title>Demos — VB Project Planning</title>
   <meta name="description" content="Live, themeable demos of every VB Project Planning component, plus the Atlas sprint board showcase.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mq6x63bn">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mq6x63bn">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mq6x63bn">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mq6x63bn">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mq6yfrc8">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mq6yfrc8">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mq6yfrc8">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mq6yfrc8">
   
 </head>
 <body style="overflow-x: clip;">
@@ -493,10 +493,14 @@
     <a href="#" data-back-to-top="" aria-label="Back to top">↑</a>
   </fab-stack>
 
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mq6x63bn"></script>
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mq6x63bn"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mq6x63bn"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mq6x63bn"></script>
+  <!-- Pack bundle loads BEFORE core: custom-element registration is first-to-define
+       wins (define is permanent), so the pack's own — and newer — planning
+       components must register first. Core (vanilla-breeze.js) then supplies the
+       doc chrome (page-toc, theme-picker, search, …) without re-defining them. -->
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mq6yfrc8"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mq6yfrc8"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mq6yfrc8"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mq6yfrc8"></script>
   
 </body>
 </html>

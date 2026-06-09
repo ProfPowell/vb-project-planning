@@ -32,8 +32,12 @@
     <a href="#" data-back-to-top aria-label="Back to top">&uarr;</a>
   </fab-stack>
 
-  <script type="module" src="/assets/vendor/vanilla-breeze.js"></script>
+  <!-- Pack bundle loads BEFORE core: custom-element registration is first-to-define
+       wins (define is permanent), so the pack's own — and newer — planning
+       components must register first. Core (vanilla-breeze.js) then supplies the
+       doc chrome (page-toc, theme-picker, search, …) without re-defining them. -->
   <script type="module" src="/assets/pack/${site.packJs}"></script>
+  <script type="module" src="/assets/vendor/vanilla-breeze.js"></script>
   <script type="module" src="/assets/vendor/browser-window.js"></script>
   <script type="module" src="/assets/vendor/code-block.js"></script>
   ${slot:extraScripts}

@@ -9,10 +9,10 @@
   <script>window.__VB_THEME_BASE="/vb-project-planning/cdn";document.documentElement.dataset.iconPath="/vb-project-planning/cdn/icons";</script>
   <title>Sprint Board showcase — VB Project Planning</title>
   <meta name="description" content="A full user-story kanban board built with vb-project-planning — drag stories across columns, themed live by Vanilla Breeze.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mq6x63bn">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mq6x63bn">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mq6x63bn">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mq6x63bn">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mq6yfrc8">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mq6yfrc8">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mq6yfrc8">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mq6yfrc8">
   
 </head>
 <body style="overflow-x: clip;">
@@ -93,17 +93,17 @@
   <kanban-board>
     <section data-column="backlog" data-column-label="Backlog">
       <user-story draggable="true" data-id="ATL-340" story-id="ATL-340" epic="Reporting" priority="high" status="backlog" points="5" detail="compact">
-        <span slot="persona">Sarah, Ops Lead</span>
+        <span slot="persona">Ops Lead</span>
         <span slot="action">build custom report templates I can reuse</span>
         <span slot="benefit">my team stops rebuilding the same views every week</span>
       </user-story>
       <user-story draggable="true" data-id="ATL-352" story-id="ATL-352" epic="Notifications" priority="medium" status="backlog" points="3" detail="compact">
-        <span slot="persona">Alex, PM</span>
+        <span slot="persona">Product Manager</span>
         <span slot="action">choose which projects trigger digest emails</span>
         <span slot="benefit">I only hear about the work I own</span>
       </user-story>
       <user-story draggable="true" data-id="ATL-361" story-id="ATL-361" epic="Reporting" priority="low" status="backlog" points="2" detail="compact">
-        <span slot="persona">Jordan, Analyst</span>
+        <span slot="persona">Analyst</span>
         <span slot="action">pin favourite charts to a home view</span>
         <span slot="benefit">my morning check-in takes one click</span>
       </user-story>
@@ -111,12 +111,12 @@
 
     <section data-column="to-do" data-column-label="To Do">
       <user-story draggable="true" data-id="ATL-333" story-id="ATL-333" epic="Reporting" priority="critical" status="to-do" points="8" detail="compact">
-        <span slot="persona">Sarah, Ops Lead</span>
+        <span slot="persona">Ops Lead</span>
         <span slot="action">see all project timelines in one dashboard</span>
         <span slot="benefit">I can spot bottlenecks before they slip</span>
       </user-story>
       <user-story draggable="true" data-id="ATL-345" story-id="ATL-345" epic="Notifications" priority="high" status="to-do" points="5" detail="compact">
-        <span slot="persona">Alex, PM</span>
+        <span slot="persona">Product Manager</span>
         <span slot="action">get a daily digest of status changes</span>
         <span slot="benefit">I skip the morning standup scramble</span>
       </user-story>
@@ -124,12 +124,12 @@
 
     <section data-column="in-progress" data-column-label="In Progress">
       <user-story draggable="true" data-id="ATL-318" story-id="ATL-318" epic="Reporting" priority="high" status="in-progress" points="5" detail="compact">
-        <span slot="persona">Jordan, Analyst</span>
+        <span slot="persona">Analyst</span>
         <span slot="action">filter reports by date range and team</span>
         <span slot="benefit">I answer exec questions without exporting to a spreadsheet</span>
       </user-story>
       <user-story draggable="true" data-id="ATL-327" story-id="ATL-327" epic="Performance" priority="medium" status="in-progress" points="3" detail="compact">
-        <span slot="persona">Priya, Engineer</span>
+        <span slot="persona">Engineer</span>
         <span slot="action">cache the digest query results</span>
         <span slot="benefit">emails go out in seconds, not minutes</span>
       </user-story>
@@ -137,7 +137,7 @@
 
     <section data-column="review" data-column-label="In Review">
       <user-story draggable="true" data-id="ATL-309" story-id="ATL-309" epic="Reporting" priority="medium" status="review" points="2" detail="compact">
-        <span slot="persona">Jordan, Analyst</span>
+        <span slot="persona">Analyst</span>
         <span slot="action">see loading indicators on every async action</span>
         <span slot="benefit">I trust the dashboard isn't frozen</span>
       </user-story>
@@ -145,12 +145,12 @@
 
     <section data-column="done" data-column-label="Done" data-column-color="success">
       <user-story draggable="true" data-id="ATL-298" story-id="ATL-298" epic="Reporting" priority="high" status="done" points="8" detail="compact">
-        <span slot="persona">Sarah, Ops Lead</span>
+        <span slot="persona">Ops Lead</span>
         <span slot="action">export any report as a shareable PDF</span>
         <span slot="benefit">I send board-ready updates without screenshots</span>
       </user-story>
       <user-story draggable="true" data-id="ATL-301" story-id="ATL-301" epic="Performance" priority="medium" status="done" points="3" detail="compact">
-        <span slot="persona">Priya, Engineer</span>
+        <span slot="persona">Engineer</span>
         <span slot="action">paginate the activity feed</span>
         <span slot="benefit">long projects load instantly</span>
       </user-story>
@@ -161,7 +161,7 @@
     <h2>Anatomy of a story</h2>
     <p>The same <code>&lt;user-story&gt;</code> element renders a full card with acceptance criteria and tasks when <code>detail="full"</code>:</p>
     <user-story story-id="ATL-333" epic="Reporting" priority="critical" status="to-do" points="8" detail="full">
-      <span slot="persona">Sarah, Ops Lead</span>
+      <span slot="persona">Ops Lead</span>
       <span slot="action">see all project timelines in one dashboard</span>
       <span slot="benefit">I can spot bottlenecks before they slip</span>
       <ul slot="acceptance-criteria">
@@ -663,13 +663,13 @@
       </div>
       <div class="code-container" role="region" aria-labelledby="code-label" style="">
         
-        <pre><code class="language-html" tabindex="0"><span class="code-line"><span class="hljs-tag">&lt;<span class="hljs-name">kanban-board</span>&gt;</span></span><span class="code-line">  <span class="hljs-tag">&lt;<span class="hljs-name">section</span> <span class="hljs-attr">data-column</span>=<span class="hljs-string">&quot;in-progress&quot;</span> <span class="hljs-attr">data-column-label</span>=<span class="hljs-string">&quot;In Progress&quot;</span>&gt;</span></span><span class="code-line">    <span class="hljs-tag">&lt;<span class="hljs-name">user-story</span> <span class="hljs-attr">draggable</span>=<span class="hljs-string">&quot;true&quot;</span> <span class="hljs-attr">story-id</span>=<span class="hljs-string">&quot;ATL-318&quot;</span> <span class="hljs-attr">epic</span>=<span class="hljs-string">&quot;Reporting&quot;</span></span></span><span class="code-line"><span class="hljs-tag">                <span class="hljs-attr">priority</span>=<span class="hljs-string">&quot;high&quot;</span> <span class="hljs-attr">status</span>=<span class="hljs-string">&quot;in-progress&quot;</span> <span class="hljs-attr">points</span>=<span class="hljs-string">&quot;5&quot;</span> <span class="hljs-attr">detail</span>=<span class="hljs-string">&quot;compact&quot;</span>&gt;</span></span><span class="code-line">      <span class="hljs-tag">&lt;<span class="hljs-name">span</span> <span class="hljs-attr">slot</span>=<span class="hljs-string">&quot;persona&quot;</span>&gt;</span>Jordan, Analyst<span class="hljs-tag">&lt;/<span class="hljs-name">span</span>&gt;</span></span><span class="code-line">      <span class="hljs-tag">&lt;<span class="hljs-name">span</span> <span class="hljs-attr">slot</span>=<span class="hljs-string">&quot;action&quot;</span>&gt;</span>filter reports by date range and team<span class="hljs-tag">&lt;/<span class="hljs-name">span</span>&gt;</span></span><span class="code-line">      <span class="hljs-tag">&lt;<span class="hljs-name">span</span> <span class="hljs-attr">slot</span>=<span class="hljs-string">&quot;benefit&quot;</span>&gt;</span>I answer exec questions fast<span class="hljs-tag">&lt;/<span class="hljs-name">span</span>&gt;</span></span><span class="code-line">    <span class="hljs-tag">&lt;/<span class="hljs-name">user-story</span>&gt;</span></span><span class="code-line">  <span class="hljs-tag">&lt;/<span class="hljs-name">section</span>&gt;</span></span><span class="code-line"><span class="hljs-tag">&lt;/<span class="hljs-name">kanban-board</span>&gt;</span></span></code></pre>
+        <pre><code class="language-html" tabindex="0"><span class="code-line"><span class="hljs-tag">&lt;<span class="hljs-name">kanban-board</span>&gt;</span></span><span class="code-line">  <span class="hljs-tag">&lt;<span class="hljs-name">section</span> <span class="hljs-attr">data-column</span>=<span class="hljs-string">&quot;in-progress&quot;</span> <span class="hljs-attr">data-column-label</span>=<span class="hljs-string">&quot;In Progress&quot;</span>&gt;</span></span><span class="code-line">    <span class="hljs-tag">&lt;<span class="hljs-name">user-story</span> <span class="hljs-attr">draggable</span>=<span class="hljs-string">&quot;true&quot;</span> <span class="hljs-attr">story-id</span>=<span class="hljs-string">&quot;ATL-318&quot;</span> <span class="hljs-attr">epic</span>=<span class="hljs-string">&quot;Reporting&quot;</span></span></span><span class="code-line"><span class="hljs-tag">                <span class="hljs-attr">priority</span>=<span class="hljs-string">&quot;high&quot;</span> <span class="hljs-attr">status</span>=<span class="hljs-string">&quot;in-progress&quot;</span> <span class="hljs-attr">points</span>=<span class="hljs-string">&quot;5&quot;</span> <span class="hljs-attr">detail</span>=<span class="hljs-string">&quot;compact&quot;</span>&gt;</span></span><span class="code-line">      <span class="hljs-tag">&lt;<span class="hljs-name">span</span> <span class="hljs-attr">slot</span>=<span class="hljs-string">&quot;persona&quot;</span>&gt;</span>Analyst<span class="hljs-tag">&lt;/<span class="hljs-name">span</span>&gt;</span></span><span class="code-line">      <span class="hljs-tag">&lt;<span class="hljs-name">span</span> <span class="hljs-attr">slot</span>=<span class="hljs-string">&quot;action&quot;</span>&gt;</span>filter reports by date range and team<span class="hljs-tag">&lt;/<span class="hljs-name">span</span>&gt;</span></span><span class="code-line">      <span class="hljs-tag">&lt;<span class="hljs-name">span</span> <span class="hljs-attr">slot</span>=<span class="hljs-string">&quot;benefit&quot;</span>&gt;</span>I answer exec questions fast<span class="hljs-tag">&lt;/<span class="hljs-name">span</span>&gt;</span></span><span class="code-line">    <span class="hljs-tag">&lt;/<span class="hljs-name">user-story</span>&gt;</span></span><span class="code-line">  <span class="hljs-tag">&lt;/<span class="hljs-name">section</span>&gt;</span></span><span class="code-line"><span class="hljs-tag">&lt;/<span class="hljs-name">kanban-board</span>&gt;</span></span></code></pre>
       </div>
       </template><textarea style="display:none">&lt;kanban-board&gt;
   &lt;section data-column=&quot;in-progress&quot; data-column-label=&quot;In Progress&quot;&gt;
     &lt;user-story draggable=&quot;true&quot; story-id=&quot;ATL-318&quot; epic=&quot;Reporting&quot;
                 priority=&quot;high&quot; status=&quot;in-progress&quot; points=&quot;5&quot; detail=&quot;compact&quot;&gt;
-      &lt;span slot=&quot;persona&quot;&gt;Jordan, Analyst&lt;/span&gt;
+      &lt;span slot=&quot;persona&quot;&gt;Analyst&lt;/span&gt;
       &lt;span slot=&quot;action&quot;&gt;filter reports by date range and team&lt;/span&gt;
       &lt;span slot=&quot;benefit&quot;&gt;I answer exec questions fast&lt;/span&gt;
     &lt;/user-story&gt;
@@ -706,10 +706,14 @@
     <a href="#" data-back-to-top="" aria-label="Back to top">↑</a>
   </fab-stack>
 
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mq6x63bn"></script>
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mq6x63bn"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mq6x63bn"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mq6x63bn"></script>
+  <!-- Pack bundle loads BEFORE core: custom-element registration is first-to-define
+       wins (define is permanent), so the pack's own — and newer — planning
+       components must register first. Core (vanilla-breeze.js) then supplies the
+       doc chrome (page-toc, theme-picker, search, …) without re-defining them. -->
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mq6yfrc8"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mq6yfrc8"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mq6yfrc8"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mq6yfrc8"></script>
   
 </body>
 </html>

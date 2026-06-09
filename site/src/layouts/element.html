@@ -86,8 +86,10 @@
   })();
   </script>
 
-  <script type="module" src="/assets/vendor/vanilla-breeze.js"></script>
+  <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
+       components register first; core then supplies the doc chrome. -->
   <script type="module" src="/assets/pack/${site.packJs}"></script>
+  <script type="module" src="/assets/vendor/vanilla-breeze.js"></script>
   <script type="module" src="/assets/vendor/browser-window.js"></script>
   <script type="module" src="/assets/vendor/code-block.js"></script>
   ${slot:extraScripts}
