@@ -9,10 +9,10 @@
   <script>window.__VB_THEME_BASE="/vb-project-planning/cdn";document.documentElement.dataset.iconPath="/vb-project-planning/cdn/icons";</script>
   <title>Demos — VB Project Planning</title>
   <meta name="description" content="Live, themeable demos of every VB Project Planning component, plus the Atlas sprint board showcase.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mq6yfrc8">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mq6yfrc8">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mq6yfrc8">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mq6yfrc8">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mq8bwz1h">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mq8bwz1h">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mq8bwz1h">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mq8bwz1h">
   
 </head>
 <body style="overflow-x: clip;">
@@ -468,23 +468,25 @@
     </layout-center>
   </main>
 
-  <footer>
-  <layout-center data-layout-max="wide">
-    <div data-layout="cluster" data-layout-justify="between" data-layout-gap="l" style="align-items: flex-start;">
-      <p data-layout="stack" data-layout-gap="3xs" style="margin: 0;">
-        <strong>VB Project Planning</strong>
-        <small>Project- and UX-planning Web Components for Vanilla Breeze.</small>
-      </p>
-      <nav data-layout="cluster" data-layout-gap="m" aria-label="Footer">
-        <a href="/vb-project-planning/elements/">Elements</a>
-        <a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a>
-        <a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a>
-      </nav>
-    </div>
-    <p style="margin-block-start: var(--size-m); color: var(--color-text-muted);">
-      <small>Part of the Vanilla Breeze ecosystem · MIT licensed.</small>
-    </p>
-  </layout-center>
+  <!-- Canonical VB-ecosystem footer — pattern: bg-wc docs/superpowers/specs/2026-06-10-vb-site-footer-pattern-design.md -->
+<footer class="minimal">
+  <a href="/vb-project-planning/">
+    <brand-mark data-stack="">
+      VB Project Planning
+      <em>Project- and UX-planning Web Components for Vanilla Breeze.</em>
+    </brand-mark>
+  </a>
+  <site-legal>
+    <span>© 2026 Thomas A. Powell</span>
+    <span>MIT License</span>
+    <span>Part of the <a href="https://vanilla-breeze.com">Vanilla Breeze</a> ecosystem</span>
+  </site-legal>
+  <nav aria-label="Footer links">
+    <a href="/vb-project-planning/elements/">Elements</a>
+    <a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">
+      <icon-wc name="github" size="sm"></icon-wc> GitHub
+    </a>
+  </nav>
 </footer>
 
 
@@ -497,10 +499,10 @@
        wins (define is permanent), so the pack's own — and newer — planning
        components must register first. Core (vanilla-breeze.js) then supplies the
        doc chrome (page-toc, theme-picker, search, …) without re-defining them. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mq6yfrc8"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mq6yfrc8"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mq6yfrc8"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mq6yfrc8"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mq8bwz1h"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mq8bwz1h"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mq8bwz1h"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mq8bwz1h"></script>
   
 </body>
 </html>
