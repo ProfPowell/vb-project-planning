@@ -1,7 +1,7 @@
 {
   "name": "@profpowell/vb-project-planning",
   "version": "0.1.0",
-  "description": "Project- and UX-planning Web Components for Vanilla Breeze: personas, stories, journeys, empathy maps, impact/effort and quadrant grids, risk and traceability matrices, burndown, roadmap, kanban, story map, gantt, review surface, work items, and ADRs.",
+  "description": "Project- and UX-planning Web Components for Vanilla Breeze: personas, stories, journeys, empathy maps, impact/effort and quadrant grids, risk and traceability matrices, burndown, roadmap, kanban, story map, gantt, review surface, work items, ADRs, iron triangle, capacity plans, quality targets, and requirement cards.",
   "license": "MIT",
   "author": "Patrick Powell",
   "type": "module",
@@ -52,6 +52,10 @@
     "./gantt-chart": "./src/web-components/gantt-chart/logic.js",
     "./work-item": "./src/web-components/work-item/logic.js",
     "./adr-wc": "./src/web-components/adr-wc/logic.js",
+    "./iron-triangle": "./src/web-components/iron-triangle/logic.js",
+    "./capacity-plan": "./src/web-components/capacity-plan/logic.js",
+    "./quality-target": "./src/web-components/quality-target/logic.js",
+    "./requirement-card": "./src/web-components/requirement-card/logic.js",
     "./package.json": "./package.json"
   },
   "scripts": {
