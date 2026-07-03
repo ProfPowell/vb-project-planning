@@ -16,6 +16,14 @@ crumbLabel: Web Components
   <p>It's the answer to "where did my capacity go?" Without it, the chain is implicit; with it, the math is the first thing the team sees on the requirements page.</p>
 
   <browser-window url="capacity-plan-basic" src="/demos/capacity-plan-basic/"></browser-window>
+
+  <code-block language="html" label="Three components, one ledger" data-escape><iron-triangle id="shape"></iron-triangle>
+<quality-target id="quality" data-bind-to="shape"></quality-target>
+
+<capacity-plan data-bind-triangle="shape" data-bind-quality="quality">
+  <work-item data-capacity-cost="3">Bulk import</work-item>
+  <work-item data-capacity-cost="2">API webhooks</work-item>
+</capacity-plan></code-block>
 </section>
 
 <section>
@@ -43,6 +51,31 @@ crumbLabel: Web Components
 <section>
   <h2>Attributes</h2>
   {{ attributeTable("capacity-plan", apiRegistry) }}
+</section>
+
+<section>
+  <h2>Properties &amp; events</h2>
+  <table class="props-table">
+    <thead><tr><th>Member</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>capacityPoints</code> (R)</td><td>Live capacity from the bound triangle (or Infinity if absent).</td></tr>
+      <tr><td><code>qualitySum</code> (R)</td><td>Live critical sum from the bound quality target (or 0).</td></tr>
+      <tr><td><code>featureSum</code> (R/W)</td><td>Sum of <code>data-capacity-cost</code> across descendants, or an explicit number set by the host.</td></tr>
+      <tr><td><code>slack</code> (R)</td><td>Computed: capacity − quality − features.</td></tr>
+      <tr><td><code>capacity-plan:overdrawn</code> (event)</td><td>Edge-triggered when slack crosses zero.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Theme tokens</h2>
+  <table class="props-table">
+    <thead><tr><th>Token</th><th>Default</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>--capacity-plan-max</code></td><td><code>32rem</code></td><td>Max inline-size of the ledger container.</td></tr>
+      <tr><td>Bar colors</td><td>VB theme tokens (<code>--color-text</code>, <code>--color-interactive</code>, <code>--color-success</code>, <code>--color-error</code>)</td><td>Auto-adapt across light/dark and brand themes.</td></tr>
+    </tbody>
+  </table>
 </section>
 
 <section>

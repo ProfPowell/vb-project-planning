@@ -16,6 +16,10 @@ crumbLabel: Web Components
   <p>Pair it with <code>&lt;iron-triangle&gt;</code> via <code>data-bind-to</code> and the envelope reads from project shape. "Quality" is the word the surface uses; the older "NFR" jargon and its separate compass + radar pair collapse into this one component, two roles.</p>
 
   <browser-window url="quality-target-basic" src="/demos/quality-target-basic/"></browser-window>
+
+  <code-block language="html" label="Basic usage" data-escape><iron-triangle id="shape" data-quality-href="#quality"></iron-triangle>
+
+<quality-target id="quality" name="quality" data-bind-to="shape"></quality-target></code-block>
 </section>
 
 <section>
@@ -26,6 +30,15 @@ crumbLabel: Web Components
 <section>
   <h2>Capacity envelope</h2>
   <p>When paired with <code>&lt;iron-triangle&gt;</code> via <code>data-bind-to</code>, the soft green polygon shows the budget envelope: <code>radius × min(1, capacityPoints / sum(costWeights))</code> on each axis. Going outside the envelope is allowed but reveals an inline overrun rationale field below the polygon — the form's <code>checkValidity()</code> returns false until that field is filled. The component fires <code>quality-target:over-budget</code> and <code>quality-target:under-budget</code> as the selection crosses the capacity line.</p>
+
+  <code-block language="javascript" label="Listen for over-budget transitions" data-escape>const target = document.querySelector('quality-target');
+
+target.addEventListener('quality-target:over-budget', (e) =&gt; {
+  console.log(`Over by ${e.detail.delta} pts (${e.detail.criticalSum}/${e.detail.capacityPoints})`);
+});
+target.addEventListener('quality-target:under-budget', (e) =&gt; {
+  console.log(`Back within budget; ${e.detail.slack} pts of slack`);
+});</code-block>
 </section>
 
 <section>
@@ -36,6 +49,28 @@ crumbLabel: Web Components
 <section>
   <h2>Attributes</h2>
   {{ attributeTable("quality-target", apiRegistry) }}
+</section>
+
+<section>
+  <h2>Properties &amp; events</h2>
+  <table class="props-table">
+    <thead><tr><th>Member</th><th>Type</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>vector</code></td><td>R/W <code>Record&lt;ility, level&gt;</code></td><td>Current picks.</td></tr>
+      <tr><td><code>rationales</code></td><td>R/W <code>Record&lt;ility, string&gt;</code></td><td>Per-Critical rationales.</td></tr>
+      <tr><td><code>costWeights</code></td><td>R</td><td>Effective merged weights.</td></tr>
+      <tr><td><code>capacityPoints</code></td><td>R/W</td><td>Resolved capacity (triangle &gt; attribute &gt; property &gt; Infinity).</td></tr>
+      <tr><td><code>criticalSum</code></td><td>R</td><td>Live sum of Critical weights.</td></tr>
+      <tr><td><code>overBudget</code></td><td>R boolean</td><td><code>criticalSum &gt; capacityPoints</code>.</td></tr>
+      <tr><td><code>overrunRationale</code></td><td>R/W string</td><td>Required when over-budget.</td></tr>
+      <tr><td><code>ilities</code></td><td>R/W string[]</td><td>Override the default 11.</td></tr>
+      <tr><td><code>openEditor(ility)</code></td><td>method</td><td>Imperatively open one axis's dialog.</td></tr>
+      <tr><td><code>checkValidity()</code></td><td>method</td><td>Validate vector + over-budget rationale; sets <code>:state(missing-rationale)</code>.</td></tr>
+      <tr><td><code>quality-target:change</code></td><td>event</td><td>Any pick or rationale change.</td></tr>
+      <tr><td><code>quality-target:over-budget</code></td><td>event</td><td>Selection just crossed into over-budget.</td></tr>
+      <tr><td><code>quality-target:under-budget</code></td><td>event</td><td>Selection just returned within budget.</td></tr>
+    </tbody>
+  </table>
 </section>
 
 <section>

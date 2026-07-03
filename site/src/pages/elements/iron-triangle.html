@@ -16,11 +16,34 @@ crumbLabel: Web Components
   <p>The author writes a single empty element. The component generates the SVG and the per-vertex dialogs from a fixed schema; inputs inside the dialogs use VB primitives (<code>&lt;form-field&gt;</code>, <code>&lt;fieldset&gt;</code>, <code>data-layout</code>). The component is form-associated; <code>capacityPoints</code> plus the full T/C/S snapshot serialize as JSON for a containing <code>&lt;form&gt;</code>.</p>
 
   <browser-window url="iron-triangle-basic" src="/demos/iron-triangle-basic/"></browser-window>
+
+  <code-block language="html" label="Basic usage" data-escape><!-- One element. The component generates everything else. -->
+<iron-triangle
+  name="triangle"
+  data-focus-factor="0.6"
+  data-quality-href="/requirements"
+  data-quality-summary="3 critical: perf, sec, a11y"></iron-triangle></code-block>
 </section>
 
 <section>
   <h2>The triangle deforms with project shape</h2>
   <p>Each vertex sits on an equilateral baseline ray and stretches outward by a factor in <code>[0.55, 1.45]</code> derived from that constraint's magnitude relative to the other two (time = total weeks, cost = FTE × hours/week, scope = weighted feature counts). A balanced project stays close to equilateral; a long-deadline project pushes Scope up; a tiny team pulls Cost toward the centroid. The capacity number anchors at the centroid, so the integer never moves when the shape changes.</p>
+</section>
+
+<section>
+  <h2>Per-vertex editors</h2>
+  <p>Click a vertex to open its dialog. Each editor is built from VB <code>&lt;form-field&gt;</code> rows — labels above controls, native validation, no inline width hacks. The dialog's <code>method="dialog"</code> means submitting closes it automatically.</p>
+
+  <table class="props-table">
+    <thead><tr><th>Vertex</th><th>Inputs</th><th>Drives capacity?</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Scope</strong></td><td>must-have count, should-have count, notes</td><td>no — informational</td></tr>
+      <tr><td><strong>Time</strong></td><td>sprint length, number of sprints, hours/week, deadline</td><td>yes (sprintWeeks × sprintCount)</td></tr>
+      <tr><td><strong>Cost</strong></td><td>team FTE, budget tier, contractor budget</td><td>yes (teamFTE drives the formula)</td></tr>
+    </tbody>
+  </table>
+
+  <p>The cost dialog mixes inputs that drive the formula (team FTE) with inputs that record the shape but don't (budget tier, contractor budget). The latter are metadata — they answer "why does the team look this way?" without polluting the math.</p>
 </section>
 
 <section>
@@ -39,8 +62,141 @@ crumbLabel: Web Components
 </section>
 
 <section>
+  <h2>Drift detection</h2>
+  <p>Every change recomputes a stable FNV-1a hash of the T/C/S object — exposed via <code>.hash</code> and emitted in <code>iron-triangle:change</code>. Downstream consumers (notably <code>&lt;quality-target&gt;</code>) stamp this hash into their saved vector so a CI guard can detect when a quality vector was decided against a since-changed project shape.</p>
+
+  <code-block language="javascript" label="Wire iron-triangle to quality-target" data-escape>const triangle = document.getElementById('project-shape');
+const compass  = document.getElementById('priorities');
+
+// Push the initial capacity
+compass.capacityPoints = triangle.capacityPoints;
+compass.dataset.ironTriangleHash = triangle.hash;
+
+// And on every revision
+triangle.addEventListener('iron-triangle:change', (e) =&gt; {
+  compass.capacityPoints = e.detail.capacityPoints;
+  compass.dataset.ironTriangleHash = e.detail.hash;
+});</code-block>
+
+  <p>If you'd rather not wire it manually, point the compass at the triangle by id and the binding happens for you:</p>
+
+  <code-block language="html" label="Implicit binding via data-bind-to" data-escape><iron-triangle id="shape"></iron-triangle>
+<quality-target data-bind-to="shape"></quality-target></code-block>
+</section>
+
+<section>
+  <h2>Revisions with reasons</h2>
+  <p>Edits made via the <code>revise()</code> method append to <code>revisionLog</code> and emit <code>iron-triangle:revise</code>. The reason is required (≥ 10 characters) so the constraint surface accumulates institutional memory rather than vanishing into Slack threads.</p>
+
+  <code-block language="javascript" label="Programmatic revision" data-escape>triangle.revise('cost.teamFTE', 2,
+  'Hired a backend contractor for sprints 3–5; doubles capacity.');
+// Updates the input + value, appends to revisionLog,
+// emits iron-triangle:revise. Reason must be >= 10 chars.</code-block>
+</section>
+
+<section>
   <h2>Attributes</h2>
   {{ attributeTable("iron-triangle", apiRegistry) }}
+</section>
+
+<section>
+  <h2>Slots</h2>
+  <table class="props-table">
+    <thead>
+      <tr><th>Slot</th><th>Purpose</th><th>Required</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>title</code></td>            <td>Heading text shown above the form</td>      <td>no (defaults to "Iron Triangle")</td></tr>
+      <tr><td><code>time-controls</code></td>    <td>Override the default Time inputs</td>       <td>no</td></tr>
+      <tr><td><code>cost-controls</code></td>    <td>Override the default Cost inputs</td>       <td>no</td></tr>
+      <tr><td><code>scope-controls</code></td>   <td>Override the default Scope inputs</td>      <td>no</td></tr>
+      <tr><td><code>capacity-readout</code></td> <td>Override the readout block (advanced)</td>  <td>no</td></tr>
+      <tr><td><code>footer</code></td>           <td>Save / Submit button area</td>              <td>no</td></tr>
+    </tbody>
+  </table>
+  <p>Per VB convention, <strong>content lives in slots and state lives in attributes</strong>. The default-slot fieldsets named <code>time</code>, <code>cost</code>, <code>scope</code>, and <code>capacity</code> are the markup contract — you can hand-author them (as in the static fallback) or let the component inject sensible defaults if absent.</p>
+</section>
+
+<section>
+  <h2>Events</h2>
+  <table class="props-table">
+    <thead>
+      <tr><th>Event</th><th>Detail</th><th>When</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>iron-triangle:change</code></td>
+        <td><code>{ time, cost, scope, capacityPoints, capacitySource, hash, source }</code></td>
+        <td>Any input or property change. <code>source</code> is <code>'pointer'</code>, <code>'keyboard'</code>, or <code>'api'</code>.</td>
+      </tr>
+      <tr>
+        <td><code>iron-triangle:revise</code></td>
+        <td><code>{ field, from, to, reason }</code></td>
+        <td>A revision is committed via <code>revise()</code>.</td>
+      </tr>
+      <tr>
+        <td><code>iron-triangle:mode</code></td>
+        <td><code>{ from, to }</code></td>
+        <td>Capacity source flips between <code>'formula'</code> and <code>'manual'</code>.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Internal state hooks</h2>
+  <p>Iron-triangle exposes <a href="https://developer.mozilla.org/docs/Web/API/CustomStateSet">CustomStateSet</a> entries for CSS targeting via <code>:state()</code>.</p>
+  <table class="props-table">
+    <thead><tr><th>State</th><th>When</th></tr></thead>
+    <tbody>
+      <tr><td><code>:state(formula)</code></td>       <td>Capacity source is the formula (default).</td></tr>
+      <tr><td><code>:state(manual)</code></td>        <td>Capacity source is a manual integer.</td></tr>
+      <tr><td><code>:state(over-deadline)</code></td> <td>The Time-fieldset deadline date is in the past (passive warning).</td></tr>
+      <tr><td><code>:state(unbudgeted)</code></td>    <td>Computed <code>capacityPoints &lt; data-min-capacity</code>.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>JavaScript API</h2>
+  <table class="props-table">
+    <thead><tr><th>Property / Method</th><th>Type</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>.time</code></td>            <td><code>{ sprintWeeks, sprintCount, hoursPerWeek, deadline }</code></td> <td>Get / set the Time corner.</td></tr>
+      <tr><td><code>.cost</code></td>            <td><code>{ teamFTE, budgetTier, contractorBudget }</code></td>             <td>Get / set the Cost corner.</td></tr>
+      <tr><td><code>.scope</code></td>           <td><code>{ mustHaveCount, shouldHaveCount, scopeNotes }</code></td>        <td>Get / set the Scope corner.</td></tr>
+      <tr><td><code>.capacityPoints</code></td>  <td>integer</td>                                                              <td>Current budget. Read-only when <code>capacitySource === 'formula'</code>; writable in manual mode.</td></tr>
+      <tr><td><code>.capacitySource</code></td>  <td><code>'formula' \| 'manual'</code></td>                                  <td>Which mode produced the saved number.</td></tr>
+      <tr><td><code>.hash</code></td>            <td>string (readonly)</td>                                                   <td>FNV-1a of the T/C/S object — for drift detection.</td></tr>
+      <tr><td><code>.revisionLog</code></td>     <td>array (readonly)</td>                                                    <td>Append-only edit history.</td></tr>
+      <tr><td><code>.value</code></td>           <td>object (readonly)</td>                                                   <td>Full snapshot for serialization.</td></tr>
+      <tr><td><code>.revise(field, newValue, reason)</code></td> <td>method</td>                                              <td>Programmatic edit; throws if <code>reason.length &lt; 10</code>.</td></tr>
+      <tr><td><code>.setManual(integer)</code></td>              <td>method</td>                                              <td>Switch to manual mode and set <code>capacityPoints</code>.</td></tr>
+      <tr><td><code>.setFormula(formulaString?)</code></td>      <td>method</td>                                              <td>Switch back to formula mode (default formula or custom).</td></tr>
+      <tr><td><code>.recalc()</code></td>                        <td>method</td>                                              <td>Force capacity recomputation (rarely needed).</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>CSS Tokens</h2>
+  <table class="props-table">
+    <thead><tr><th>Token</th><th>Default</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>--iron-triangle-padding</code></td>        <td><code>var(--size-l)</code></td>            <td>Outer padding</td></tr>
+      <tr><td><code>--iron-triangle-section-gap</code></td>    <td><code>var(--size-l)</code></td>            <td>Vertical gap between Time / Cost / Scope</td></tr>
+      <tr><td><code>--iron-triangle-input-min</code></td>      <td><code>8rem</code></td>                     <td>Min width per numeric input</td></tr>
+      <tr><td><code>--iron-triangle-readout-bg</code></td>     <td><code>var(--color-surface-raised)</code></td><td>Capacity readout background</td></tr>
+      <tr><td><code>--iron-triangle-readout-size</code></td>   <td><code>var(--font-size-3xl)</code></td>     <td>Capacity number font size</td></tr>
+      <tr><td><code>--iron-triangle-formula-color</code></td>  <td><code>var(--color-text-muted)</code></td>  <td>Formula explanation text</td></tr>
+      <tr><td><code>--iron-triangle-warning-color</code></td>  <td><code>var(--color-warning)</code></td>     <td>Over-deadline / unbudgeted warning</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Static fallback</h2>
+  <p>Without JavaScript, the form still works — three <code>&lt;fieldset&gt;</code>s of native inputs that submit raw T/C/S values to the form's <code>action</code>. The server can persist the values and even compute capacity. The component just adds the live readout, formula visualization, and revision-tracking machinery on upgrade.</p>
 </section>
 
 <section>

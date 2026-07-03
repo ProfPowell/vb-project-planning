@@ -62,7 +62,8 @@
     "build": "npm run build:js && npm run build:css",
     "build:js": "esbuild src/index.js --bundle --format=esm --outfile=dist/vb-project-planning.js && esbuild src/index.js --bundle --format=esm --minify --outfile=dist/vb-project-planning.min.js",
     "build:css": "esbuild src/index.css --bundle --outfile=dist/vb-project-planning.css && esbuild src/index.css --bundle --minify --outfile=dist/vb-project-planning.min.css",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test:components": "playwright test"
   },
   "peerDependencies": {
     "vanilla-breeze": ">=0.1.0"
@@ -73,6 +74,7 @@
     }
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "esbuild": "^0.27.0"
   }
 }
