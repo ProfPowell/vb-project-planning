@@ -654,8 +654,16 @@ class GanttChart extends VBElement {
     if (!depsExist) return null;
 
     const ns = 'http://www.w3.org/2000/svg';
+    const rowHeight = 36; // default --gc-row-height
+    const rowCount = barsPanel.querySelectorAll('.gc-bar-row').length;
     const svg = document.createElementNS(ns, 'svg');
     svg.setAttribute('class', 'gc-deps');
+    // x is a percentage (0–100, matching the bars' CSS `left: N%`) and y is in
+    // pixels. A non-uniform viewBox maps both, so the path `d` can use plain
+    // numbers — SVG path data does not accept `%` units. non-scaling-stroke
+    // (below) keeps the line/arrowhead uniform despite the x-axis stretch.
+    svg.setAttribute('viewBox', `0 0 100 ${rowCount * rowHeight}`);
+    svg.setAttribute('preserveAspectRatio', 'none');
     svg.style.width = '100%';
     svg.style.height = '100%';
 
@@ -688,14 +696,14 @@ class GanttChart extends VBElement {
         const targetIdx = this.#getVisualRowIndex(task.id, barsPanel);
         if (sourceIdx === -1 || targetIdx === -1) continue;
 
-        const rowHeight = 36; // default --gc-row-height
         const sourceY = sourceIdx * rowHeight + rowHeight / 2;
         const targetY = targetIdx * rowHeight + rowHeight / 2;
 
         const path = document.createElementNS(ns, 'path');
         const midX = sourceRight + (targetLeft - sourceRight) / 2;
-        path.setAttribute('d', `M ${sourceRight}% ${sourceY} C ${midX}% ${sourceY}, ${midX}% ${targetY}, ${targetLeft}% ${targetY}`);
+        path.setAttribute('d', `M ${sourceRight} ${sourceY} C ${midX} ${sourceY}, ${midX} ${targetY}, ${targetLeft} ${targetY}`);
         path.setAttribute('class', 'gc-dep-line');
+        path.setAttribute('vector-effect', 'non-scaling-stroke');
         svg.appendChild(path);
       }
     }

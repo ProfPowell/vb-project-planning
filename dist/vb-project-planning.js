@@ -7706,8 +7706,12 @@ var GanttChart = class _GanttChart extends VBElement {
     const depsExist = this.#tasks.some((t) => t.depends.length > 0);
     if (!depsExist) return null;
     const ns = "http://www.w3.org/2000/svg";
+    const rowHeight = 36;
+    const rowCount = barsPanel.querySelectorAll(".gc-bar-row").length;
     const svg = document.createElementNS(ns, "svg");
     svg.setAttribute("class", "gc-deps");
+    svg.setAttribute("viewBox", `0 0 100 ${rowCount * rowHeight}`);
+    svg.setAttribute("preserveAspectRatio", "none");
     svg.style.width = "100%";
     svg.style.height = "100%";
     const defs = document.createElementNS(ns, "defs");
@@ -7733,13 +7737,13 @@ var GanttChart = class _GanttChart extends VBElement {
         const sourceIdx = this.#getVisualRowIndex(source.id, barsPanel);
         const targetIdx = this.#getVisualRowIndex(task.id, barsPanel);
         if (sourceIdx === -1 || targetIdx === -1) continue;
-        const rowHeight = 36;
         const sourceY = sourceIdx * rowHeight + rowHeight / 2;
         const targetY = targetIdx * rowHeight + rowHeight / 2;
         const path = document.createElementNS(ns, "path");
         const midX = sourceRight + (targetLeft - sourceRight) / 2;
-        path.setAttribute("d", `M ${sourceRight}% ${sourceY} C ${midX}% ${sourceY}, ${midX}% ${targetY}, ${targetLeft}% ${targetY}`);
+        path.setAttribute("d", `M ${sourceRight} ${sourceY} C ${midX} ${sourceY}, ${midX} ${targetY}, ${targetLeft} ${targetY}`);
         path.setAttribute("class", "gc-dep-line");
+        path.setAttribute("vector-effect", "non-scaling-stroke");
         svg.appendChild(path);
       }
     }

@@ -63,4 +63,30 @@ test.describe('gantt-chart — data API', () => {
     expect(result.taskNames).toEqual(['Spike', 'Build', 'Release']);
     expect(result.renderedSomething).toBe(true);
   });
+
+  // Regression: dependency arrows were emitting SVG path `d` coordinates with a
+  // `%` unit (invalid — path data is unitless), so no arrow rendered. They now
+  // map percentage-x / pixel-y through a non-uniform viewBox with plain numbers.
+  test('draws valid dependency-arrow paths (no % units in path data)', async ({ page }) => {
+    await page.goto(demoPage);
+    await page.waitForSelector('gantt-chart[data-upgraded]');
+
+    const arrows = await page.evaluate(() => {
+      const svg = document.querySelector('gantt-chart svg.gc-deps');
+      const paths = [...(svg?.querySelectorAll('path.gc-dep-line') || [])];
+      let valid = 0;
+      for (const p of paths) { try { if (p.getTotalLength() > 0) valid++; } catch { /* invalid path */ } }
+      return {
+        viewBox: svg?.getAttribute('viewBox') ?? null,
+        count: paths.length,
+        withPercent: paths.filter((p) => (p.getAttribute('d') || '').includes('%')).length,
+        geometricallyValid: valid,
+      };
+    });
+
+    expect(arrows.count).toBeGreaterThan(0);          // the demo has dependencies
+    expect(arrows.withPercent).toBe(0);               // no `%` in any path `d`
+    expect(arrows.geometricallyValid).toBe(arrows.count); // every path is a real curve
+    expect(arrows.viewBox).toMatch(/^0 0 100 \d+$/);  // non-uniform viewBox in place
+  });
 });
