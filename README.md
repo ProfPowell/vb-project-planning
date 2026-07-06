@@ -2,6 +2,8 @@
 
 Project- and UX-planning Web Components for the research, planning, and delivery phases of software projects. These are specialized components you might use in a home spun SWE dashboard or planning system.  They can be used individually or together and are related with [Vanilla Breeze](https://github.com/ProfPowell/vanilla-breeze) and work well with that package's **design tokens** (CSS custom properties), but carry their own logic.
 
+**Docs & live demos:** <https://profpowell.github.io/vb-project-planning/>
+
 ## Component Inventory
 
 | Tag | Purpose |
