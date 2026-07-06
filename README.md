@@ -35,7 +35,7 @@ Project- and UX-planning Web Components for the research, planning, and delivery
 npm install @profpowell/vb-project-planning
 ```
 
-Or load from a CDN (after publish):
+Or load from a CDN:
 
 ```html
 <script type="module" src="https://unpkg.com/@profpowell/vb-project-planning/dist/vb-project-planning.min.js"></script>
