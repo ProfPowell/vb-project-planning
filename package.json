@@ -63,10 +63,11 @@
     "build:js": "esbuild src/index.js --bundle --format=esm --outfile=dist/vb-project-planning.js && esbuild src/index.js --bundle --format=esm --minify --outfile=dist/vb-project-planning.min.js",
     "build:css": "esbuild src/index.css --bundle --outfile=dist/vb-project-planning.css && esbuild src/index.css --bundle --minify --outfile=dist/vb-project-planning.min.css",
     "prepublishOnly": "npm run build",
-    "test:components": "playwright test"
+    "test:components": "playwright test",
+    "test": "playwright test"
   },
   "peerDependencies": {
-    "vanilla-breeze": ">=0.1.0"
+    "vanilla-breeze": ">=0.3.0"
   },
   "peerDependenciesMeta": {
     "vanilla-breeze": {
