@@ -1,0 +1,60 @@
+name: Publish docs
+
+# GitHub Pages serves the committed docs/ folder (deploy-from-branch). This
+# rebuilds the CookSSG site and commits the result back to main whenever the
+# site sources or the pack bundle change. Commits made with GITHUB_TOKEN do
+# not re-trigger workflows, so this cannot loop.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'dist/**'
+      - 'pagefind.yml'
+      - '.github/workflows/publish-docs.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: publish-docs
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - run: npm ci
+        working-directory: site
+
+      - name: Build site
+        run: npm run build
+        working-directory: site
+
+      - name: Publish into docs/ (+ pagefind index)
+        run: node site/scripts/publish-docs.js /vb-project-planning
+
+      - name: Commit docs/
+        run: |
+          git add -A docs
+          if git diff --cached --quiet; then
+            echo "docs/ unchanged; nothing to publish."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "docs: publish site build (${GITHUB_SHA::7})"
+          git push origin HEAD:main

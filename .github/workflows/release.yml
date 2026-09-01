@@ -1,0 +1,66 @@
+name: Release
+
+# Publish to npm when a version tag is pushed:
+#   npm version minor            # bumps package.json + creates tag vX.Y.Z
+#   git push --follow-tags
+# Requires an NPM_TOKEN repository secret (automation token) — or switch the
+# publish step to npm trusted publishing and drop the token.
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write   # create the GitHub release
+  id-token: write   # npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: npm
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Tag matches package.json version
+        run: |
+          PKG="v$(node -p "require('./package.json').version")"
+          if [ "$PKG" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $PKG"
+            exit 1
+          fi
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: Component tests
+        run: npx playwright test
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v v="$VERSION" '
+            /^## \[/ { inblock = index($0, "[" v "]") > 0; next }
+            inblock { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "No CHANGELOG section for $VERSION; using tag name." > release-notes.md
+          fi
+
+      - name: Create GitHub release
+        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}

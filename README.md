@@ -84,9 +84,28 @@ This package was decomposed out of `vanilla-breeze` core so that framework stays
 
 ```bash
 npm run build   # bundle dist/ (esm + minified, js + css) via esbuild
+npm test        # Playwright component specs (serves the built docs/ on :4331)
 ```
 
-Note the demo site depends on `vanilla-breeze` for tokens/themes and the `<drag-surface>` peer, and import this package directly.
+`dist/` is committed: it is what the npm tarball ships and what the docs site vendors. CI fails if `src/` changes without a rebuilt `dist/`.
+
+The docs site lives in `site/` (CookSSG, styled by Vanilla Breeze) and depends on `vanilla-breeze` for tokens/themes and the `<drag-surface>` peer. It imports this package's `dist/` directly.
+
+```bash
+cd site && npm ci && npm run dev                  # local preview
+cd site && npm run build && node scripts/publish-docs.js /vb-project-planning   # regenerate docs/
+```
+
+GitHub Pages serves the committed `docs/` folder. The **Publish docs** workflow regenerates and commits it automatically when `site/` or `dist/` change on `main`.
+
+### Releasing
+
+```bash
+npm version minor        # bumps package.json and tags vX.Y.Z
+git push --follow-tags
+```
+
+The **Release** workflow builds, runs the tests, publishes to npm with provenance, and creates a GitHub release from the matching `CHANGELOG.md` section. It needs an `NPM_TOKEN` repository secret.
 
 ## License
 
