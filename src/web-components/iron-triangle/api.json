@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/api.schema.json",
   "element": "iron-triangle",
   "type": "web-component",
-  "description": "Triangle-as-UI project-shape constraint surface. Three vertex hit-targets (Scope/Time/Cost) open native <dialog> editors; the center 'Quality' target fires iron-triangle:open-quality with a data-quality-href fallback. Computes capacityPoints from sprintWeeks × sprintCount × teamFTE × focusFactor. Form-associated.",
+  "description": "Triangle-as-UI project-shape constraint surface. Three vertex hit-targets (Scope/Time/Cost) open native <dialog> editors; the center 'Quality' target fires iron-triangle:open-quality with a data-quality-href fallback. Computes capacityPoints from sprintWeeks × sprintCount × teamFTE × focusFactor. Form-associated. Renders a status strip below the SVG: a visually-hidden <output aria-live=polite> capacity readout, a <button aria-pressed> formula/manual switch that opens a manual-capacity dialog, and a visible 'Deadline has passed' warning.",
   "htmlvalidate": {
     "flow": true,
     "permittedContent": ["@flow"]

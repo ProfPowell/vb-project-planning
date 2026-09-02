@@ -16,6 +16,14 @@
  * markup needed in the host page. The component is form-associated;
  * the value serializes as JSON via setFormValue().
  *
+ * Accessibility hooks (rendered below the SVG in `.iron-triangle-status`):
+ *   - an `<output aria-live="polite">` capacity readout (visually hidden)
+ *     that announces capacity, mode, and any deadline warning;
+ *   - the formula / manual switch as a real `<button aria-pressed>` that
+ *     opens a manual-capacity dialog;
+ *   - a visible "Deadline has passed" warning so the over-deadline state
+ *     is never colour-only.
+ *
  * Optional: pass a `data-quality-summary` attribute or set the
  * `qualitySummary` property to surface the bound NFR compass's
  * decision on hover (e.g. "3 critical: perf, sec, a11y").
@@ -88,6 +96,12 @@ class IronTriangle extends VBElement {
   #qualitySummary = '';
   /** @type {Record<string, HTMLDialogElement>} */
   #dialogs = {};
+  /** @type {HTMLOutputElement | null} */
+  #readout = null;
+  /** @type {HTMLButtonElement | null} */
+  #modeButton = null;
+  /** @type {HTMLElement | null} */
+  #deadlineWarning = null;
 
   constructor() {
     super();
@@ -100,7 +114,9 @@ class IronTriangle extends VBElement {
     this.#qualitySummary = this.getAttribute('data-quality-summary') || '';
     // Seed initial value from FIELD_DEFS so the formula has something to chew on.
     this.#seedDefaults();
+    this.#renderStatus();
     this.#renderViz();
+    this.#syncStatus();
 
     this.listen(this, 'click', (e) => this.#onClick(e));
     this.listen(this, 'keydown', (e) => this.#onKeydown(e));
@@ -363,6 +379,7 @@ class IronTriangle extends VBElement {
 
     this.#renderViz();
     this.#syncStateFlags();
+    this.#syncStatus();
     this.#publishFormValue();
 
     this.dispatchEvent(new CustomEvent('iron-triangle:change', {
@@ -407,9 +424,149 @@ class IronTriangle extends VBElement {
 
   #syncDisabledLocked() {
     const off = this.hasAttribute('disabled') || this.hasAttribute('locked');
+    if (this.#modeButton) this.#modeButton.disabled = off;
     for (const dialog of Object.values(this.#dialogs)) {
       for (const el of dialog.querySelectorAll('input, select, textarea, button')) /** @type {any} */ (el).disabled = off;
     }
+  }
+
+  // ── Internal: status strip (a11y hooks) ──────────────────────────
+
+  /**
+   * Builds the status strip once: live readout, mode toggle, deadline
+   * warning. Content is refreshed by #syncStatus() on every recompute.
+   */
+  #renderStatus() {
+    if (this.querySelector(':scope > .iron-triangle-status')) return;
+    const strip = document.createElement('div');
+    strip.className = 'iron-triangle-status';
+
+    const readout = document.createElement('output');
+    readout.className = 'iron-triangle-readout';
+    readout.setAttribute('aria-live', 'polite');
+    readout.setAttribute('aria-atomic', 'true');
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'iron-triangle-mode';
+    button.setAttribute('aria-pressed', 'false');
+    button.textContent = 'Manual capacity';
+    button.addEventListener('click', () => this.#openCapacityDialog());
+
+    const warning = document.createElement('p');
+    warning.className = 'iron-triangle-warning';
+    warning.setAttribute('data-warning', 'over-deadline');
+    warning.hidden = true;
+
+    strip.append(readout, button, warning);
+    const svg = this.querySelector(':scope > svg');
+    if (svg) svg.after(strip);
+    else this.prepend(strip);
+
+    this.#readout = readout;
+    this.#modeButton = button;
+    this.#deadlineWarning = warning;
+    this.#syncDisabledLocked();
+  }
+
+  #syncStatus() {
+    if (!this.#readout) return;
+    const { capacityPoints, capacitySource } = this.#value;
+    const manual = capacitySource === 'manual';
+    const deadline = this.#value.time?.deadline;
+    const overDeadline = this.matches(':state(over-deadline)');
+
+    const parts = [];
+    parts.push(capacityPoints > 0
+      ? `Capacity: ${capacityPoints} points (${manual ? 'manual' : 'formula'}).`
+      : 'Capacity: not yet budgeted.');
+    if (overDeadline) parts.push(`Deadline has passed (${deadline}).`);
+    const text = parts.join(' ');
+    if (this.#readout.textContent !== text) this.#readout.textContent = text;
+
+    if (this.#modeButton) {
+      this.#modeButton.setAttribute('aria-pressed', manual ? 'true' : 'false');
+      this.#modeButton.setAttribute('aria-label',
+        manual ? `Manual capacity: ${capacityPoints} points. Activate to edit or return to the formula.`
+               : 'Manual capacity. Activate to override the formula with a fixed number.');
+    }
+    if (this.#deadlineWarning) {
+      this.#deadlineWarning.textContent = overDeadline ? `Deadline has passed (${deadline})` : '';
+      this.#deadlineWarning.hidden = !overDeadline;
+    }
+  }
+
+  #openCapacityDialog() {
+    const dialog = this.#ensureCapacityDialog();
+    const input = /** @type {HTMLInputElement} */ (dialog.querySelector('[name="capacity.points"]'));
+    input.value = String(this.#value.capacityPoints > 0 ? this.#value.capacityPoints : 1);
+    const useFormula = /** @type {HTMLButtonElement} */ (dialog.querySelector('button[value="formula"]'));
+    useFormula.hidden = this.#value.capacitySource !== 'manual';
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+  }
+
+  #ensureCapacityDialog() {
+    if (this.#dialogs.capacity) return this.#dialogs.capacity;
+    const dialog = document.createElement('dialog');
+    dialog.className = 'iron-triangle-dialog iron-triangle-dialog--capacity';
+    dialog.setAttribute('aria-label', 'Capacity — manual override');
+
+    const form = document.createElement('form');
+    form.method = 'dialog';
+    form.setAttribute('data-layout', 'stack');
+    form.setAttribute('data-layout-gap', 'm');
+
+    const heading = document.createElement('h3');
+    heading.textContent = 'Manual capacity';
+    form.append(heading);
+
+    const hint = document.createElement('p');
+    hint.className = 'iron-triangle-dialog__hint';
+    hint.textContent = 'Fix the capacity to a number the team committed to. The Time / Cost / Scope inputs stay saved but stop driving the readout.';
+    form.append(hint);
+
+    form.append(buildFormField('capacity', {
+      key: 'points', label: 'Capacity (points)', type: 'number', min: 1, step: 1, width: '6rem',
+    }, this.#value.capacityPoints));
+
+    const actions = document.createElement('div');
+    actions.setAttribute('data-layout', 'cluster');
+    actions.setAttribute('data-layout-gap', 's');
+    actions.setAttribute('data-layout-justify', 'end');
+    const useFormula = document.createElement('button');
+    useFormula.type = 'button';
+    useFormula.value = 'formula';
+    useFormula.textContent = 'Use formula';
+    useFormula.addEventListener('click', () => {
+      dialog.close('formula');
+      this.setFormula();
+    });
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.value = 'cancel';
+    cancel.textContent = 'Cancel';
+    cancel.addEventListener('click', () => dialog.close('cancel'));
+    const save = document.createElement('button');
+    save.type = 'submit';
+    save.value = 'save';
+    save.textContent = 'Save';
+    actions.append(useFormula, cancel, save);
+    form.append(actions);
+
+    dialog.append(form);
+    this.append(dialog);
+    this.#dialogs.capacity = dialog;
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = /** @type {HTMLInputElement} */ (form.querySelector('[name="capacity.points"]'));
+      const n = Number(input.value);
+      dialog.close('save');
+      if (Number.isFinite(n) && n > 0) this.setManual(n);
+    });
+
+    return dialog;
   }
 
   // ── Internal: revise() field accessors ───────────────────────────

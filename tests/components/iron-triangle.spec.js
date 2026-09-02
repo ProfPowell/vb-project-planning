@@ -320,4 +320,105 @@ test.describe('iron-triangle', () => {
     // Still on the demo page — the href fallback was suppressed.
     expect(page.url()).toContain('demos/iron-triangle-basic/');
   });
+
+  // ── Accessibility hooks ──────────────────────────────────────────
+
+  test('capacity readout is a polite live <output> that tracks capacity and mode', async ({ page }) => {
+    await gotoUpgraded(page);
+
+    const result = await page.evaluate(() => {
+      const tri = document.querySelector('iron-triangle');
+      const out = tri.querySelector(':scope > .iron-triangle-status output[aria-live="polite"]');
+      const initial = out?.textContent.trim();
+      tri.setManual(20);
+      const manual = out?.textContent.trim();
+      tri.setFormula();
+      const formula = out?.textContent.trim();
+      return { present: !!out, initial, manual, formula };
+    });
+
+    expect(result.present).toBe(true);
+    expect(result.initial).toMatch(/4 points/);
+    expect(result.initial).toMatch(/formula/);
+    expect(result.manual).toMatch(/20 points/);
+    expect(result.manual).toMatch(/manual/);
+    expect(result.formula).toMatch(/4 points/);
+  });
+
+  test('over-deadline shows the literal "Deadline has passed" warning text, not just a colour', async ({ page }) => {
+    await gotoUpgraded(page);
+
+    const warning = page.locator('iron-triangle > .iron-triangle-status [data-warning="over-deadline"]');
+    await expect(warning).toBeHidden();
+
+    await page.evaluate(() => {
+      const tri = document.querySelector('iron-triangle');
+      tri.value = { time: { sprintWeeks: 2, sprintCount: 3, deadline: '2000-01-01' } };
+    });
+    await expect(warning).toBeVisible();
+    await expect(warning).toContainText('Deadline has passed');
+    await expect(warning).toContainText('2000-01-01');
+    // The live region announces it too.
+    await expect(page.locator('iron-triangle output[aria-live="polite"]')).toContainText('Deadline has passed');
+
+    await page.evaluate(() => {
+      document.querySelector('iron-triangle').value = { time: { sprintWeeks: 2, sprintCount: 3 } };
+    });
+    await expect(warning).toBeHidden();
+  });
+
+  test('formula / manual switch is a real <button aria-pressed> that opens the manual-capacity dialog', async ({ page }) => {
+    await gotoUpgraded(page);
+
+    const toggle = page.locator('iron-triangle > .iron-triangle-status button.iron-triangle-mode');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+    await page.evaluate(() => {
+      window.__modes = [];
+      document.querySelector('iron-triangle').addEventListener('iron-triangle:mode', (e) => window.__modes.push(e.detail));
+    });
+
+    // Press → dialog opens prefilled with the current (formula) capacity.
+    await toggle.click();
+    const dialog = page.locator('iron-triangle > dialog.iron-triangle-dialog--capacity');
+    await expect(dialog).toBeVisible();
+    const input = dialog.locator('input[name="capacity.points"]');
+    await expect(input).toHaveValue('4');
+    await expect(dialog.locator('button[value="formula"]')).toBeHidden();
+
+    await input.fill('20');
+    await dialog.locator('button[type="submit"]').click();
+    await expect(dialog).toBeHidden();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+
+    const afterManual = await page.evaluate(() => {
+      const tri = document.querySelector('iron-triangle');
+      return { source: tri.capacitySource, points: tri.capacityPoints, modes: window.__modes };
+    });
+    expect(afterManual).toEqual({ source: 'manual', points: 20, modes: [{ from: 'formula', to: 'manual' }] });
+
+    // Pressed again → dialog offers "Use formula", which flips back.
+    await toggle.click();
+    await expect(dialog).toBeVisible();
+    await expect(input).toHaveValue('20');
+    await dialog.locator('button[value="formula"]').click();
+    await expect(dialog).toBeHidden();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+    const afterFormula = await page.evaluate(() => {
+      const tri = document.querySelector('iron-triangle');
+      return { source: tri.capacitySource, points: tri.capacityPoints, modes: window.__modes.length };
+    });
+    expect(afterFormula).toEqual({ source: 'formula', points: 4, modes: 2 });
+  });
+
+  test('disabled / locked also disable the mode toggle', async ({ page }) => {
+    await gotoUpgraded(page);
+    const toggle = page.locator('iron-triangle button.iron-triangle-mode');
+    await expect(toggle).toBeEnabled();
+    await page.evaluate(() => document.querySelector('iron-triangle').setAttribute('locked', ''));
+    await expect(toggle).toBeDisabled();
+    await page.evaluate(() => document.querySelector('iron-triangle').removeAttribute('locked'));
+    await expect(toggle).toBeEnabled();
+  });
 });
