@@ -105,7 +105,7 @@ class UserPersona extends HTMLElement {
     if (!this.id) return [];
     const root = /** @type {ParentNode} */ (this.getRootNode());
     const scope = /** @type {ParentNode} */ (/** @type {any} */ (root).querySelectorAll ? root : document);
-    return Array.from(scope.querySelectorAll(`user-story[persona-id="${cssEscape(this.id)}"]`));
+    return Array.from(scope.querySelectorAll(`user-story[persona-id="${cssEscape(this.id)}"]:not([data-detail-clone])`));
   }
 
   #cacheSlotValues() {

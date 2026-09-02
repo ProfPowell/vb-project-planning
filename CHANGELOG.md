@@ -26,6 +26,22 @@ the project adheres to [Semantic Versioning](https://semver.org/).
   errors; 0.3.0 is the first "slimmed core" without them.
 - Docs site re-vendored against vanilla-breeze 0.3.1 (was 0.3.0). Dropped a
   stale, unreferenced `chart-wc.js` from the published vendor assets.
+- README now documents `<data-table>` alongside `<drag-surface>` as a runtime
+  peer; the risk-register and traceability-matrix demos load it.
+
+### Fixed
+- `product-roadmap`: declares `observedAttributes`, so changing `start`,
+  `end`, `view`, `editable`, or `today-marker` on a live element re-renders.
+  Previously the callback existed but was never invoked.
+- `requirement-card`: the default priority pill is visible again when no
+  `priority-pill` is slotted. The slot check counted fallback content as
+  slotted content, so the pill was always hidden.
+- `user-story`: the `showDetail()` dialog clone no longer re-derives the
+  source element's `id`, and `user-persona.relatedStories()` ignores it, so
+  an open dialog no longer duplicates ids or double-counts stories.
+- `risk-register` / `traceability-matrix` demos: load the `<data-table>` peer,
+  so the severity rollup, heatmap, and header sorting actually work on the
+  docs site.
 
 ## [0.1.0] - 2026-07-06
 

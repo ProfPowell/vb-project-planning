@@ -253,18 +253,10 @@ test.describe('requirement-card', () => {
     expect(afterRemove).toEqual({ inert: true, count: 3 });
   });
 
-  // BUG (src/web-components/requirement-card/logic.js #syncSlot): the
-  // has-<slot> check calls `slot.assignedNodes({ flatten: true })`, which per
-  // spec returns the slot's FALLBACK content when nothing is assigned. The
-  // priority-pill slot is the only one with fallback content (the default
-  // <span class="priority-default">), so `has-priority-pill` is always on —
-  // and styles.js (`:host(:state(has-priority-pill)) .priority-default
-  // { display: none }`) therefore hides the default pill even when the author
-  // supplied no custom pill. api.json documents the opposite ("default pill
-  // renders from data-priority when this slot is empty"). Un-fixme once
-  // #syncSlot ignores fallback content (e.g. `assignedNodes()` without
-  // flatten, or `assignedElements()`).
-  test.fixme('default priority pill is visible when no priority-pill is slotted', async ({ page }) => {
+  // Regression guard: #syncSlot must not count a slot's FALLBACK content as
+  // slotted content (`assignedNodes({ flatten: true })` does), otherwise
+  // `has-priority-pill` is always on and the default pill is hidden.
+  test('default priority pill is visible when no priority-pill is slotted', async ({ page }) => {
     await page.goto(demoPage);
     await page.waitForSelector('requirement-card[data-upgraded]');
 

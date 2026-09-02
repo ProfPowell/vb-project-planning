@@ -37,7 +37,28 @@ import { VBElement } from '../../lib/vb-element.js';
 const MS_PER_DAY = 86_400_000;
 
 class Roadmap extends VBElement {
+  static get observedAttributes() {
+    return ['start', 'end', 'view', 'editable', 'today-marker'];
+  }
+
   setup() {
+    if (!this.#readConfig()) return false;
+
+    /* Snapshot original lane sections (auto-discovery) before we wipe
+       the host. We do not modify the original elements until/unless
+       drag interactions change their data-* attributes. */
+    const lanes = [...this.querySelectorAll(':scope > section[data-lane]')];
+    if (!lanes.length) {
+      console.warn('product-roadmap: no <section data-lane> children found');
+      return false;
+    }
+    this.#sourceLanes = lanes;
+    this.#render();
+    return true;
+  }
+
+  /** Parse start/end/view/editable from attributes. Returns false when invalid. */
+  #readConfig() {
     const startAttr = this.getAttribute('start');
     const endAttr   = this.getAttribute('end');
     if (!startAttr || !endAttr) {
@@ -55,22 +76,13 @@ class Roadmap extends VBElement {
     this.#totalMs = end.getTime() - start.getTime();
     this.#view = (this.getAttribute('view') === 'month') ? 'month' : 'quarter';
     this.#editable = this.hasAttribute('editable');
-
-    /* Snapshot original lane sections (auto-discovery) before we wipe
-       the host. We do not modify the original elements until/unless
-       drag interactions change their data-* attributes. */
-    const lanes = [...this.querySelectorAll(':scope > section[data-lane]')];
-    if (!lanes.length) {
-      console.warn('product-roadmap: no <section data-lane> children found');
-      return false;
-    }
-    this.#sourceLanes = lanes;
-    this.#render();
     return true;
   }
 
-  attributeChangedCallback() {
-    if (this.isConnected && this.#sourceLanes.length) this.#render();
+  attributeChangedCallback(_name, oldValue, newValue) {
+    if (oldValue === newValue) return;
+    if (!this.isConnected || !this.#sourceLanes.length) return;
+    if (this.#readConfig()) this.#render();
   }
 
   #render() {

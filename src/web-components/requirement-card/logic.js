@@ -125,7 +125,7 @@ class RequirementCard extends VBElement {
   }
 
   #syncSlot(name, slot) {
-    const hasContent = !!slot && slot.assignedNodes({ flatten: true }).some(n =>
+    const hasContent = !!slot && slot.assignedNodes().some(n =>
       n.nodeType === Node.ELEMENT_NODE ||
       (n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 0)
     );

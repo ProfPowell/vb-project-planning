@@ -210,7 +210,7 @@ class UserStory extends HTMLElement {
 
   connectedCallback() {
     this.#cacheSlotValues();
-    if (this.storyId && !this.id) this.id = this.storyId;
+    if (this.storyId && !this.id && !this.hasAttribute('data-detail-clone')) this.id = this.storyId;
     if (this.hasAttribute('src')) {
       this._loadSrc(this.getAttribute('src'));
     }
@@ -410,6 +410,7 @@ class UserStory extends HTMLElement {
     const hasSlottedContent = [...this.children].some(c => c.getAttribute('slot') && c.tagName !== 'DIALOG');
     full.setAttribute('detail', hasSlottedContent ? 'full' : 'compact');
     full.removeAttribute('id');
+    full.setAttribute('data-detail-clone', ''); // keep the clone out of id/persona lookups
     for (const child of [...this.children]) {
       if (child.tagName === 'DIALOG') continue;
       full.appendChild(child.cloneNode(true));

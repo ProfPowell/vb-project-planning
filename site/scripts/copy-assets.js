@@ -41,6 +41,9 @@ cp(resolve(nm, 'vanilla-breeze/dist/cdn/components/theme-picker.js'), resolve(ve
 // <drag-surface> peer — standalone per-component CDN file (defines only `drag-surface`,
 // so no conflict with the pack bundle's elements).
 cp(resolve(nm, 'vanilla-breeze/dist/cdn/components/drag-surface.js'), resolve(vendor, 'drag-surface.js'));
+// <data-table> peer — risk-register and traceability-matrix compose it for the
+// severity rollup, heatmap, and header sorting.
+cp(resolve(nm, 'vanilla-breeze/dist/cdn/components/data-table.js'), resolve(vendor, 'data-table.js'));
 // <chart-wc> renderer — burndown-chart composes it internally. Charts are an
 // opt-in add-on (not in the main bundle), so vendor the charts bundle + its CSS.
 cp(resolve(nm, 'vanilla-breeze/dist/cdn/vanilla-breeze-charts.js'), resolve(vendor, 'vanilla-breeze-charts.js'));

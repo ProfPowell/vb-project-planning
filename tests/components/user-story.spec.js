@@ -400,15 +400,10 @@ test.describe('user-story', () => {
     expect(dialogState).toEqual({ open: false, innerHTML: '' });
   });
 
-  // BUG (src/web-components/user-story/logic.js): showDetail() explicitly
-  // strips the clone's id (`full.removeAttribute('id')`) so the dialog copy
-  // doesn't duplicate the original's id — but connectedCallback then runs
-  // `if (this.storyId && !this.id) this.id = this.storyId;` on the clone,
-  // which re-derives the very same id from story-id. While the dialog is
-  // open the document contains two elements with id="PROJ-101", and any
-  // `user-story[persona-id=…]` scan (e.g. user-persona.relatedStories())
-  // double-counts the clone. Un-fixme once the clone keeps a distinct id.
-  test.fixme('showDetail() clone does not duplicate the original element id', async ({ page }) => {
+  // Regression guard: the dialog clone carries data-detail-clone so
+  // connectedCallback does not re-derive the source id from story-id (which
+  // once left two id="PROJ-101" elements in the document while open).
+  test('showDetail() clone does not duplicate the original element id', async ({ page }) => {
     await page.goto(expandDemo);
     await page.waitForSelector('user-story[data-upgraded]');
 

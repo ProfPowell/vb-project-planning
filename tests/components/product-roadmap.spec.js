@@ -283,11 +283,10 @@ test.describe('product-roadmap — HTML-first contract', () => {
     expect(result.sourceEnd).toBe('2027-04-01');
   });
 
-  // Suspected bug: src/web-components/product-roadmap/logic.js defines
-  // attributeChangedCallback() (re-renders when connected) but never declares
-  // `static observedAttributes`, so the browser never invokes it. Toggling
-  // view="month" on a live element therefore leaves the quarter axis in place.
-  test.fixme('view attribute change re-renders the axis on a live element', async ({ page }) => {
+  // Regression guard: the element must declare observedAttributes so that
+  // attributeChangedCallback re-parses config and re-renders on a live
+  // element (it once defined the callback without observing anything).
+  test('view attribute change re-renders the axis on a live element', async ({ page }) => {
     await page.goto(basicDemo);
     await page.waitForSelector('product-roadmap[data-upgraded]');
 

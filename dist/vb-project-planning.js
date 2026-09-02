@@ -527,7 +527,7 @@ var UserPersona = class extends HTMLElement {
       /** @type {any} */
       root.querySelectorAll ? root : document
     );
-    return Array.from(scope.querySelectorAll(`user-story[persona-id="${cssEscape(this.id)}"]`));
+    return Array.from(scope.querySelectorAll(`user-story[persona-id="${cssEscape(this.id)}"]:not([data-detail-clone])`));
   }
   #cacheSlotValues() {
     for (const child of [...this.children]) {
@@ -1362,7 +1362,7 @@ var UserStory = class _UserStory extends HTMLElement {
   }
   connectedCallback() {
     this.#cacheSlotValues();
-    if (this.storyId && !this.id) this.id = this.storyId;
+    if (this.storyId && !this.id && !this.hasAttribute("data-detail-clone")) this.id = this.storyId;
     if (this.hasAttribute("src")) {
       this._loadSrc(this.getAttribute("src"));
     }
@@ -1545,6 +1545,7 @@ var UserStory = class _UserStory extends HTMLElement {
     const hasSlottedContent = [...this.children].some((c) => c.getAttribute("slot") && c.tagName !== "DIALOG");
     full.setAttribute("detail", hasSlottedContent ? "full" : "compact");
     full.removeAttribute("id");
+    full.setAttribute("data-detail-clone", "");
     for (const child of [...this.children]) {
       if (child.tagName === "DIALOG") continue;
       full.appendChild(child.cloneNode(true));
@@ -4388,7 +4389,22 @@ registerComponent("burndown-chart", BurndownChart);
 
 // src/web-components/product-roadmap/logic.js
 var Roadmap = class _Roadmap extends VBElement {
+  static get observedAttributes() {
+    return ["start", "end", "view", "editable", "today-marker"];
+  }
   setup() {
+    if (!this.#readConfig()) return false;
+    const lanes = [...this.querySelectorAll(":scope > section[data-lane]")];
+    if (!lanes.length) {
+      console.warn("product-roadmap: no <section data-lane> children found");
+      return false;
+    }
+    this.#sourceLanes = lanes;
+    this.#render();
+    return true;
+  }
+  /** Parse start/end/view/editable from attributes. Returns false when invalid. */
+  #readConfig() {
     const startAttr = this.getAttribute("start");
     const endAttr = this.getAttribute("end");
     if (!startAttr || !endAttr) {
@@ -4406,17 +4422,12 @@ var Roadmap = class _Roadmap extends VBElement {
     this.#totalMs = end.getTime() - start.getTime();
     this.#view = this.getAttribute("view") === "month" ? "month" : "quarter";
     this.#editable = this.hasAttribute("editable");
-    const lanes = [...this.querySelectorAll(":scope > section[data-lane]")];
-    if (!lanes.length) {
-      console.warn("product-roadmap: no <section data-lane> children found");
-      return false;
-    }
-    this.#sourceLanes = lanes;
-    this.#render();
     return true;
   }
-  attributeChangedCallback() {
-    if (this.isConnected && this.#sourceLanes.length) this.#render();
+  attributeChangedCallback(_name, oldValue, newValue) {
+    if (oldValue === newValue) return;
+    if (!this.isConnected || !this.#sourceLanes.length) return;
+    if (this.#readConfig()) this.#render();
   }
   #render() {
     [...this.children].forEach((c) => {
@@ -11104,7 +11115,7 @@ var RequirementCard = class extends VBElement {
     return this.hasAttribute("tabindex") || this.closest("a[href], button");
   }
   #syncSlot(name, slot) {
-    const hasContent = !!slot && slot.assignedNodes({ flatten: true }).some(
+    const hasContent = !!slot && slot.assignedNodes().some(
       (n) => n.nodeType === Node.ELEMENT_NODE || n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 0
     );
     this.setState(`has-${name}`, hasContent);
