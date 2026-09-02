@@ -85,10 +85,10 @@
 
   <title>iron-triangle — VB Project Planning</title>
   <meta name="description" content="Project-shape constraint surface — captures Time × Cost × Scope and computes a single capacityPoints budget that downstream planning components can spend on quality decisions.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mtjevj5u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mtjevj5u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mtjevj5u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mtjevj5u">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mtjf7op0">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mtjf7op0">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mtjf7op0">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mtjf7op0">
   
 </head>
 <body style="overflow-x: clip;">
@@ -1231,7 +1231,7 @@
       </template><textarea style="display:none">capacityPoints = ceil(sprintWeeks × sprintCount × teamFTE × focusFactor)
                   defaults: focusFactor = 0.6</textarea></code-block>
 
-  <p>The <strong>focus factor</strong> represents the share of FTE actually available for engineering quality work — the remaining 40% goes to feature delivery, meetings, ops, and the unknowns. <code>0.6</code> is the middle of the 50–70% range most teams settle on; tune per project with <code>data-focus-factor</code>. Flip to manual mode and the integer becomes editable directly (for a board commitment or a carried-over OKR); the T/C/S inputs stay visible and saved but no longer drive the readout, and <code>capacitySource</code> records which path produced the number.</p>
+  <p>The <strong>focus factor</strong> represents the share of FTE actually available for engineering quality work — the remaining 40% goes to feature delivery, meetings, ops, and the unknowns. <code>0.6</code> is the middle of the 50–70% range most teams settle on; tune per project with <code>data-focus-factor</code>. Flip to manual mode — via the <strong>Manual capacity</strong> toggle under the triangle, or <code>setManual(n)</code> — and the integer becomes a fixed commitment (a board number or a carried-over OKR); the T/C/S inputs stay saved but no longer drive the readout, and <code>capacitySource</code> records which path produced the number. The toggle opens a small dialog: enter the number and Save, or choose <em>Use formula</em> to hand control back to the formula.</p>
 </section>
 
 <section>
@@ -2738,21 +2738,17 @@ triangle.addEventListener(&#39;iron-triangle:change&#39;, (e) =&amp;gt; {
 </section>
 
 <section>
-  <h2>Slots</h2>
+  <h2>Generated markup</h2>
+  <p>There are no slots. The author writes one empty element and the component renders everything under it, in this order:</p>
   <table class="props-table">
-    <thead>
-      <tr><th>Slot</th><th>Purpose</th><th>Required</th></tr>
-    </thead>
+    <thead><tr><th>Child</th><th>Purpose</th></tr></thead>
     <tbody>
-      <tr><td><code>title</code></td>            <td>Heading text shown above the form</td>      <td>no (defaults to "Iron Triangle")</td></tr>
-      <tr><td><code>time-controls</code></td>    <td>Override the default Time inputs</td>       <td>no</td></tr>
-      <tr><td><code>cost-controls</code></td>    <td>Override the default Cost inputs</td>       <td>no</td></tr>
-      <tr><td><code>scope-controls</code></td>   <td>Override the default Scope inputs</td>      <td>no</td></tr>
-      <tr><td><code>capacity-readout</code></td> <td>Override the readout block (advanced)</td>  <td>no</td></tr>
-      <tr><td><code>footer</code></td>           <td>Save / Submit button area</td>              <td>no</td></tr>
+      <tr><td><code>svg[role="group"]</code></td> <td>The triangle. Each vertex is a <code>g.vertex[role="button"][tabindex="0"]</code>; the center is <code>g.center[role="button"]</code>. Click / Enter / Space activate.</td></tr>
+      <tr><td><code>.iron-triangle-status</code></td> <td>Status strip: the <code>&lt;output aria-live="polite"&gt;</code> capacity readout (visually hidden), the <code>button.iron-triangle-mode[aria-pressed]</code> formula / manual switch, and the <code>[data-warning="over-deadline"]</code> text warning.</td></tr>
+      <tr><td><code>dialog.iron-triangle-dialog--{time,cost,scope,capacity}</code></td> <td>Per-vertex editors and the manual-capacity editor, created lazily on first open. Inputs are <code>&lt;form-field&gt;</code> rows named <code>time.sprintWeeks</code>, <code>cost.teamFTE</code>, <code>capacity.points</code>, and so on.</td></tr>
     </tbody>
   </table>
-  <p>Per VB convention, <strong>content lives in slots and state lives in attributes</strong>. The default-slot fieldsets named <code>time</code>, <code>cost</code>, <code>scope</code>, and <code>capacity</code> are the markup contract — you can hand-author them (as in the static fallback) or let the component inject sensible defaults if absent.</p>
+  <p>Per VB convention, <strong>state lives in attributes and custom states</strong>: <code>data-capacity-points</code> and <code>data-capacity-source</code> are reflected on the host after every recompute, and the <code>:state()</code> hooks below drive styling.</p>
 </section>
 
 <section>
@@ -2765,7 +2761,7 @@ triangle.addEventListener(&#39;iron-triangle:change&#39;, (e) =&amp;gt; {
       <tr>
         <td><code>iron-triangle:change</code></td>
         <td><code>{ time, cost, scope, capacityPoints, capacitySource, hash, source }</code></td>
-        <td>Any input or property change. <code>source</code> is <code>'pointer'</code>, <code>'keyboard'</code>, or <code>'api'</code>.</td>
+        <td>Any input or property change. <code>source</code> is one of <code>'init'</code>, <code>'dialog'</code> (with <code>field</code> = the vertex), <code>'property'</code>, <code>'attribute'</code>, <code>'manual'</code>, <code>'formula'</code>, <code>'revise'</code>, or <code>'recalc'</code>.</td>
       </tr>
       <tr>
         <td><code>iron-triangle:revise</code></td>
@@ -2789,8 +2785,8 @@ triangle.addEventListener(&#39;iron-triangle:change&#39;, (e) =&amp;gt; {
     <tbody>
       <tr><td><code>:state(formula)</code></td>       <td>Capacity source is the formula (default).</td></tr>
       <tr><td><code>:state(manual)</code></td>        <td>Capacity source is a manual integer.</td></tr>
-      <tr><td><code>:state(over-deadline)</code></td> <td>The Time-fieldset deadline date is in the past (passive warning).</td></tr>
-      <tr><td><code>:state(unbudgeted)</code></td>    <td>Computed <code>capacityPoints &lt; data-min-capacity</code>.</td></tr>
+      <tr><td><code>:state(over-deadline)</code></td> <td>The Time editor's deadline date is in the past. The triangle stroke turns to the warning colour <em>and</em> the status strip shows "Deadline has passed (date)".</td></tr>
+      <tr><td><code>:state(unbudgeted)</code></td>    <td><code>capacityPoints</code> is 0 (nothing to spend yet).</td></tr>
     </tbody>
   </table>
 </section>
@@ -2800,18 +2796,17 @@ triangle.addEventListener(&#39;iron-triangle:change&#39;, (e) =&amp;gt; {
   <table class="props-table">
     <thead><tr><th>Property / Method</th><th>Type</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td><code>.time</code></td>            <td><code>{ sprintWeeks, sprintCount, hoursPerWeek, deadline }</code></td> <td>Get / set the Time corner.</td></tr>
-      <tr><td><code>.cost</code></td>            <td><code>{ teamFTE, budgetTier, contractorBudget }</code></td>             <td>Get / set the Cost corner.</td></tr>
-      <tr><td><code>.scope</code></td>           <td><code>{ mustHaveCount, shouldHaveCount, scopeNotes }</code></td>        <td>Get / set the Scope corner.</td></tr>
-      <tr><td><code>.capacityPoints</code></td>  <td>integer</td>                                                              <td>Current budget. Read-only when <code>capacitySource === 'formula'</code>; writable in manual mode.</td></tr>
-      <tr><td><code>.capacitySource</code></td>  <td><code>'formula' \| 'manual'</code></td>                                  <td>Which mode produced the saved number.</td></tr>
-      <tr><td><code>.hash</code></td>            <td>string (readonly)</td>                                                   <td>FNV-1a of the T/C/S object — for drift detection.</td></tr>
-      <tr><td><code>.revisionLog</code></td>     <td>array (readonly)</td>                                                    <td>Append-only edit history.</td></tr>
-      <tr><td><code>.value</code></td>           <td>object (readonly)</td>                                                   <td>Full snapshot for serialization.</td></tr>
-      <tr><td><code>.revise(field, newValue, reason)</code></td> <td>method</td>                                              <td>Programmatic edit; throws if <code>reason.length &lt; 10</code>.</td></tr>
-      <tr><td><code>.setManual(integer)</code></td>              <td>method</td>                                              <td>Switch to manual mode and set <code>capacityPoints</code>.</td></tr>
-      <tr><td><code>.setFormula(formulaString?)</code></td>      <td>method</td>                                              <td>Switch back to formula mode (default formula or custom).</td></tr>
-      <tr><td><code>.recalc()</code></td>                        <td>method</td>                                              <td>Force capacity recomputation (rarely needed).</td></tr>
+      <tr><td><code>.value</code></td>           <td>object</td>                              <td>Get a deep copy of <code>{ time, cost, scope, capacityPoints, capacitySource, hash, revisionLog }</code>. Set to replace any of <code>time</code> / <code>cost</code> / <code>scope</code> (and optionally <code>capacitySource: 'manual'</code> + <code>capacityPoints</code>, or a <code>revisionLog</code>).</td></tr>
+      <tr><td><code>.capacityPoints</code></td>  <td>integer (readonly)</td>                   <td>Current budget. Use <code>setManual()</code> to write it.</td></tr>
+      <tr><td><code>.capacitySource</code></td>  <td><code>'formula' \| 'manual'</code> (readonly)</td> <td>Which mode produced the number.</td></tr>
+      <tr><td><code>.hash</code></td>            <td>string (readonly)</td>                    <td>FNV-1a of the T/C/S object — for drift detection.</td></tr>
+      <tr><td><code>.revisionLog</code></td>     <td>array (readonly)</td>                     <td>Append-only edit history from <code>revise()</code>.</td></tr>
+      <tr><td><code>.qualitySummary</code></td>  <td>string</td>                               <td>Mirror of <code>data-quality-summary</code>; surfaces in the center tooltip and aria-label.</td></tr>
+      <tr><td><code>.openEditor(axis)</code></td>             <td>method</td>                  <td>Open the <code>'time'</code> / <code>'cost'</code> / <code>'scope'</code> dialog programmatically.</td></tr>
+      <tr><td><code>.revise(field, newValue, reason)</code></td> <td>method</td>               <td>Programmatic edit of <code>'time.sprintWeeks'</code>-style paths (or <code>'capacityPoints'</code>); throws if <code>reason.length &lt; 10</code>.</td></tr>
+      <tr><td><code>.setManual(integer)</code></td>              <td>method</td>               <td>Switch to manual mode and set <code>capacityPoints</code> (floored at 1).</td></tr>
+      <tr><td><code>.setFormula()</code></td>                    <td>method</td>               <td>Switch back to the formula.</td></tr>
+      <tr><td><code>.recalc()</code></td>                        <td>method</td>               <td>Force capacity recomputation (rarely needed).</td></tr>
     </tbody>
   </table>
 </section>
@@ -2821,25 +2816,31 @@ triangle.addEventListener(&#39;iron-triangle:change&#39;, (e) =&amp;gt; {
   <table class="props-table">
     <thead><tr><th>Token</th><th>Default</th><th>Purpose</th></tr></thead>
     <tbody>
-      <tr><td><code>--iron-triangle-padding</code></td>        <td><code>var(--size-l)</code></td>            <td>Outer padding</td></tr>
-      <tr><td><code>--iron-triangle-section-gap</code></td>    <td><code>var(--size-l)</code></td>            <td>Vertical gap between Time / Cost / Scope</td></tr>
-      <tr><td><code>--iron-triangle-input-min</code></td>      <td><code>8rem</code></td>                     <td>Min width per numeric input</td></tr>
-      <tr><td><code>--iron-triangle-readout-bg</code></td>     <td><code>var(--color-surface-raised)</code></td><td>Capacity readout background</td></tr>
-      <tr><td><code>--iron-triangle-readout-size</code></td>   <td><code>var(--font-size-3xl)</code></td>     <td>Capacity number font size</td></tr>
-      <tr><td><code>--iron-triangle-formula-color</code></td>  <td><code>var(--color-text-muted)</code></td>  <td>Formula explanation text</td></tr>
-      <tr><td><code>--iron-triangle-warning-color</code></td>  <td><code>var(--color-warning)</code></td>     <td>Over-deadline / unbudgeted warning</td></tr>
+      <tr><td><code>--iron-triangle-max</code></td>           <td><code>26rem</code></td>                                                          <td>Max inline size of the host (the SVG scales to fit)</td></tr>
+      <tr><td><code>--iron-triangle-fill</code></td>          <td><code>color-mix(in oklab, var(--color-interactive) 8%, transparent)</code></td> <td>Triangle fill</td></tr>
+      <tr><td><code>--iron-triangle-stroke</code></td>        <td><code>var(--color-interactive)</code></td>                                       <td>Triangle outline colour</td></tr>
+      <tr><td><code>--iron-triangle-stroke-width</code></td>  <td><code>1.5</code></td>                                                            <td>Triangle outline width (SVG units)</td></tr>
+      <tr><td><code>--iron-triangle-capacity-size</code></td> <td><code>1.6rem</code></td>                                                         <td>Capacity number font size</td></tr>
+      <tr><td><code>--iron-triangle-warning-color</code></td> <td><code>var(--color-warning)</code></td>                                           <td>Over-deadline stroke, unbudgeted number, and the deadline warning text</td></tr>
     </tbody>
   </table>
 </section>
 
 <section>
   <h2>Static fallback</h2>
-  <p>Without JavaScript, the form still works — three <code>&lt;fieldset&gt;</code>s of native inputs that submit raw T/C/S values to the form's <code>action</code>. The server can persist the values and even compute capacity. The component just adds the live readout, formula visualization, and revision-tracking machinery on upgrade.</p>
+  <p>The triangle is inherently interactive, so without JavaScript the element renders nothing. For a no-JS path, server-render a plain <code>&lt;form&gt;</code> with three <code>&lt;fieldset&gt;</code>s of native Time / Cost / Scope inputs on the same page and hide it once the component upgrades (<code>iron-triangle[data-upgraded] ~ form { display: none }</code>). The component's form value is the same JSON snapshot returned by <code>.value</code>, so a server can accept either.</p>
 </section>
 
 <section>
   <h2>Accessibility</h2>
-  <p>Native form semantics throughout: real <code>&lt;fieldset&gt;</code> / <code>&lt;legend&gt;</code> grouping, and the capacity readout is an <code>&lt;output&gt;</code> with <code>aria-live="polite"</code>. The formula / manual switch is a real <code>&lt;button aria-pressed&gt;</code>, not a checkbox-and-label hack. Warnings are never color-only — the deadline-in-past warning includes the literal text "Deadline has passed" alongside any styling. Logical properties throughout keep RTL and writing-mode support clean. Without JavaScript the form still works: three <code>&lt;fieldset&gt;</code>s of native inputs submit raw T/C/S values to the form's <code>action</code>.</p>
+  <ul>
+    <li><strong>Keyboard.</strong> Every hit target is a focusable <code>role="button"</code> (<code>tabindex="0"</code>) inside an SVG <code>role="group"</code>; Enter and Space activate exactly like a click. Each target's <code>aria-label</code> carries its name and current summary ("Time — 6 weeks (3 × 2wk). Activate to edit.").</li>
+    <li><strong>Live readout.</strong> The capacity number lives in an <code>&lt;output aria-live="polite" aria-atomic="true"&gt;</code> below the SVG. It is visually hidden (the big number already shows on screen) and announces "Capacity: 18 points (formula)." after every recompute, including mode flips and any deadline warning.</li>
+    <li><strong>Mode switch.</strong> The formula / manual switch is a real <code>&lt;button aria-pressed&gt;</code>, not a checkbox-and-label hack. Its accessible name states the current manual number when pressed. Activating it opens a native <code>&lt;dialog&gt;</code> (focus is trapped and returned by the browser) with a single numeric <code>&lt;form-field&gt;</code> plus <em>Use formula</em>, Cancel, and Save.</li>
+    <li><strong>Never colour-only.</strong> A deadline in the past changes the triangle stroke <em>and</em> shows the literal text "Deadline has passed (date)" in the status strip; the same text is announced through the live region. An unbudgeted capacity shows "—" rather than relying on colour alone.</li>
+    <li><strong>Editors.</strong> Dialog inputs are labelled <code>&lt;form-field&gt;</code> rows with native validation (<code>min</code>, <code>step</code>, <code>maxlength</code>); each dialog has an <code>aria-label</code> naming the vertex. <code>disabled</code> / <code>locked</code> disable the mode switch and every dialog control.</li>
+    <li><strong>Logical properties</strong> throughout keep RTL and vertical writing modes clean.</li>
+  </ul>
 </section>
 
 <section>
@@ -2903,10 +2904,10 @@ triangle.addEventListener(&#39;iron-triangle:change&#39;, (e) =&amp;gt; {
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mtjevj5u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mtjevj5u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mtjevj5u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mtjevj5u"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mtjf7op0"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mtjf7op0"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mtjf7op0"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mtjf7op0"></script>
   
 </body>
 </html>
