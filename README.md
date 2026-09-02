@@ -62,9 +62,12 @@ import '@profpowell/vb-project-planning/kanban-board';
 <user-persona name="Fred" role="Engineer">…</user-persona>
 ```
 
-## Peer: `<drag-surface>`
+## Runtime peers: `<drag-surface>` and `<data-table>`
 
-The drag-to-reorder components (`kanban-board`, `quadrant-grid`, `impact-effort`, `story-map`) use Vanilla Breeze's `<drag-surface>` element as a runtime peer. It ships with Vanilla Breeze core — load VB on the page and dragging works. Without it, these components still render and function; only drag-reordering is unavailable.
+Two Vanilla Breeze core elements are used as runtime peers. Load VB on the page (the full bundle, or the per-component files under `dist/cdn/components/`) and they light up; without them the components still render, only the composed behaviour is unavailable.
+
+- `<drag-surface>` — the drag-to-reorder components (`kanban-board`, `quadrant-grid`, `impact-effort`, `story-map`). Without it, drag-reordering is off.
+- `<data-table>` — `risk-register` and `traceability-matrix` compose it for the severity rollup, heatmap, and sortable headers. Without it, the plain table renders but those features are inert.
 
 ## Design-token contract
 
@@ -74,7 +77,7 @@ These components are **token-driven**: they read Vanilla Breeze CSS custom prope
 <link rel="stylesheet" href="https://unpkg.com/vanilla-breeze/dist/cdn/vanilla-breeze.css">
 ```
 
-`vanilla-breeze` is declared as an **optional peer dependency**: required if you want VB to supply tokens/themes and the `<drag-surface>` peer (most consumers do).
+`vanilla-breeze` is declared as an **optional peer dependency**: required if you want VB to supply tokens/themes and the `<drag-surface>` / `<data-table>` peers (most consumers do).
 
 ## Relationship to Vanilla Breeze
 
@@ -89,7 +92,7 @@ npm test        # Playwright component specs (serves the built docs/ on :4331)
 
 `dist/` is committed: it is what the npm tarball ships and what the docs site vendors. CI fails if `src/` changes without a rebuilt `dist/`.
 
-The docs site lives in `site/` (CookSSG, styled by Vanilla Breeze) and depends on `vanilla-breeze` for tokens/themes and the `<drag-surface>` peer. It imports this package's `dist/` directly.
+The docs site lives in `site/` (CookSSG, styled by Vanilla Breeze) and depends on `vanilla-breeze` for tokens/themes and the `<drag-surface>` / `<data-table>` peers. It imports this package's `dist/` directly.
 
 ```bash
 cd site && npm ci && npm run dev                  # local preview

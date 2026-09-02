@@ -92,15 +92,10 @@ test.describe('risk-register', () => {
     expect(state.rowsProp).toEqual(DEMO_ROWS.map(r => r[0]));
   });
 
-  // FIXME: <data-table> is a core (vanilla-breeze.js) element, but the demo
-  // pages only load /assets/vendor/drag-surface.js + the pack bundle, so the
-  // composed <data-table> never upgrades (customElements.get('data-table')
-  // is undefined on demos/risk-register-basic/). The Severity rollup,
-  // low-good heatmap and header sorting that risk-register documents
-  // (src/web-components/risk-register/logic.js:130-133) therefore never
-  // activate. README.md:65-77 lists only <drag-surface> as the runtime peer.
-  // Re-enable once the demo pages load core (or the pack bundles data-table).
-  test.fixme('composed <data-table> computes the Severity rollup (likelihood × impact)', async ({ page }) => {
+  // <data-table> is a Vanilla Breeze core element used as a runtime peer; the
+  // demo page loads /assets/vendor/data-table.js so the composed rollup,
+  // heatmap and sorting activate. (They were silently inert before.)
+  test('composed <data-table> computes the Severity rollup (likelihood × impact)', async ({ page }) => {
     await page.goto(demoPage);
     await page.waitForSelector('risk-register[data-upgraded]');
 
@@ -120,9 +115,8 @@ test.describe('risk-register', () => {
     expect(severities).toEqual(DEMO_ROWS.map(([id, l, i]) => [id, String(l * i)]));
   });
 
-  // FIXME: same root cause as above — sorting is <data-table> behaviour and
-  // data-table is not defined on the demo page.
-  test.fixme('clicking a sortable header reorders the table rows', async ({ page }) => {
+  // Sorting is <data-table> behaviour, so this also depends on the peer above.
+  test('clicking a sortable header reorders the table rows', async ({ page }) => {
     await page.goto(demoPage);
     await page.waitForSelector('risk-register[data-upgraded]');
     await page.waitForSelector('risk-register data-table[data-upgraded]');
