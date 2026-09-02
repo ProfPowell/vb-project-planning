@@ -7,6 +7,12 @@ the project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `iron-triangle` accessibility hooks the docs promised but the SVG rewrite
+  never shipped: a visually-hidden `<output aria-live="polite">` capacity
+  readout, the formula / manual switch as a real `<button aria-pressed>` (which
+  opens a manual-capacity dialog with Use formula / Cancel / Save), and a
+  visible "Deadline has passed (date)" warning so the over-deadline state is
+  never colour-only. `disabled` / `locked` also disable the switch.
 - GitHub Actions: `CI` (build, dist-freshness check, Playwright component tests,
   docs-site build) on every push and pull request; `Publish docs` rebuilds and
   commits `docs/` when site sources or the pack bundle change; `Release`
@@ -20,6 +26,10 @@ the project adheres to [Semantic Versioning](https://semver.org/).
 - `npm test` script alias for the Playwright suite.
 
 ### Changed
+- `iron-triangle` element docs reconciled with the shipped component: the
+  stale Slots, JavaScript API, CSS Tokens, Static fallback, and Accessibility
+  sections (which described an earlier fieldset-form design) now document the
+  generated markup, real API, real tokens, and the new status strip.
 - `vanilla-breeze` optional peer dependency floor raised from `>=0.1.0` to
   `>=0.3.0`. Earlier Vanilla Breeze releases still registered these same
   custom elements in core, so loading both would raise duplicate-definition
