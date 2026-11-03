@@ -85,10 +85,10 @@
 
   <title>user-story — VB Project Planning</title>
   <meta name="description" content="Displays Agile user stories in the classic 'As a / I want / so that' format with priority, status, and story points.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0xe35o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0y5hfk">
   
 </head>
 <body style="overflow-x: clip;">
@@ -222,7 +222,7 @@
     <h2>Overview</h2>
     <p>A web component that renders user stories in the standard Agile format: "As a [persona], I want [action] so that [benefit]." Includes visual badges for priority, status, and story points, plus slotted sections for acceptance criteria, tasks, and notes. Designed for sprint planning boards, backlog views, and design documentation.</p>
 
-    <browser-window src="/vb-project-planning/demos/user-story-basic/" url="https://vanilla-breeze.dev/user-story" title="User Story" shadow="">
+    <browser-window src="/vb-project-planning/demos/user-story-basic/" url="https://profpowell.github.io/vb-project-planning/demos/user-story-basic/" title="User Story" shadow="">
     </browser-window>
 
     <code-block language="html" data-ssr label="Basic usage" show-lines><template shadowrootmode="open"><style>
@@ -800,7 +800,7 @@
     <h2>Detail Levels</h2>
     <p>The <code>detail</code> attribute controls how much content the card displays. Three levels support different use cases from dense kanban boards to full documentation.</p>
 
-    <browser-window src="/vb-project-planning/demos/user-story-variants/" url="https://vanilla-breeze.dev/user-story/detail-levels" title="Detail Levels" shadow="">
+    <browser-window src="/vb-project-planning/demos/user-story-variants/" url="https://profpowell.github.io/vb-project-planning/demos/user-story-variants/" title="Detail Levels" shadow="">
     </browser-window>
 
     <table class="props-table">
@@ -1325,7 +1325,7 @@
     <h3>Click to Expand</h3>
     <p>Minimal cards render as a <code>&lt;button&gt;</code> (named "[story-id]: [title]", with <code>aria-haspopup="dialog"</code>). Clicking it or pressing Enter or Space opens a native modal <code>&lt;dialog&gt;</code> showing the full story, labelled by its <code>&lt;h2&gt;</code> title. Each story owns one dialog: it is removed from the document when it closes or when the story is removed. The dialog uses VB’s built-in dialog CSS for sizing, backdrop, and animation. You can also call <code>story.showDetail()</code> programmatically.</p>
 
-    <browser-window src="/vb-project-planning/demos/user-story-expand/" url="https://vanilla-breeze.dev/user-story/expand" title="Click to Expand" shadow="">
+    <browser-window src="/vb-project-planning/demos/user-story-expand/" url="https://profpowell.github.io/vb-project-planning/demos/user-story-expand/" title="Click to Expand" shadow="">
     </browser-window>
 
     <code-block language="javascript" data-ssr label="Programmatic expand" show-lines><template shadowrootmode="open"><style>
@@ -3315,7 +3315,7 @@ story.showDetail(); // Opens modal dialog with full detail</textarea></code-bloc
     <h2>Priority Variants</h2>
     <p>The <code>priority</code> attribute controls the colored badge in the story header. Here are three stories showing different priority and status combinations in compact mode.</p>
 
-    <browser-window src="/vb-project-planning/demos/user-story-variants/" url="https://vanilla-breeze.dev/user-story/variants" title="Story Variants" shadow="">
+    <browser-window src="/vb-project-planning/demos/user-story-variants/" url="https://profpowell.github.io/vb-project-planning/demos/user-story-variants/" title="Story Variants" shadow="">
     </browser-window>
 
     <table class="props-table">
@@ -5017,7 +5017,7 @@ document.body.appendChild(us);</textarea></code-block>
       <li><a href="/vb-project-planning/elements/empathy-map/"><code>&lt;empathy-map&gt;</code></a> — Empathy maps for understanding user needs</li>
       <li><a href="/vb-project-planning/elements/impact-effort/"><code>&lt;impact-effort&gt;</code></a> — Prioritization matrix for draggable story cards</li>
       <li><a href="/vb-project-planning/elements/story-map/"><code>&lt;story-map&gt;</code></a> — Horizontal story mapping with activity columns</li>
-      <li><a href="https://vanilla-breeze.com/docs/packs/ux-planning/">UX Planning Pack</a> — loads all six UX components together</li>
+      <li><a href="/vb-project-planning/">vb-project-planning</a> — the whole package: <code>import '@profpowell/vb-project-planning'</code> registers every component</li>
     </ul>
   </section>
           </heading-links>
@@ -5072,10 +5072,10 @@ document.body.appendChild(us);</textarea></code-block>
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0xe35o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0y5hfk"></script>
   
 </body>
 </html>

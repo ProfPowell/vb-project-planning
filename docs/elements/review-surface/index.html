@@ -85,10 +85,10 @@
 
   <title>review-surface — VB Project Planning</title>
   <meta name="description" content="Pin-based annotation overlay for collaborative design review — wraps any content and adds interactive comment pins with pluggable persistence.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0xe35o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0y5hfk">
   
 </head>
 <body style="overflow-x: clip;">
@@ -226,7 +226,7 @@
       <strong>Looking for "diff display"?</strong> See the <a href="https://vanilla-breeze.com/docs/concepts/diff-display/">diff-display recipe</a> — <code>&lt;review-surface&gt;</code> handles the editorial-review-with-comments case, while <code>&lt;change-set&gt;</code> / <code>&lt;compare-surface&gt;</code> / <code>&lt;version-switcher&gt;</code> / the <code>text-diff</code> utility cover the other shapes.
     </aside>
 
-    <browser-window src="/vb-project-planning/demos/review-surface-basic/" url="https://vanilla-breeze.dev/review-surface" title="Review Surface" shadow="">
+    <browser-window src="/vb-project-planning/demos/review-surface-basic/" url="https://profpowell.github.io/vb-project-planning/demos/review-surface-basic/" title="Review Surface" shadow="">
     </browser-window>
 
     <code-block language="html" data-ssr label="Basic usage" show-lines><template shadowrootmode="open"><style>
@@ -794,7 +794,7 @@
     <h2>Annotate Mode</h2>
     <p>Add the <code>editable</code> attribute to show the review toolbar. Click the <strong>Annotate</strong> button to enter annotate mode — the cursor changes to a crosshair and clicking the content area places a new pin. The pin's popover opens immediately so you can type your comment.</p>
 
-    <browser-window src="/vb-project-planning/demos/review-surface-empathy/" url="https://vanilla-breeze.dev/review-surface/empathy" title="Review Surface — Empathy Map Composition" shadow="">
+    <browser-window src="/vb-project-planning/demos/review-surface-empathy/" url="https://profpowell.github.io/vb-project-planning/demos/review-surface-empathy/" title="Review Surface — Empathy Map Composition" shadow="">
     </browser-window>
 
     <code-block language="html" data-ssr label="Annotating an empathy map" show-lines><template shadowrootmode="open"><style>
@@ -3955,7 +3955,7 @@ surface.pins = [
       <li><a href="/vb-project-planning/elements/user-persona/"><code>&lt;user-persona&gt;</code></a> — Persona cards that pair with review surfaces</li>
       <li><a href="/vb-project-planning/elements/impact-effort/"><code>&lt;impact-effort&gt;</code></a> — Prioritize feedback from review sessions</li>
       <li><a href="/vb-project-planning/elements/kanban-board/"><code>&lt;kanban-board&gt;</code></a> — Track review feedback as cards</li>
-      <li><a href="https://vanilla-breeze.com/docs/packs/ux-planning/">UX Planning Pack</a> — Loads all UX planning components together</li>
+      <li><a href="/vb-project-planning/">vb-project-planning</a> — the whole package: <code>import '@profpowell/vb-project-planning'</code> registers every component</li>
     </ul>
   </section>
           </heading-links>
@@ -4010,10 +4010,10 @@ surface.pins = [
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0xe35o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0y5hfk"></script>
   
 </body>
 </html>

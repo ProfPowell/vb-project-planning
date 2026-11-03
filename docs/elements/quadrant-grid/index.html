@@ -85,10 +85,10 @@
 
   <title>quadrant-grid — VB Project Planning</title>
   <meta name="description" content="Generic 2x2 quadrant grid primitive backing SWOT, stakeholder maps, and any custom 2x2 visualization.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0xe35o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0y5hfk">
   
 </head>
 <body style="overflow-x: clip;">
@@ -223,7 +223,7 @@
   <p>The <code>&lt;quadrant-grid&gt;</code> component renders a configurable 2x2 grid with axis labels, low/high markers, and four titled quadrants. Children are placed by either <code>data-quadrant</code> (explicit bucket) or <code>data-x</code> / <code>data-y</code> (normalized coordinates that compute to the matching quadrant and pin the child as a labelled dot). Optional drag-and-drop via the <code>draggable</code> attribute composes <code>&lt;drag-surface&gt;</code>.</p>
   <p>This is the primitive that backs SWOT, stakeholder-map, and other 2x2 patterns — it replaces three previously-proposed standalone components with one configurable element plus recipes.</p>
 
-  <browser-window url="quadrant-grid-basic" src="/vb-project-planning/demos/quadrant-grid-basic/"></browser-window>
+  <browser-window url="https://profpowell.github.io/vb-project-planning/demos/quadrant-grid-basic/" src="/vb-project-planning/demos/quadrant-grid-basic/"></browser-window>
 </section>
 
 <section>
@@ -747,7 +747,7 @@
   <h2>SWOT recipe</h2>
   <p>SWOT analysis is just a quadrant-grid with appropriate axis labels and quadrant titles. No new component required.</p>
 
-  <browser-window url="quadrant-grid-swot" src="/vb-project-planning/demos/quadrant-grid-swot/"></browser-window>
+  <browser-window url="https://profpowell.github.io/vb-project-planning/demos/quadrant-grid-swot/" src="/vb-project-planning/demos/quadrant-grid-swot/"></browser-window>
 
   <code-block language="html" data-ssr><template shadowrootmode="open"><style>
       :host {
@@ -1254,7 +1254,7 @@
   <h2>Stakeholder Map recipe</h2>
   <p>Power × Interest grid with labelled dots positioned at exact coordinates via <code>data-x</code> / <code>data-y</code>.</p>
 
-  <browser-window url="quadrant-grid-stakeholders" src="/vb-project-planning/demos/quadrant-grid-stakeholders/"></browser-window>
+  <browser-window url="https://profpowell.github.io/vb-project-planning/demos/quadrant-grid-stakeholders/" src="/vb-project-planning/demos/quadrant-grid-stakeholders/"></browser-window>
 
   <code-block language="html" data-ssr><template shadowrootmode="open"><style>
       :host {
@@ -2348,10 +2348,10 @@
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0xe35o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0y5hfk"></script>
   
 </body>
 </html>

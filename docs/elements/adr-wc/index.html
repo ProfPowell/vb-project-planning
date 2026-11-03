@@ -85,10 +85,10 @@
 
   <title>adr-wc — VB Project Planning</title>
   <meta name="description" content="Architectural Decision Record card in MADR format with status badges, slotted title/date content, context/decision/consequences sections, and supersedes chain linking.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0xe35o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0y5hfk">
   
 </head>
 <body style="overflow-x: clip;">
@@ -222,7 +222,7 @@
     <h2>Overview</h2>
     <p>A web component for rendering Architectural Decision Records (ADRs) in MADR format. The decision title and date are slotted content (headings and <code>&lt;time&gt;</code> elements), while status, supersedes chains, and detail level are attributes. Each card shows context, decision, and consequences with optional chain linking to other ADRs via fragment anchors.</p>
 
-    <browser-window src="/vb-project-planning/demos/adr-wc-basic/" url="https://vanilla-breeze.dev/adr-wc" title="ADR Component" shadow="">
+    <browser-window src="/vb-project-planning/demos/adr-wc-basic/" url="https://profpowell.github.io/vb-project-planning/demos/adr-wc-basic/" title="ADR Component" shadow="">
     </browser-window>
 
     <code-block language="html" data-ssr label="Basic usage" show-lines><template shadowrootmode="open"><style>
@@ -1810,7 +1810,7 @@ adr.data = {
       <li><a href="/vb-project-planning/elements/work-item/"><code>&lt;work-item&gt;</code></a> — Engineering work that implements decisions</li>
       <li><a href="https://vanilla-breeze.com/docs/elements/web-components/glossary-wc/"><code>&lt;glossary-wc&gt;</code></a> — Define terms referenced in ADRs</li>
       <li><a href="/vb-project-planning/elements/user-story/"><code>&lt;user-story&gt;</code></a> — Stories that drive architectural decisions</li>
-      <li><a href="https://vanilla-breeze.com/docs/packs/ux-planning/">UX Planning Pack</a></li>
+      <li><a href="/vb-project-planning/">vb-project-planning</a> — the whole package: <code>import '@profpowell/vb-project-planning'</code> registers every component</li>
     </ul>
   </section>
           </heading-links>
@@ -1865,10 +1865,10 @@ adr.data = {
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0xe35o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0y5hfk"></script>
   
 </body>
 </html>

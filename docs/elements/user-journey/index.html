@@ -85,10 +85,10 @@
 
   <title>user-journey — VB Project Planning</title>
   <meta name="description" content="User journey map with SVG emotion curve, phase grid, and cross-references to personas and stories.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0xe35o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0y5hfk">
   
 </head>
 <body style="overflow-x: clip;">
@@ -222,7 +222,7 @@
     <h2>Overview</h2>
     <p>A web component that renders a complete user journey map with two visual layers: an SVG emotion curve that plots the user's emotional state across phases, and a detail grid showing actions, thoughts, touchpoints, pain points, and opportunities for each phase. Supports JSON loading via <code>src</code> attribute or programmatic data via the <code>.phases</code> property.</p>
 
-    <browser-window src="/vb-project-planning/demos/user-journey-basic/" url="https://vanilla-breeze.dev/user-journey" title="User Journey Map" shadow="">
+    <browser-window src="/vb-project-planning/demos/user-journey-basic/" url="https://profpowell.github.io/vb-project-planning/demos/user-journey-basic/" title="User Journey Map" shadow="">
     </browser-window>
 
     <code-block language="html" data-ssr label="Basic usage with JSON source" show-lines><template shadowrootmode="open"><style>
@@ -1894,7 +1894,7 @@
     <h2>Compact Variant</h2>
     <p>Add the <code>compact</code> attribute for tighter layouts with reduced padding, smaller fonts, and a shorter emotion curve. Useful for dashboards or pages with multiple journey maps.</p>
 
-    <browser-window src="/vb-project-planning/demos/user-journey-compact/" url="https://vanilla-breeze.dev/user-journey/compact" title="Compact Journey" shadow="">
+    <browser-window src="/vb-project-planning/demos/user-journey-compact/" url="https://profpowell.github.io/vb-project-planning/demos/user-journey-compact/" title="Compact Journey" shadow="">
     </browser-window>
 
     <code-block language="html" data-ssr label="Compact journey map" show-lines><template shadowrootmode="open"><style>
@@ -3513,7 +3513,7 @@ journey.phases = [
       <li><a href="/vb-project-planning/elements/empathy-map/"><code>&lt;empathy-map&gt;</code></a> — Empathy maps using the same emotion vocabulary</li>
       <li><a href="/vb-project-planning/elements/impact-effort/"><code>&lt;impact-effort&gt;</code></a> — Prioritization matrix for triaging stories</li>
       <li><a href="/vb-project-planning/elements/story-map/"><code>&lt;story-map&gt;</code></a> — Story mapping linked via <code>data-journey-phase</code></li>
-      <li><a href="https://vanilla-breeze.com/docs/packs/ux-planning/">UX Planning Pack</a> — loads all six UX components together</li>
+      <li><a href="/vb-project-planning/">vb-project-planning</a> — the whole package: <code>import '@profpowell/vb-project-planning'</code> registers every component</li>
     </ul>
   </section>
           </heading-links>
@@ -3568,10 +3568,10 @@ journey.phases = [
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0xe35o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0y5hfk"></script>
   
 </body>
 </html>
