@@ -3,7 +3,7 @@
  *
  * Auto-discovers row and column source elements from the page and
  * renders a <data-table> with checkmark intersections wherever a row
- * element's `link-attr` references a column element's id. Surfaces
+ * element's `link-attr` references a column element's identifier. Surfaces
  * the canonical Requirements Traceability Matrix (RTM) shape:
  * rows × columns at-a-glance, with empty rows/columns flagged as
  * orphans.
@@ -13,13 +13,20 @@
  *   1. Auto-discovery — build the intersection table from selectors
  *      (rows="user-story" cols="user-persona" link-attr="persona-id")
  *      instead of forcing the author to hand-build every cell.
- *   2. Chain highlight — clicking a cell toggles
- *      `data-state-highlighted` on the row AND column source elements
- *      page-wide, so authors can see the connection in surrounding
- *      components (cards, timelines, etc.).
+ *   2. Chain highlight — activating a cell (click, or Enter/Space on the
+ *      cell's button) toggles `data-state-highlighted` on the row AND
+ *      column source elements page-wide, so authors can see the
+ *      connection in surrounding components (cards, timelines, etc.).
+ *      The highlight is cleared when the matrix is removed.
+ *
+ * Column identifiers: by default a column element is matched by its
+ * `id`, `story-id` (<user-story>) or `item-id` (<work-item>), so
+ * `rows="work-item" cols="user-story" link-attr="story-ids"` works even
+ * before (or without) the stories setting their DOM id. Set `match-attr`
+ * to match on one specific attribute instead.
  *
  * Cell semantics:
- *   ✓        — row's link-attr references this column's id
+ *   ✓        — row's link-attr references this column's identifier
  *   (empty)  — no link
  *
  * `link-attr` values are split on comma so attributes like
@@ -32,7 +39,8 @@
  *
  * @attr {string} rows         - CSS selector for row source elements
  * @attr {string} cols         - CSS selector for column source elements
- * @attr {string} link-attr    - Attribute on the row element whose value(s) reference column ids
+ * @attr {string} link-attr    - Attribute on the row element whose value(s) reference column identifiers
+ * @attr {string} match-attr   - Attribute on column elements to match against (default: id, story-id, item-id)
  * @attr {string} label        - Optional heading shown above the table
  * @attr {string} row-label    - Header cell text for the row axis (default: "")
  * @attr {string} cell-mark    - Glyph shown in linked cells (default: "✓")
@@ -44,6 +52,9 @@
 
 import { registerComponent } from '../../lib/bundle-registry.js';
 import { VBElement } from '../../lib/vb-element.js';
+
+/** Column identity attributes tried, in order, when `match-attr` is unset. */
+const DEFAULT_MATCH_ATTRS = ['id', 'story-id', 'item-id'];
 
 class TraceabilityMatrix extends VBElement {
   setup() {
@@ -57,8 +68,27 @@ class TraceabilityMatrix extends VBElement {
 
     /* Defer one microtask so any sibling components (e.g. user-persona)
        have finished assigning ids and slot content before we read them. */
-    queueMicrotask(() => this.#build(rowsSel, colsSel, linkAttr));
+    queueMicrotask(() => {
+      if (this.isConnected) this.#build(rowsSel, colsSel, linkAttr);
+    });
     return true;
+  }
+
+  teardown() {
+    /* Don't leave page-wide highlight on source elements once the matrix
+       that set it is gone. */
+    this.#clearHighlight();
+  }
+
+  /**
+   * Identifiers a column element answers to.
+   * @param {Element} el
+   * @returns {string[]}
+   */
+  #keysOf(el) {
+    const matchAttr = this.getAttribute('match-attr');
+    const attrs = matchAttr ? [matchAttr] : DEFAULT_MATCH_ATTRS;
+    return attrs.map((a) => (el.getAttribute(a) || '').trim()).filter(Boolean);
   }
 
   #build(rowsSel, colsSel, linkAttr) {
@@ -73,21 +103,16 @@ class TraceabilityMatrix extends VBElement {
     const rowAxisLabel = this.getAttribute('row-label') || '';
     const cellMark = this.getAttribute('cell-mark') || '✓';
     const flagOrphans = this.hasAttribute('flag-orphans');
+    const colKeys = colEls.map((el) => new Set(this.#keysOf(el)));
 
     /* Compute links eagerly so we can flag orphans + emit a count. */
-    const links = []; // [{ rowEl, colEl }]
-    const rowHits = new WeakMap();
-    const colHits = new WeakMap();
-    for (const rowEl of rowEls) {
+    const linked = rowEls.map((rowEl) => {
       const refs = TraceabilityMatrix.#parseRefs(rowEl.getAttribute(linkAttr));
-      for (const ref of refs) {
-        const colEl = colEls.find((c) => c.id === ref);
-        if (!colEl) continue;
-        links.push({ rowEl, colEl });
-        rowHits.set(rowEl, (rowHits.get(rowEl) || 0) + 1);
-        colHits.set(colEl, (colHits.get(colEl) || 0) + 1);
-      }
-    }
+      return colKeys.map((keys) => refs.some((r) => keys.has(r)));
+    });
+    const rowHits = linked.map((cells) => cells.filter(Boolean).length);
+    const colHits = colEls.map((_, j) => linked.filter((cells) => cells[j]).length);
+    const linkCount = rowHits.reduce((a, b) => a + b, 0);
 
     /* Build the data-table markup: header row of column labels,
        one body row per row source. */
@@ -101,50 +126,54 @@ class TraceabilityMatrix extends VBElement {
     corner.textContent = rowAxisLabel;
     headerRow.appendChild(corner);
 
-    for (const colEl of colEls) {
+    const colLabels = colEls.map((el) => TraceabilityMatrix.#labelOf(el));
+    colEls.forEach((colEl, j) => {
       const th = document.createElement('th');
       th.setAttribute('data-sort', 'number');
-      th.textContent = TraceabilityMatrix.#labelOf(colEl);
-      th.dataset.colId = colEl.id || '';
-      if (flagOrphans && !colHits.get(colEl)) th.dataset.orphan = '';
+      th.textContent = colLabels[j];
+      th.dataset.colId = colEl.id || this.#keysOf(colEl)[0] || '';
+      th.dataset.colIndex = String(j);
+      if (flagOrphans && !colHits[j]) th.dataset.orphan = '';
       headerRow.appendChild(th);
-    }
+    });
 
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
-    for (const rowEl of rowEls) {
+    rowEls.forEach((rowEl, i) => {
       const tr = document.createElement('tr');
       tr.dataset.rowId = rowEl.id || '';
-      if (flagOrphans && !rowHits.get(rowEl)) tr.dataset.orphan = '';
+      tr.dataset.rowIndex = String(i);
+      if (flagOrphans && !rowHits[i]) tr.dataset.orphan = '';
 
+      const rowLabel = TraceabilityMatrix.#labelOf(rowEl);
       const labelCell = document.createElement('th');
       labelCell.scope = 'row';
-      labelCell.textContent = TraceabilityMatrix.#labelOf(rowEl);
+      labelCell.appendChild(TraceabilityMatrix.#button(rowLabel, `Highlight ${rowLabel}`));
       tr.appendChild(labelCell);
 
-      const refs = TraceabilityMatrix.#parseRefs(rowEl.getAttribute(linkAttr));
-      for (const colEl of colEls) {
+      colEls.forEach((colEl, j) => {
         const td = document.createElement('td');
-        const matched = refs.includes(colEl.id);
+        const matched = linked[i][j];
         td.setAttribute('data-sort-value', matched ? '1' : '0');
-        if (matched) {
-          td.dataset.linked = '';
-          td.textContent = cellMark;
-          td.setAttribute('aria-label', 'linked');
-        } else {
-          td.setAttribute('aria-label', 'not linked');
-        }
-        td.dataset.colId = colEl.id || '';
+        if (matched) td.dataset.linked = '';
+        td.setAttribute('aria-label', matched ? 'linked' : 'not linked');
+        td.dataset.colId = colEl.id || this.#keysOf(colEl)[0] || '';
+        td.dataset.colIndex = String(j);
+        td.appendChild(TraceabilityMatrix.#button(
+          matched ? cellMark : '',
+          `${rowLabel} × ${colLabels[j]}: ${matched ? 'linked' : 'not linked'}`,
+        ));
         tr.appendChild(td);
-      }
+      });
       tbody.appendChild(tr);
-    }
+    });
 
     table.appendChild(tbody);
     wrapper.appendChild(table);
 
+    this.#clearHighlight();
     [...this.children].forEach((c) => { if (c.tagName !== 'TEMPLATE') c.remove(); });
 
     const label = this.getAttribute('label');
@@ -157,18 +186,33 @@ class TraceabilityMatrix extends VBElement {
     this.appendChild(wrapper);
 
     /* Wire chain-highlight clicks via event delegation on the wrapper.
-       Any <td>/<th> click highlights its row + column source elements. */
-    this.#wrapper = wrapper;
-    this.#rowsByDom = new Map(rowEls.map((el) => [el.id, el]));
-    this.#colsByDom = new Map(colEls.map((el) => [el.id, el]));
+       Each cell holds a <button>, so Enter/Space activate it too. Source
+       elements are keyed by position, so rows/cols without an id still
+       highlight. */
+    this.#rowEls = rowEls;
+    this.#colEls = colEls;
     this.listen(wrapper, 'click', this.#onCellClick);
 
     queueMicrotask(() => {
       this.dispatchEvent(new CustomEvent('traceability-matrix:ready', {
         bubbles: true,
-        detail: { rowCount: rowEls.length, colCount: colEls.length, linkCount: links.length },
+        detail: { rowCount: rowEls.length, colCount: colEls.length, linkCount },
       }));
     });
+  }
+
+  /**
+   * @param {string} text visible text
+   * @param {string} name accessible name
+   */
+  static #button(text, name) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'tm-cell-btn';
+    btn.textContent = text;
+    btn.setAttribute('aria-label', name);
+    btn.setAttribute('aria-pressed', 'false');
+    return btn;
   }
 
   #onCellClick = (e) => {
@@ -176,10 +220,10 @@ class TraceabilityMatrix extends VBElement {
     if (!cell) return;
     const tr = cell.closest('tr');
     if (!tr) return;
-    const rowId = tr.dataset.rowId;
-    const colId = cell.dataset.colId;
-    const rowEl = rowId ? this.#rowsByDom.get(rowId) : null;
-    const colEl = colId ? this.#colsByDom.get(colId) : null;
+    const rowIdx = tr.dataset.rowIndex;
+    const colIdx = cell.dataset.colIndex;
+    const rowEl = rowIdx !== undefined ? this.#rowEls[Number(rowIdx)] ?? null : null;
+    const colEl = colIdx !== undefined ? this.#colEls[Number(colIdx)] ?? null : null;
 
     /* Toggle: if this cell is already highlighted, clear; else
        set fresh highlight on row + col source elements. */
@@ -192,10 +236,15 @@ class TraceabilityMatrix extends VBElement {
       return;
     }
     cell.setAttribute('data-state-highlighted', '');
-    if (rowEl) rowEl.setAttribute('data-state-highlighted', '');
-    if (colEl && colEl !== rowEl) colEl.setAttribute('data-state-highlighted', '');
+    cell.querySelector('.tm-cell-btn')?.setAttribute('aria-pressed', 'true');
     /* Highlight the entire row in the matrix for visual scan. */
     tr.setAttribute('data-state-highlighted', '');
+    for (const el of [rowEl, colEl]) {
+      if (el && !this.#highlighted.includes(el)) {
+        el.setAttribute('data-state-highlighted', '');
+        this.#highlighted.push(el);
+      }
+    }
 
     this.dispatchEvent(new CustomEvent('traceability-matrix:highlight', {
       bubbles: true, detail: { rowEl, colEl, on: true },
@@ -203,14 +252,14 @@ class TraceabilityMatrix extends VBElement {
   };
 
   #clearHighlight() {
-    if (!this.#wrapper) return;
-    this.#wrapper.querySelectorAll('[data-state-highlighted]').forEach((el) => el.removeAttribute('data-state-highlighted'));
-    document.querySelectorAll('[data-state-highlighted]').forEach((el) => {
-      if (this.#rowsByDom.has(el.id) || this.#colsByDom.has(el.id)) el.removeAttribute('data-state-highlighted');
-    });
+    this.querySelectorAll('[data-state-highlighted]').forEach((el) => el.removeAttribute('data-state-highlighted'));
+    this.querySelectorAll('.tm-cell-btn[aria-pressed="true"]').forEach((el) => el.setAttribute('aria-pressed', 'false'));
+    for (const el of this.#highlighted) el.removeAttribute('data-state-highlighted');
+    this.#highlighted = [];
   }
 
   #renderEmpty() {
+    this.#clearHighlight();
     [...this.children].forEach((c) => { if (c.tagName !== 'TEMPLATE') c.remove(); });
     const note = document.createElement('p');
     note.className = 'tm-empty';
@@ -230,12 +279,12 @@ class TraceabilityMatrix extends VBElement {
       || '(unnamed)';
   }
 
-  /** @type {HTMLElement | null} */
-  #wrapper = null;
-  /** @type {Map<string, Element>} */
-  #rowsByDom = new Map();
-  /** @type {Map<string, Element>} */
-  #colsByDom = new Map();
+  /** @type {Element[]} */
+  #rowEls = [];
+  /** @type {Element[]} */
+  #colEls = [];
+  /** Source elements this matrix highlighted (cleared on re-highlight and teardown). @type {Element[]} */
+  #highlighted = [];
 }
 
 registerComponent('traceability-matrix', TraceabilityMatrix);

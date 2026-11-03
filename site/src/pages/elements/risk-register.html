@@ -13,7 +13,8 @@ crumbLabel: Web Components
 <section>
   <h2>Overview</h2>
   <p>The <code>&lt;risk-register&gt;</code> component renders both a sortable risk table and a likelihood × impact quadrant grid from a single data source. Severity is computed automatically (likelihood × impact) and color-coded with a low-good heatmap. Each risk appears as a labelled dot at its (likelihood, impact) coordinates in the quadrant view.</p>
-  <p>It composes <code>&lt;data-table&gt;</code> (with the new <code>data-rollup="product"</code> + <code>data-heatmap="low-good"</code> attributes) and <code>&lt;quadrant-grid&gt;</code> — most of the code is glue, since both children do the work.</p>
+  <p>It composes <code>&lt;data-table&gt;</code> (sorting plus a <code>data-heatmap="low-good"</code> Severity column) and <code>&lt;quadrant-grid&gt;</code> — most of the code is glue, since both children do the work.</p>
+  <p>The component computes Severity itself and writes it into each Severity cell (as text and <code>data-sort-value</code>). It does not use <code>&lt;data-table&gt;</code>'s <code>data-rollup="product"</code>, because that multiplies <em>every</em> numeric-looking cell in the row &mdash; a title such as &ldquo;2FA rollout&rdquo; or a mitigation such as &ldquo;3 vendor quotes&rdquo; would inflate the score. A row with a missing or non-numeric Likelihood or Impact gets an empty Severity cell and no dot in the grid.</p>
 
   <browser-window url="risk-register" src="/demos/risk-register-basic/"></browser-window>
 </section>
@@ -44,13 +45,14 @@ crumbLabel: Web Components
 </section>
 
 <section>
-  <h2>Quadrant naming</h2>
+  <h2>Quadrant placement</h2>
+  <p>Scores are integers from 1 to 5 (larger values are capped at 5). Each score maps to a grid coordinate with <code>(score − 1) / 4</code>, so 1 sits on the low edge, 3 on the centre line, and 5 on the high edge. A score is in the <strong>high</strong> half only when it is <strong>above 3</strong>; a mid score of 3 counts as low. In the example above, &ldquo;Vendor delay&rdquo; (likelihood 4, impact 3) is high likelihood, low impact and lands in <strong>Mitigate</strong>; &ldquo;Data breach&rdquo; (2, 5) lands in <strong>Plan</strong>.</p>
   <p>The grid uses standard risk-management labels:</p>
   <ul>
-    <li><strong>Avoid</strong> (Q1 — high likelihood, high impact)</li>
-    <li><strong>Plan</strong> (Q2 — low likelihood, high impact)</li>
-    <li><strong>Accept</strong> (Q3 — low likelihood, low impact)</li>
-    <li><strong>Mitigate</strong> (Q4 — high likelihood, low impact)</li>
+    <li><strong>Avoid</strong> (Q1 — likelihood 4–5, impact 4–5)</li>
+    <li><strong>Plan</strong> (Q2 — likelihood 1–3, impact 4–5)</li>
+    <li><strong>Accept</strong> (Q3 — likelihood 1–3, impact 1–3)</li>
+    <li><strong>Mitigate</strong> (Q4 — likelihood 4–5, impact 1–3)</li>
   </ul>
 </section>
 
@@ -62,7 +64,7 @@ crumbLabel: Web Components
 <section>
   <h2>Related</h2>
   <ul>
-    <li><a href="https://vanilla-breeze.com/docs/elements/web-components/data-table/"><code>&lt;data-table&gt;</code></a> — Provides the rollup + heatmap attributes used here.</li>
+    <li><a href="https://vanilla-breeze.com/docs/elements/web-components/data-table/"><code>&lt;data-table&gt;</code></a> — Provides the sorting and heatmap used here.</li>
     <li><a href="/elements/quadrant-grid/"><code>&lt;quadrant-grid&gt;</code></a> — Renders the labelled-dot view.</li>
   </ul>
 </section>

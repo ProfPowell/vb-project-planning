@@ -124,7 +124,7 @@ crumbLabel: Web Components
   </empathy-map>
 </review-surface></code-block>
 
-    <p>Press <kbd>Escape</kbd> to exit annotate mode or close an open popover. Pins are always clickable in both view and annotate modes.</p>
+    <p>Press <kbd>Escape</kbd> to close an open popover (focus returns to its pin) or, with no popover open, to exit annotate mode. Pins are always clickable in both view and annotate modes.</p>
   </section>
 
   <section>
@@ -212,69 +212,16 @@ console.log(JSON.stringify(data, null, 2));</code-block>
 surface.adapter = {
   async load() { /* return Pin[] */ },
   async save(pin) { /* persist and return pin with id */ },
-  async update(id, changes) { /* merge changes, return updated pin */ },
+  // `pin` is the component's full copy, so a pin this adapter has never
+  // seen (loaded via src or .pins) can be created rather than rejected.
+  async update(id, changes, pin) { /* merge (or upsert), return updated pin */ },
   async remove(id) { /* delete pin */ },
 };</code-block>
   </section>
 
   <section>
     <h2>Events</h2>
-    <table class="props-table">
-      <thead>
-        <tr>
-          <th>Event</th>
-          <th>Detail</th>
-          <th>When</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>review-surface:ready</code></td>
-          <td><code>{ pinCount }</code></td>
-          <td>After the component finishes rendering</td>
-        </tr>
-        <tr>
-          <td><code>review-surface:add</code></td>
-          <td><code>{ pin }</code></td>
-          <td>A pin is created (via click or <code>addPin()</code>)</td>
-        </tr>
-        <tr>
-          <td><code>review-surface:update</code></td>
-          <td><code>{ pin, changes }</code></td>
-          <td>A pin is modified (reply added, text changed, un-resolved)</td>
-        </tr>
-        <tr>
-          <td><code>review-surface:remove</code></td>
-          <td><code>{ pin }</code></td>
-          <td>A pin is deleted</td>
-        </tr>
-        <tr>
-          <td><code>review-surface:resolve</code></td>
-          <td><code>{ pin }</code></td>
-          <td>A pin is marked as resolved</td>
-        </tr>
-        <tr>
-          <td><code>review-surface:select</code></td>
-          <td><code>{ pin }</code></td>
-          <td>A pin's popover is opened</td>
-        </tr>
-        <tr>
-          <td><code>review-surface:mode</code></td>
-          <td><code>{ mode }</code></td>
-          <td>View/annotate mode is toggled (<code>"view"</code> or <code>"annotate"</code>)</td>
-        </tr>
-        <tr>
-          <td><code>review-surface:upgraded</code></td>
-          <td>&mdash;</td>
-          <td>Once after first connect. Wait for this before assigning <code>.pins</code> from a framework.</td>
-        </tr>
-        <tr>
-          <td><code>review-surface:pins-changed</code></td>
-          <td><code>{ pins, source: 'property' }</code></td>
-          <td>After <code>.pins</code> assignment.</td>
-        </tr>
-      </tbody>
-    </table>
+    {{ eventsTable("review-surface", apiRegistry) }}
   </section>
 
   <section>
@@ -282,10 +229,15 @@ surface.adapter = {
     <p>
       <code>&lt;review-surface&gt;</code> follows the
       <a href="https://vanilla-breeze.com/docs/concepts/data-api/">HTML-first + JS-first dual-mode contract</a>.
-      Reactive consumers (Montane, Lit, Solid, etc.) should wait for
-      <code>review-surface:upgraded</code> before assigning <code>.pins</code>.
-      For server-backed pin storage, use the <code>.adapter</code> hook
-      instead (see "Adapters" above).
+      Assign <code>.pins</code> any time after the element is defined &mdash;
+      before or after it is connected. Pins assigned before the first
+      connect win over the adapter's initial load, and pins (and any
+      <code>.adapter</code> you set) survive the element being moved in the
+      DOM. Pin <code>x</code>/<code>y</code> are <strong>percentages</strong>
+      (0&ndash;100) of the wrapped content's width and height; other values
+      are clamped. <code>review-surface:ready</code> fires once, after the
+      initial pins have rendered. For server-backed pin storage, use the
+      <code>.adapter</code> hook instead (see "Adapters" above).
     </p>
     <table class="props-table">
       <thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead>
@@ -307,9 +259,9 @@ surface.adapter = {
       </tbody>
     </table>
     <code-block language="javascript" label="Reactive consumer" data-escape>const surface = document.querySelector('review-surface');
-await new Promise(r =&gt; surface.addEventListener('review-surface:upgraded', r, { once: true }));
+await customElements.whenDefined('review-surface');
 surface.pins = [
-  { id: 'p1', x: 0.34, y: 0.62, text: 'Logo too small here', resolved: false },
+  { id: 'p1', x: 34, y: 62, text: 'Logo too small here', resolved: false },
 ];</code-block>
   </section>
 
@@ -381,11 +333,11 @@ surface.pins = [
   <section>
     <h2>Accessibility</h2>
     <ul>
-      <li>Pin markers are <code>&lt;button&gt;</code> elements with <code>aria-label</code>, <code>aria-expanded</code>, and <code>aria-haspopup="dialog"</code></li>
-      <li>Comment popovers use <code>role="dialog"</code> with <code>aria-labelledby</code></li>
+      <li>Pin markers are <code>&lt;button&gt;</code> elements with <code>aria-label</code>, <code>aria-expanded</code>, and <code>aria-haspopup="dialog"</code>, grouped in an overlay with <code>role="group"</code> and the label &ldquo;Review pins&rdquo;</li>
+      <li>Comment popovers use <code>role="dialog"</code> with <code>aria-labelledby</code>; opening a pin moves focus into its popover, and closing it (button or <kbd>Escape</kbd>) returns focus to the pin</li>
       <li>Toolbar uses <code>role="toolbar"</code> with <code>aria-label</code></li>
       <li>Annotate toggle uses <code>aria-pressed</code> to communicate state</li>
-      <li>An <code>aria-live="polite"</code> region announces pin creation, deletion, and resolution</li>
+      <li>A single persistent <code>aria-live="polite"</code> region announces pin creation, deletion, resolution, and replies</li>
       <li>Keyboard: <kbd>Tab</kbd> navigates pins, <kbd>Enter</kbd>/<kbd>Space</kbd> opens popover, <kbd>Escape</kbd> closes popover or exits annotate mode</li>
       <li>All transitions respect <code>prefers-reduced-motion: reduce</code></li>
       <li>Print styles hide pins, overlay, and toolbar &mdash; only the wrapped content prints</li>
