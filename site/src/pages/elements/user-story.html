@@ -52,72 +52,7 @@ crumbLabel: Web Components
 
   <section>
     <h2>Attributes</h2>
-    <table class="props-table">
-      <thead>
-        <tr>
-          <th>Attribute</th>
-          <th>Type</th>
-          <th>Default</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>persona-id</code></td>
-          <td>string</td>
-          <td>&mdash;</td>
-          <td>ID of a <code>&lt;user-persona&gt;</code> element to link to (renders as an anchor)</td>
-        </tr>
-        <tr>
-          <td><code>priority</code></td>
-          <td>string</td>
-          <td><code>"medium"</code></td>
-          <td>Priority level: <code>critical</code>, <code>high</code>, <code>medium</code>, or <code>low</code></td>
-        </tr>
-        <tr>
-          <td><code>status</code></td>
-          <td>string</td>
-          <td><code>"backlog"</code></td>
-          <td>Workflow status: <code>backlog</code>, <code>to-do</code>, <code>in-progress</code>, <code>review</code>, or <code>done</code></td>
-        </tr>
-        <tr>
-          <td><code>points</code></td>
-          <td>string</td>
-          <td>&mdash;</td>
-          <td>Story point estimate displayed as a circular badge</td>
-        </tr>
-        <tr>
-          <td><code>epic</code></td>
-          <td>string</td>
-          <td>&mdash;</td>
-          <td>Epic or feature group label shown as a highlighted chip</td>
-        </tr>
-        <tr>
-          <td><code>story-id</code></td>
-          <td>string</td>
-          <td>&mdash;</td>
-          <td>Unique identifier (e.g., "PROJ-142") displayed in monospace in the header</td>
-        </tr>
-        <tr>
-          <td><code>compact</code></td>
-          <td>boolean</td>
-          <td>&mdash;</td>
-          <td>Reduces padding and font size for denser layouts</td>
-        </tr>
-        <tr>
-          <td><code>detail</code></td>
-          <td>string</td>
-          <td><code>"full"</code></td>
-          <td>Controls content density: <code>full</code> (all sections), <code>compact</code> (hide empty sections), <code>minimal</code> (ID + title only, click to expand)</td>
-        </tr>
-        <tr>
-          <td><code>src</code></td>
-          <td>string (URL)</td>
-          <td>&mdash;</td>
-          <td>URL to JSON file containing story data. Loads and populates all attributes.</td>
-        </tr>
-      </tbody>
-    </table>
+    {{ attributeTable("user-story", apiRegistry) }}
   </section>
 
   <section>
@@ -211,7 +146,7 @@ crumbLabel: Web Components
 </user-story></code-block>
 
     <h3>Click to Expand</h3>
-    <p>Minimal cards are interactive. Clicking or pressing Enter opens a native <code>&lt;dialog&gt;</code> showing the full story. The dialog uses VB&rsquo;s built-in dialog CSS for sizing, backdrop, and animation. You can also call <code>story.showDetail()</code> programmatically.</p>
+    <p>Minimal cards render as a <code>&lt;button&gt;</code> (named "[story-id]: [title]", with <code>aria-haspopup="dialog"</code>). Clicking it or pressing Enter or Space opens a native modal <code>&lt;dialog&gt;</code> showing the full story, labelled by its <code>&lt;h2&gt;</code> title. Each story owns one dialog: it is removed from the document when it closes or when the story is removed. The dialog uses VB&rsquo;s built-in dialog CSS for sizing, backdrop, and animation. You can also call <code>story.showDetail()</code> programmatically.</p>
 
     <browser-window
       src="/demos/user-story-expand/"
@@ -226,7 +161,7 @@ story.showDetail(); // Opens modal dialog with full detail</code-block>
 
   <section>
     <h2>JSON Loading</h2>
-    <p>Load story data from a JSON file using the <code>src</code> attribute. Scalar fields map to attributes; list fields populate the acceptance criteria, tasks, and notes sections.</p>
+    <p>Load story data from a JSON file using the <code>src</code> attribute. Scalar fields map to attributes; text and list fields create the slotted persona, action, benefit, title, acceptance criteria, tasks, and notes children (authored children are kept). The file is fetched once &mdash; moving the card (for example between kanban columns) does not refetch &mdash; and <code>story-ready</code> fires after the data renders.</p>
 
     <code-block language="html" show-lines label="Loading from JSON" data-escape><user-story src="/api/stories/PROJ-142.json" detail="full"></user-story></code-block>
 
@@ -405,7 +340,9 @@ story.addEventListener('status-changed', (e) => {
         <tr><th>Property</th><th>Type</th><th>Description</th></tr>
       </thead>
       <tbody>
-        <tr><td><code>.data</code></td><td><code>{ storyId?, personaId?, priority?, status?, points?, epic?, detail?, persona?, action?, benefit?, title?, acceptanceCriteria?, tasks?, notes? }</code></td><td>Sets state attributes <em>and</em> creates slotted children for any fields not already present. Idempotent.</td></tr>
+        <tr><td><code>.data</code></td><td><code>{ storyId?, personaId?, priority?, status?, points?, epic?, detail?, persona?, action?, benefit?, title?, acceptanceCriteria?, tasks?, notes? }</code></td><td>Sets state attributes <em>and</em> creates slotted children for any fields not already present (authored content wins). Idempotent.</td></tr>
+        <tr><td><code>showDetail()</code></td><td>method</td><td>Open this story at full detail in a modal dialog (see Click to Expand).</td></tr>
+        <tr><td><code>updateStatus(status)</code> / <code>updatePriority(priority)</code></td><td>method</td><td>Set the attribute and fire <code>status-changed</code> / <code>priority-changed</code>. Unknown values are ignored.</td></tr>
       </tbody>
     </table>
 
@@ -427,14 +364,7 @@ document.body.appendChild(us);</code-block>
 
     <p>Reading <code>.data</code> back returns the current shape. See the <a href="https://vanilla-breeze.com/docs/concepts/data-api/">Data API concepts guide</a>.</p>
 
-    <table class="props-table">
-      <thead>
-        <tr><th>Event</th><th>Detail</th></tr>
-      </thead>
-      <tbody>
-        <tr><td><code>user-story:data-changed</code></td><td><code>{ data, source: 'property' }</code></td></tr>
-      </tbody>
-    </table>
+    <p>Assigning <code>.data</code> fires <code>user-story:data-changed</code>; frameworks should wait for <code>user-story:upgraded</code> first. All events are listed under Events below.</p>
   </section>
 
   <section>
@@ -494,41 +424,17 @@ document.body.appendChild(us);</code-block>
 
   <section>
     <h2>Events</h2>
-    <table class="props-table">
-      <thead>
-        <tr>
-          <th>Event</th>
-          <th>Detail</th>
-          <th>When</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>story-ready</code></td>
-          <td><code>{ id, persona, action, benefit, priority, status, points }</code></td>
-          <td>Fires after the component finishes rendering</td>
-        </tr>
-        <tr>
-          <td><code>status-changed</code></td>
-          <td><code>{ status, storyId }</code></td>
-          <td>Fires when <code>updateStatus()</code> is called with a valid status</td>
-        </tr>
-        <tr>
-          <td><code>priority-changed</code></td>
-          <td><code>{ priority, storyId }</code></td>
-          <td>Fires when <code>updatePriority()</code> is called with a valid priority</td>
-        </tr>
-      </tbody>
-    </table>
+    {{ eventsTable("user-story", apiRegistry) }}
   </section>
 
   <section>
     <h2>Accessibility</h2>
     <ul>
-      <li>The outer card uses <code>role="article"</code> with <code>aria-label="User story"</code></li>
+      <li>The full and compact card is an <code>&lt;article&gt;</code> with <code>aria-label="User story: [story-id]"</code> (or "User story" without an id)</li>
+      <li>The minimal card is a real <code>&lt;button&gt;</code> named "[story-id]: [title]" with <code>aria-haspopup="dialog"</code>; Enter and Space open the detail dialog</li>
       <li>Priority and status badges use color plus text labels &mdash; never color alone</li>
-      <li>Story points badge has a <code>title</code> attribute reading "Story points"</li>
-      <li>Slot sections include visible headings for screen reader navigation</li>
+      <li>The story points badge shows the number and includes visually hidden text, so it reads as "[n] story points"</li>
+      <li>The Acceptance Criteria, Tasks, and Notes sections each have a visible <code>&lt;h3&gt;</code> heading for screen reader navigation</li>
       <li>Respects <code>prefers-reduced-motion: reduce</code> by disabling hover transitions</li>
       <li>Responsive layout stacks header badges vertically at narrow viewports (&lt;480px)</li>
     </ul>
