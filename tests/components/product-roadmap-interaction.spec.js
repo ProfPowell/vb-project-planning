@@ -210,6 +210,49 @@ test.describe('product-roadmap — interaction', () => {
     expect(state.dropMarkers).toBe(0);
   });
 
+  test('editable pointer: dragging or resizing an initiative that runs past the range keeps its off-range part', async ({ page }) => {
+    await page.goto(editableDemo);
+    await page.waitForSelector('product-roadmap[data-upgraded]');
+    await mount(page, { start: '2026-Q1', end: '2026-Q4', editable: '' },
+      `<section data-lane="L">
+         <article data-start="2025-10-01" data-end="2026-06-30"><h3>Early</h3></article>
+         <article data-start="2026-07-01" data-end="2027-03-31"><h3>Late</h3></article>
+       </section>`);
+    await recordEvents(page);
+
+    const track = await page.locator('product-roadmap .rm-track').first().boundingBox();
+    const quarter = track.width / 4;
+    const drag = async (locator, dx) => {
+      const b = await locator.boundingBox();
+      const x = b.x + Math.min(20, b.width / 2);
+      const y = b.y + b.height / 2;
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x + dx / 2, y, { steps: 4 });
+      await page.mouse.move(x + dx, y, { steps: 4 });
+      await page.mouse.up();
+      await page.waitForTimeout(20);
+    };
+
+    // Move "Early" (starts a quarter before the range) right by one quarter.
+    await drag(page.locator('product-roadmap .rm-bar', { hasText: 'Early' }), quarter);
+    // Shrink "Late" (ends a quarter after the range) by one quarter from its handle.
+    const handle = page.locator('product-roadmap .rm-bar', { hasText: 'Late' }).locator('.rm-bar-handle');
+    const h = await handle.boundingBox();
+    await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(h.x + h.width / 2 - quarter / 2, h.y + h.height / 2, { steps: 4 });
+    await page.mouse.move(h.x + h.width / 2 - quarter, h.y + h.height / 2, { steps: 4 });
+    await page.mouse.up();
+    await page.waitForTimeout(20);
+
+    const events = await page.evaluate(() => window.__rmEvents.map(({ name, title, start, end }) => ({ name, title, start, end })));
+    expect(events).toEqual([
+      { name: 'reschedule', title: 'Early', start: '2026-01-01', end: '2026-09-30' },
+      { name: 'resize', title: 'Late', start: '2026-07-01', end: '2026-12-31' },
+    ]);
+  });
+
   test('reconnect re-renders once and does not stack listeners', async ({ page }) => {
     await page.goto(basicDemo);
     await page.waitForSelector('product-roadmap[data-upgraded]');

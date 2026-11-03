@@ -451,13 +451,18 @@ class Roadmap extends VBElement {
     const xFrac = parseFloat(info.bar.style.getPropertyValue('--rm-x')) || 0;
     const wFrac = parseFloat(info.bar.style.getPropertyValue('--rm-w')) || 0;
 
+    /* Work from the bar's true dates plus the dragged distance, not its
+       on-screen (range-clipped) geometry, so an initiative that runs past
+       the visible range keeps its off-screen part. */
     let start = parseISODate(info.bar.dataset.start);
     let endExcl = addDays(parseISODate(info.bar.dataset.end), 1);
     if (info.kind === 'move') {
-      start = this.#snapToBoundary(this.#dateForFraction(xFrac));
-      endExcl = this.#snapToBoundary(this.#dateForFraction(xFrac + wFrac));
+      const dFrac = xFrac - info.startFraction;
+      start = this.#snapToBoundary(this.#dateForFraction(this.#rawFractionFor(start) + dFrac));
+      endExcl = this.#snapToBoundary(this.#dateForFraction(this.#rawFractionFor(endExcl) + dFrac));
     } else {
-      endExcl = this.#snapToBoundary(this.#dateForFraction(xFrac + wFrac));
+      const dFrac = wFrac - info.widthFraction;
+      endExcl = this.#snapToBoundary(this.#dateForFraction(this.#rawFractionFor(endExcl) + dFrac));
     }
     /* Never collapse a bar below one period. */
     if (endExcl <= start) endExcl = addMonths(start, this.#periodMonths);
@@ -533,6 +538,12 @@ class Roadmap extends VBElement {
   #fractionFor(date) {
     if (!this.#start || !this.#totalDays) return 0;
     return Math.max(0, Math.min(1, daysBetween(this.#start, date) / this.#totalDays));
+  }
+
+  /** Unclamped position of `date` on the range (< 0 before it, > 1 after). @param {Date} date */
+  #rawFractionFor(date) {
+    if (!this.#start || !this.#totalDays) return 0;
+    return daysBetween(this.#start, date) / this.#totalDays;
   }
 
   /** @param {number} frac */
