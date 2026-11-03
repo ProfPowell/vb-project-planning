@@ -111,3 +111,90 @@ test.describe('traceability-matrix (0.2.2 fixes)', () => {
     expect(result.after).toEqual([]);
   });
 });
+
+test.describe('traceability-matrix keyboard grid (0.3.0)', () => {
+  /** Accessible name of the focused element (button label or header text). */
+  const focused = (page) => page.evaluate(() => {
+    const el = document.activeElement;
+    return el.getAttribute('aria-label') || el.textContent.trim();
+  });
+
+  test('role="grid" with a single Tab stop and a name', async ({ page }) => {
+    await page.goto(demoPage);
+    await page.waitForSelector(`${tableSel}[role="grid"]`);
+    const state = await page.evaluate(() => {
+      const table = document.querySelector('traceability-matrix table');
+      const labelledBy = document.getElementById(table.getAttribute('aria-labelledby'));
+      return {
+        role: table.getAttribute('role'),
+        name: labelledBy?.textContent,
+        stops: table.querySelectorAll('[tabindex="0"]').length,
+        roving: table.querySelectorAll('[tabindex="-1"]').length,
+        // No cell button or sortable header escapes the roving tabindex.
+        loose: [...table.querySelectorAll('button, th[data-sort]')].filter(el => !el.hasAttribute('tabindex')).length,
+      };
+    });
+    // 1 header row + 4 story rows, 1 label column + 3 persona columns.
+    expect(state).toEqual({ role: 'grid', name: 'Story → Persona', stops: 1, roving: 5 * 4 - 1, loose: 0 });
+    await expect(page.getByRole('grid', { name: 'Story → Persona' })).toHaveCount(1);
+  });
+
+  test('Tab enters once; arrows, Home/End and Ctrl+Home/End move; Tab leaves', async ({ page }) => {
+    await page.goto(demoPage);
+    await page.waitForSelector(`${tableSel}[role="grid"]`);
+    // Put focus just before the matrix, then Tab in.
+    await page.evaluate(() => {
+      const before = document.createElement('button');
+      before.id = 'before';
+      before.textContent = 'before';
+      document.querySelector('traceability-matrix').before(before);
+      before.focus();
+    });
+    await page.keyboard.press('Tab');
+    expect(await focused(page)).toBe('Story'); // first cell: the corner header
+
+    await page.keyboard.press('ArrowDown');
+    expect(await focused(page)).toBe('Highlight Weekly digest');
+    await page.keyboard.press('ArrowRight');
+    expect(await focused(page)).toBe('Weekly digest × Sarah Chen: linked');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowDown');
+    expect(await focused(page)).toBe('Sprint retro × Alex Rivera: linked');
+    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('ArrowUp');
+    expect(await focused(page)).toBe('Alex Rivera'); // sortable column header
+    await page.keyboard.press('ArrowUp'); // clamps at the edge
+    expect(await focused(page)).toBe('Alex Rivera');
+
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('End');
+    expect(await focused(page)).toBe('Weekly digest × Jordan Park: not linked');
+    await page.keyboard.press('Home');
+    expect(await focused(page)).toBe('Highlight Weekly digest');
+    await page.keyboard.press('Control+End');
+    expect(await focused(page)).toBe('Login redirect × Jordan Park: not linked');
+    await page.keyboard.press('Control+Home');
+    expect(await focused(page)).toBe('Story');
+
+    // Only the current cell is a Tab stop; Space still toggles the highlight.
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Space');
+    await expect(page.getByRole('button', { name: 'Weekly digest × Sarah Chen: linked' })).toHaveAttribute('aria-pressed', 'true');
+    expect(await page.evaluate(() => document.querySelectorAll('traceability-matrix [tabindex="0"]').length)).toBe(1);
+
+    // Shift+Tab leaves the grid in one step; Tab comes back to the same cell.
+    await page.keyboard.press('Shift+Tab');
+    expect(await page.evaluate(() => document.activeElement.id)).toBe('before');
+    await page.keyboard.press('Tab');
+    expect(await focused(page)).toBe('Weekly digest × Sarah Chen: linked');
+  });
+
+  test('clicking a cell makes it the Tab stop', async ({ page }) => {
+    await page.goto(demoPage);
+    await page.waitForSelector(`${tableSel}[role="grid"]`);
+    await page.getByRole('button', { name: 'Layout review × Jordan Park: linked' }).click();
+    const stops = await page.evaluate(() => [...document.querySelectorAll('traceability-matrix [tabindex="0"]')].map(el => el.getAttribute('aria-label')));
+    expect(stops).toEqual(['Layout review × Jordan Park: linked']);
+  });
+});

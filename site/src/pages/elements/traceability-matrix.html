@@ -109,7 +109,8 @@ document.querySelector('traceability-matrix')
   <ul>
     <li>Body cells keep <code>aria-label="linked"</code> / <code>"not linked"</code> and contain a button named &ldquo;<em>row</em> × <em>column</em>: linked&rdquo; (or &ldquo;not linked&rdquo;), so the relationship is spoken without relying on the ✓ glyph.</li>
     <li>Buttons use <code>aria-pressed</code> to report the active highlight; row-header buttons are named &ldquo;Highlight <em>row</em>&rdquo;.</li>
-    <li>Every cell button is a Tab stop, so very large matrices mean many Tab presses.</li>
+    <li><strong>Keyboard (grid pattern).</strong> The table has <code>role="grid"</code> and is a single Tab stop (roving <code>tabindex</code>): Tab enters at the last cell you used, or the first cell. <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> move between cells, including the sortable column headers; <kbd>Home</kbd> / <kbd>End</kbd> go to the start / end of the row; <kbd>Ctrl</kbd>+<kbd>Home</kbd> / <kbd>Ctrl</kbd>+<kbd>End</kbd> to the first / last cell of the matrix. <kbd>Enter</kbd> or <kbd>Space</kbd> toggles the highlight on a cell (or sorts, on a column header). Rows hidden by filtering are skipped.</li>
+    <li>Why <code>role="grid"</code>: it follows the <a href="https://www.w3.org/WAI/ARIA/apg/patterns/grid/">WAI-ARIA APG grid pattern</a>, so screen readers switch to focus mode and pass the arrow keys to the matrix instead of using them for reading. The native <code>&lt;tr&gt;</code> / <code>&lt;th&gt;</code> / <code>&lt;td&gt;</code> still map to row, column / row header, and grid cell, so headers are announced as you move. The grid is named by the <code>label</code> attribute (or &ldquo;Traceability matrix&rdquo;).</li>
   </ul>
 </section>
 
