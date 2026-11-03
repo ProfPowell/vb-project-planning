@@ -23,7 +23,14 @@
       "kind": "host-api",
       "purpose": "config",
       "type": "string",
-      "description": "Attribute on the row element whose value(s) reference column ids; comma-separated values supported"
+      "description": "Attribute on the row element whose value(s) reference column identifiers (see match-attr); comma-separated values supported"
+    },
+    {
+      "name": "match-attr",
+      "kind": "host-api",
+      "purpose": "config",
+      "type": "string",
+      "description": "Attribute on column elements that link-attr values are matched against. Default: the column's id, story-id (<user-story>) or item-id (<work-item>), whichever matches"
     },
     {
       "name": "label",
@@ -44,7 +51,7 @@
       "kind": "host-api",
       "purpose": "config",
       "type": "string",
-      "description": "Glyph shown in linked cells (default: \u2713)"
+      "description": "Glyph shown in linked cells (default: ✓)"
     },
     {
       "name": "flag-orphans",
@@ -71,7 +78,7 @@
     {
       "name": "traceability-matrix:highlight",
       "detail": "{ rowEl, colEl, on }",
-      "description": "Fired when a cell toggles chain highlight"
+      "description": "Fired when a cell toggles chain highlight (click, or Enter/Space on the cell's button)"
     }
   ],
   "structure": [],
