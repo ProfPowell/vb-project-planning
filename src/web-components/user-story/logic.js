@@ -16,7 +16,7 @@
  * State/config attributes:
  * @attr {string}  persona-id - Links to a user-persona element by id. When no
  *                              slot="persona" is given, the "As a…" text falls
- *                              back to that persona's role (live-updating).
+ *                              back to that persona's job-title (live-updating).
  * @attr {enum}    priority   - critical | high | medium | low
  * @attr {enum}    status     - backlog | to-do | in-progress | review | done
  * @attr {string}  points     - Story point estimate
@@ -26,9 +26,10 @@
  * @attr {boolean} compact    - Alias for detail="compact"
  * @attr {string}  src        - URL to JSON data (fetched once per value)
  *
- * @fires story-ready             - Once, after the first render (after the src data renders when src is set)
- * @fires status-changed          - Fired when updateStatus() is called
- * @fires priority-changed        - Fired when updatePriority() is called
+ * @fires user-story:ready            - Once, after the first render (after the src data renders when src is set).
+ *                                     Deprecated alias: story-ready (same detail, 0.3.x only)
+ * @fires user-story:status-changed   - Fired when updateStatus() is called. Deprecated alias: status-changed
+ * @fires user-story:priority-changed - Fired when updatePriority() is called. Deprecated alias: priority-changed
  * @fires user-story:upgraded     - Once, after first connect
  * @fires user-story:data-changed - After .data assignment, detail: { data, source: 'property' }
  *
@@ -57,13 +58,14 @@ import { styles } from './styles.js';
 import { registerComponent } from '../../lib/bundle-registry.js';
 import {
   esc, lucideSvg, UX_ICONS, UXShadowElement, PRIORITIES, STATUSES, lookup,
-  fillSlot, slottedChild, detailLevel, markEmptySections,
+  fillSlot, slottedChild, detailLevel, markEmptySections, personaJobTitle,
 } from '../_ux-base.js';
 
 let dialogSeq = 0;
 
 class UserStory extends UXShadowElement {
-  static readyEvent = 'story-ready';
+  static readyEvent = 'user-story:ready';
+  static legacyReadyEvent = 'story-ready';
 
   static get observedAttributes() {
     return [
@@ -178,7 +180,7 @@ class UserStory extends UXShadowElement {
   }
 
   /**
-   * Keep the "As a…" text in sync when the linked persona's role is edited.
+   * Keep the "As a…" text in sync when the linked persona's job title is edited.
    * Only observes when persona-id resolves and the author has not supplied an
    * explicit persona slot (an explicit slot always wins, so nothing to track).
    */
@@ -191,7 +193,8 @@ class UserStory extends UXShadowElement {
     const persona = scope.getElementById(this.personaId);
     if (!persona || persona.tagName !== 'USER-PERSONA') return;
     this.#personaObserver = new MutationObserver(() => this._render());
-    this.#personaObserver.observe(persona, { attributes: true, attributeFilter: ['role'] });
+    // job-title, plus the legacy role attribute (0.2.x markup, migrated on upgrade).
+    this.#personaObserver.observe(persona, { attributes: true, attributeFilter: ['job-title', 'role'] });
   }
 
   // ── Getters ────────────────────────────────────────────────────────
@@ -199,11 +202,11 @@ class UserStory extends UXShadowElement {
   /**
    * Read persona from slotted element or cache. When neither is authored but
    * persona-id links to a <user-persona> on the page, fall back to that
-   * persona's role ("As a Product Manager…") rather than the generic "user".
+   * persona's job title ("As a Product Manager…") rather than the generic "user".
    */
   get persona() {
     const explicit = this.#explicitPersona();
-    return explicit || this.#linkedPersonaRole() || 'user';
+    return explicit || this.#linkedPersonaTitle() || 'user';
   }
 
   get personaId() {
@@ -216,18 +219,19 @@ class UserStory extends UXShadowElement {
   }
 
   /**
-   * Resolve the role of the <user-persona> referenced by persona-id, if one
+   * Resolve the job title of the <user-persona> referenced by persona-id, if one
    * exists in the same tree. Used as the "As a…" fallback so a linked story
    * reads "As a Product Manager" instead of "As a user". Returns '' when there
-   * is no persona-id, no matching persona, or the persona has no role.
+   * is no persona-id, no matching persona, or the persona has no job title
+   * (`job-title`, or a legacy non-ARIA `role` on a not-yet-upgraded persona).
    */
-  #linkedPersonaRole() {
+  #linkedPersonaTitle() {
     if (!this.personaId) return '';
     const root = /** @type {Document | ShadowRoot} */ (this.getRootNode());
     const scope = root && typeof root.getElementById === 'function' ? root : document;
     const persona = scope.getElementById(this.personaId);
     if (!persona || persona.tagName !== 'USER-PERSONA') return '';
-    return persona.getAttribute('role')?.trim() || '';
+    return personaJobTitle(persona);
   }
 
   /**
@@ -295,22 +299,14 @@ class UserStory extends UXShadowElement {
   updateStatus(newStatus) {
     if (Object.hasOwn(STATUSES, newStatus)) {
       this.setAttribute('status', newStatus);
-      this.dispatchEvent(new CustomEvent('status-changed', {
-        detail: { status: newStatus, storyId: this.storyId },
-        bubbles: true,
-        composed: true
-      }));
+      this._emit('user-story:status-changed', { status: newStatus, storyId: this.storyId }, 'status-changed');
     }
   }
 
   updatePriority(newPriority) {
     if (Object.hasOwn(PRIORITIES, newPriority)) {
       this.setAttribute('priority', newPriority);
-      this.dispatchEvent(new CustomEvent('priority-changed', {
-        detail: { priority: newPriority, storyId: this.storyId },
-        bubbles: true,
-        composed: true
-      }));
+      this._emit('user-story:priority-changed', { priority: newPriority, storyId: this.storyId }, 'priority-changed');
     }
   }
 
@@ -472,7 +468,7 @@ class UserStory extends UXShadowElement {
             <p class="story-statement" part="statement">
               <span class="keyword">As ${this.#personaArticle()}</span>
               ${this.personaId
-                ? `<a class="persona-text persona-text--link" href="#${esc(this.personaId)}">${lucideSvg(UX_ICONS.user)} <slot name="persona"><span>${esc(this.#linkedPersonaRole() || 'user')}</span></slot></a>`
+                ? `<a class="persona-text persona-text--link" href="#${esc(this.personaId)}">${lucideSvg(UX_ICONS.user)} <slot name="persona"><span>${esc(this.#linkedPersonaTitle() || 'user')}</span></slot></a>`
                 : `<span class="persona-text"><slot name="persona"><span>user</span></slot></span>`},
               <span class="keyword">I want</span>
               <span class="action-text"><slot name="action"><span>[describe the action]</span></slot></span>${this.benefit || slottedChild(this, 'benefit') ? `

@@ -161,7 +161,7 @@ story.showDetail(); // Opens modal dialog with full detail</code-block>
 
   <section>
     <h2>JSON Loading</h2>
-    <p>Load story data from a JSON file using the <code>src</code> attribute. Scalar fields map to attributes; text and list fields create the slotted persona, action, benefit, title, acceptance criteria, tasks, and notes children (authored children are kept). The file is fetched once &mdash; moving the card (for example between kanban columns) does not refetch &mdash; and <code>story-ready</code> fires after the data renders.</p>
+    <p>Load story data from a JSON file using the <code>src</code> attribute. Scalar fields map to attributes; text and list fields create the slotted persona, action, benefit, title, acceptance criteria, tasks, and notes children (authored children are kept). The file is fetched once &mdash; moving the card (for example between kanban columns) does not refetch &mdash; and <code>user-story:ready</code> fires after the data renders.</p>
 
     <code-block language="html" show-lines label="Loading from JSON" data-escape><user-story src="/api/stories/PROJ-142.json" detail="full"></user-story></code-block>
 
@@ -294,7 +294,7 @@ story.showDetail(); // Opens modal dialog with full detail</code-block>
 
   <section>
     <h2>JavaScript API</h2>
-    <p>The component exposes two methods for programmatic status and priority updates. Both update the attribute and dispatch a corresponding event.</p>
+    <p>The component exposes two methods for programmatic status and priority updates. Both update the attribute and dispatch a corresponding event. The un-namespaced names used before 0.3.0 (<code>status-changed</code>, <code>priority-changed</code>, <code>story-ready</code>) still fire as deprecated aliases throughout 0.3.x.</p>
     <table class="props-table">
       <thead>
         <tr>
@@ -307,12 +307,12 @@ story.showDetail(); // Opens modal dialog with full detail</code-block>
         <tr>
           <td><code>updateStatus(status)</code></td>
           <td>One of: <code>backlog</code>, <code>to-do</code>, <code>in-progress</code>, <code>review</code>, <code>done</code></td>
-          <td>Updates the status badge and fires <code>status-changed</code></td>
+          <td>Updates the status badge and fires <code>user-story:status-changed</code></td>
         </tr>
         <tr>
           <td><code>updatePriority(priority)</code></td>
           <td>One of: <code>critical</code>, <code>high</code>, <code>medium</code>, <code>low</code></td>
-          <td>Updates the priority badge and fires <code>priority-changed</code></td>
+          <td>Updates the priority badge and fires <code>user-story:priority-changed</code></td>
         </tr>
       </tbody>
     </table>
@@ -326,7 +326,7 @@ story.updateStatus('review');
 story.updatePriority('critical');
 
 // Listen for changes
-story.addEventListener('status-changed', (e) => {
+story.addEventListener('user-story:status-changed', (e) => {
   console.log(`${e.detail.storyId} moved to ${e.detail.status}`);
 });</code-block>
   </section>
@@ -342,7 +342,7 @@ story.addEventListener('status-changed', (e) => {
       <tbody>
         <tr><td><code>.data</code></td><td><code>{ storyId?, personaId?, priority?, status?, points?, epic?, detail?, persona?, action?, benefit?, title?, acceptanceCriteria?, tasks?, notes? }</code></td><td>Sets state attributes <em>and</em> creates slotted children for any fields not already present (authored content wins). Idempotent.</td></tr>
         <tr><td><code>showDetail()</code></td><td>method</td><td>Open this story at full detail in a modal dialog (see Click to Expand).</td></tr>
-        <tr><td><code>updateStatus(status)</code> / <code>updatePriority(priority)</code></td><td>method</td><td>Set the attribute and fire <code>status-changed</code> / <code>priority-changed</code>. Unknown values are ignored.</td></tr>
+        <tr><td><code>updateStatus(status)</code> / <code>updatePriority(priority)</code></td><td>method</td><td>Set the attribute and fire <code>user-story:status-changed</code> / <code>user-story:priority-changed</code>. Unknown values are ignored.</td></tr>
       </tbody>
     </table>
 

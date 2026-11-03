@@ -9,15 +9,16 @@
   },
   "attributes": [
     { "name": "name",     "kind": "host-api", "purpose": "config", "type": "string",  "description": "Persona name, used when there is no slot=\"name\" child (the slot wins). Drives the avatar initials and color." },
-    { "name": "role",     "kind": "host-api", "purpose": "config", "type": "string",  "description": "Job title or role" },
+    { "name": "job-title", "kind": "host-api", "purpose": "config", "type": "string", "description": "Job title (e.g. \"Product Manager\"), shown under the name. Linked <user-story persona-id> cards use it for their \"As a…\" text. Reflects the jobTitle property." },
+    { "name": "role",     "kind": "host-api", "purpose": "config", "type": "string",  "description": "Deprecated (0.2.x name for job-title; it also gave the element an invalid ARIA role). On upgrade, a value that is not a valid ARIA role is moved to job-title (unless job-title is set) and the role attribute is removed, with one console warning per page. A valid ARIA role is left alone. Will be ignored in 0.4.0." },
     { "name": "age",      "kind": "host-api", "purpose": "config", "type": "string",  "description": "Age, shown as \"[value] years old\"" },
     { "name": "location", "kind": "host-api", "purpose": "config", "type": "string",  "description": "Location, shown with a pin icon" },
     { "name": "avatar",   "kind": "host-api", "purpose": "config", "type": "string",  "description": "Avatar image URL (http(s), relative, or data:image). When omitted, initials are generated from the name." },
     { "name": "quote",    "kind": "host-api", "purpose": "config", "type": "string",  "description": "Key quote, used when there is no slot=\"quote\" child (the slot wins)" },
     { "name": "compact",  "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Reduced spacing variant" },
-    { "name": "src",      "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL of a JSON persona record. Fetched once per value; the record sets the attributes above and creates (or replaces) the name, quote, bio, goals, frustrations and behaviors slotted children." },
+    { "name": "src",      "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL of a JSON persona record. Fetched once per value; the record sets job-title (from jobTitle, or the legacy role key), age, location and avatar, and creates (or replaces) the name, quote, bio, goals, frustrations and behaviors slotted children." },
     { "name": "data-list-stories", "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Render a Stories section that auto-lists every <user-story persona-id=\"…\"> matching this persona's id. Updates live when stories are added, removed, or relabeled." },
-    { "name": "data-mock", "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Fill any missing name, role, age, location, avatar, quote, goals, frustrations and behaviors with deterministic sample data (seeded by data-seed or the data-mock value)." },
+    { "name": "data-mock", "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Fill any missing name, job title, age, location, avatar, quote, goals, frustrations and behaviors with deterministic sample data (seeded by data-seed or the data-mock value)." },
     { "name": "id",       "kind": "host-api", "purpose": "config", "type": "string",  "description": "Observed: the id that <user-story persona-id> matches. Changing it re-renders the Stories section." }
   ],
   "slots": [
@@ -29,7 +30,7 @@
     { "name": "behaviors",    "description": "List of observable patterns and habits" }
   ],
   "events": [
-    { "name": "persona-ready", "detail": "{ name, role }", "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by attribute changes or moves." },
+    { "name": "user-persona:ready", "detail": "{ name, jobTitle, role }", "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by attribute changes or moves. detail.role is a deprecated copy of jobTitle. For the 0.3.x line the deprecated un-namespaced alias persona-ready is dispatched right after, with the same detail." },
     { "name": "user-persona:upgraded", "detail": "", "description": "Once, in a microtask after first connect. Wait for this before assigning .data from a framework." },
     { "name": "user-persona:data-changed", "detail": "{ data, source: 'property' }", "description": "After .data is assigned" }
   ]

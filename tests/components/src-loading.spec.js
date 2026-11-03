@@ -12,7 +12,7 @@ const CARDS = [
   { tag: 'work-item', ready: 'work-item:ready', body: '<h3 slot="title">Authored item</h3>', text: 'Authored item' },
   { tag: 'adr-wc', ready: 'adr-wc:ready', body: '<h3 slot="title">Authored ADR</h3>', text: 'Authored ADR' },
   { tag: 'empathy-map', ready: 'empathy-map:ready', body: '<h3 slot="title">Authored map</h3>', text: 'Authored map' },
-  { tag: 'user-journey', ready: 'journey-ready', body: '<h3 slot="title">Authored journey</h3>', text: 'Authored journey' },
+  { tag: 'user-journey', ready: 'user-journey:ready', body: '<h3 slot="title">Authored journey</h3>', text: 'Authored journey' },
 ];
 
 test.describe('src loading', () => {
@@ -43,31 +43,31 @@ test.describe('src loading', () => {
     });
   }
 
-  test('user-story: a src record that sets persona-id tracks the persona role live', async ({ page }) => {
+  test('user-story: a src record that sets persona-id tracks the persona job title live', async ({ page }) => {
     await openUpgradePage(page, {
-      events: ['story-ready'],
+      events: ['user-story:ready'],
       fixtures: { 'story.json': { personaId: 'p1', action: 'export reports' } },
-      body: `<user-persona id="p1" role="Designer"><h2 slot="name">Pat</h2></user-persona>
+      body: `<user-persona id="p1" job-title="Designer"><h2 slot="name">Pat</h2></user-persona>
              <user-story id="s1" src="story.json"></user-story>`,
     });
-    await page.waitForFunction(() => window.__events.some(e => e.type === 'story-ready'));
+    await page.waitForFunction(() => window.__events.some(e => e.type === 'user-story:ready'));
     const text = () => page.evaluate(() =>
       document.getElementById('s1').shadowRoot.querySelector('.persona-text').textContent.trim());
     expect(await text()).toBe('Designer');
 
-    await page.evaluate(() => document.getElementById('p1').setAttribute('role', 'Engineer'));
+    await page.evaluate(() => document.getElementById('p1').setAttribute('job-title', 'Engineer'));
     await expect.poll(text).toBe('Engineer');
   });
 
-  test('user-story: a .data record that sets persona-id tracks the persona role live', async ({ page }) => {
+  test('user-story: a .data record that sets persona-id tracks the persona job title live', async ({ page }) => {
     await openUpgradePage(page, {
-      events: ['story-ready'],
-      body: `<user-persona id="p1" role="Designer"><h2 slot="name">Pat</h2></user-persona>
+      events: ['user-story:ready'],
+      body: `<user-persona id="p1" job-title="Designer"><h2 slot="name">Pat</h2></user-persona>
              <user-story id="s1"><span slot="action">export reports</span></user-story>`,
     });
     await page.waitForSelector('#s1[data-upgraded]');
     await page.evaluate(() => { document.getElementById('s1').data = { personaId: 'p1' }; });
-    await page.evaluate(() => document.getElementById('p1').setAttribute('role', 'Engineer'));
+    await page.evaluate(() => document.getElementById('p1').setAttribute('job-title', 'Engineer'));
     await expect.poll(() => page.evaluate(() =>
       document.getElementById('s1').shadowRoot.querySelector('.persona-text').textContent.trim())).toBe('Engineer');
   });

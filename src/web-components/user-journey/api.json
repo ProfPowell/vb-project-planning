@@ -62,9 +62,9 @@
   ],
   "events": [
     {
-      "name": "journey-ready",
+      "name": "user-journey:ready",
       "detail": "{ title, persona, phaseCount }",
-      "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by later renders or moves."
+      "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by later renders or moves. For the 0.3.x line the deprecated un-namespaced alias journey-ready is dispatched right after, with the same detail."
     },
     {
       "name": "user-journey:upgraded",

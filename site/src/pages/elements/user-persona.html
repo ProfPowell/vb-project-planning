@@ -23,7 +23,7 @@ crumbLabel: Web Components
     </browser-window>
 
     <code-block language="html" show-lines label="Basic usage" data-escape><user-persona
-  role="Product Manager"
+  job-title="Product Manager"
   age="34"
   location="San Francisco, CA">
 
@@ -98,8 +98,8 @@ crumbLabel: Web Components
         </tr>
       </tbody>
     </table>
-    <p>Content values (<code>name</code>, <code>quote</code>) are best provided as named slots; the <code>name</code> and <code>quote</code> attributes are a shorthand used only when the slot is absent (a slot always wins). <code>role</code>, <code>age</code>, <code>location</code> and <code>avatar</code> are attributes only &mdash; there are no slots for them.</p>
-    <code-block language="html" label="Attribute shorthand" data-escape><user-persona name="Fred" role="Engineer" quote="Ship small, ship often."></user-persona></code-block>
+    <p>Content values (<code>name</code>, <code>quote</code>) are best provided as named slots; the <code>name</code> and <code>quote</code> attributes are a shorthand used only when the slot is absent (a slot always wins). <code>job-title</code>, <code>age</code>, <code>location</code> and <code>avatar</code> are attributes only &mdash; there are no slots for them.</p>
+    <code-block language="html" label="Attribute shorthand" data-escape><user-persona name="Fred" job-title="Engineer" quote="Ship small, ship often."></user-persona></code-block>
   </section>
 
   <section>
@@ -112,7 +112,7 @@ crumbLabel: Web Components
     <p>To use a custom image instead, set the <code>avatar</code> attribute to any image URL. The image renders as a circular <code>background-image</code> with <code>center/cover</code> sizing.</p>
 
     <code-block language="html" show-lines label="Custom avatar image" data-escape><user-persona
-  role="Product Manager"
+  job-title="Product Manager"
   avatar="https://example.com/team/sarah.jpg">
   <h2 slot="name">Sarah Chen</h2>
   <p slot="bio">Uses a custom photo instead of generated initials.</p>
@@ -131,7 +131,7 @@ crumbLabel: Web Components
     </browser-window>
 
     <code-block language="html" show-lines label="Compact persona card" data-escape><user-persona
-  role="Frontend Developer"
+  job-title="Frontend Developer"
   age="28"
   location="Austin, TX"
   compact>
@@ -151,13 +151,13 @@ crumbLabel: Web Components
 
   <section>
     <h2>JSON Loading</h2>
-    <p>Load persona data from a JSON file using the <code>src</code> attribute. The file is fetched once (moving the element does not refetch; changing <code>src</code> aborts the previous request). <code>role</code>, <code>age</code>, <code>location</code> and <code>avatar</code> become attributes; <code>name</code>, <code>quote</code>, <code>bio</code>, <code>goals</code>, <code>frustrations</code> and <code>behaviors</code> become slotted children (strings as <code>&lt;p&gt;</code>, arrays as <code>&lt;ul&gt;</code>), replacing any existing child for that slot. <code>persona-ready</code> fires after this data renders.</p>
+    <p>Load persona data from a JSON file using the <code>src</code> attribute. The file is fetched once (moving the element does not refetch; changing <code>src</code> aborts the previous request). <code>jobTitle</code> (or the older <code>role</code> key), <code>age</code>, <code>location</code> and <code>avatar</code> become attributes; <code>name</code>, <code>quote</code>, <code>bio</code>, <code>goals</code>, <code>frustrations</code> and <code>behaviors</code> become slotted children (strings as <code>&lt;p&gt;</code>, arrays as <code>&lt;ul&gt;</code>), replacing any existing child for that slot. <code>user-persona:ready</code> fires after this data renders.</p>
 
     <code-block language="html" show-lines label="Loading from JSON" data-escape><user-persona src="/api/personas/sarah.json"></user-persona></code-block>
 
     <code-block language="json" show-lines label="JSON schema">{
   "name": "Sarah Chen",
-  "role": "Senior Product Manager",
+  "jobTitle": "Senior Product Manager",
   "age": "34",
   "location": "San Francisco, CA",
   "avatar": "https://example.com/sarah.jpg",
@@ -187,7 +187,7 @@ crumbLabel: Web Components
 <user-persona data-mock data-seed="PM-1"></user-persona>
 
 <!-- Partial override — set what you know, mock the rest -->
-<user-persona data-mock data-seed="eng-1" role="VP of Engineering">
+<user-persona data-mock data-seed="eng-1" job-title="VP of Engineering">
   <h2 slot="name">Jordan Rivera</h2>
 </user-persona></code-block>
 
@@ -205,7 +205,7 @@ crumbLabel: Web Components
       shadow>
     </browser-window>
 
-    <code-block language="html" show-lines label="Persona linked to stories" data-escape><user-persona id="alex" role="Product Manager" data-list-stories>
+    <code-block language="html" show-lines label="Persona linked to stories" data-escape><user-persona id="alex" job-title="Product Manager" data-list-stories>
   <h2 slot="name">Alex Chen</h2>
 </user-persona>
 
@@ -219,9 +219,9 @@ crumbLabel: Web Components
 
   <section>
     <h2>Slot-Based Authoring</h2>
-    <p>Content values &mdash; name and quote &mdash; are provided as named slots. State attributes like <code>role</code>, <code>age</code>, and <code>location</code> remain on the element. This separation keeps content in the DOM and metadata in attributes.</p>
+    <p>Content values &mdash; name and quote &mdash; are provided as named slots. State attributes like <code>job-title</code>, <code>age</code>, and <code>location</code> remain on the element. This separation keeps content in the DOM and metadata in attributes.</p>
 
-    <code-block language="html" show-lines label="Slot-based authoring" data-escape><user-persona role="Senior Product Manager" age="34" location="San Francisco, CA">
+    <code-block language="html" show-lines label="Slot-based authoring" data-escape><user-persona job-title="Senior Product Manager" age="34" location="San Francisco, CA">
   <h2 slot="name">Sarah Chen</h2>
   <p slot="quote">I need tools that help me stay organized.</p>
   <p slot="bio">Sarah has 8 years of experience in product management.</p>
@@ -269,7 +269,7 @@ crumbLabel: Web Components
         <tr>
           <td><code>--user-persona-accent</code></td>
           <td><code>#0066cc</code> / <code>#6b9fff</code></td>
-          <td>Accent color for role text and bio icon</td>
+          <td>Accent color for job title text and bio icon</td>
         </tr>
         <tr>
           <td><code>--user-persona-card-bg</code></td>
@@ -328,8 +328,13 @@ crumbLabel: Web Components
       <tbody>
         <tr>
           <td><code>.data</code></td>
-          <td><code>{ name?, role?, age?, location?, avatar?, quote?, bio?, goals?, frustrations?, behaviors? }</code></td>
-          <td>Whole-record assignment. Sets state attributes <em>and</em> creates or updates the slotted child for every text field present (strings as <code>&lt;p&gt;</code>, arrays as <code>&lt;ul&gt;</code>), so a second assignment replaces the first. Absent fields are left alone. Reading returns list sections as string arrays.</td>
+          <td><code>{ name?, jobTitle?, age?, location?, avatar?, quote?, bio?, goals?, frustrations?, behaviors? }</code></td>
+          <td>Whole-record assignment. Sets state attributes <em>and</em> creates or updates the slotted child for every text field present (strings as <code>&lt;p&gt;</code>, arrays as <code>&lt;ul&gt;</code>), so a second assignment replaces the first. Absent fields are left alone. Reading returns list sections as string arrays. The older <code>role</code> key is still accepted as <code>jobTitle</code>.</td>
+        </tr>
+        <tr>
+          <td><code>.jobTitle</code></td>
+          <td><code>string</code></td>
+          <td>Reflects the <code>job-title</code> attribute. Assigning <code>''</code> or <code>null</code> removes it.</td>
         </tr>
         <tr>
           <td><code>relatedStories()</code></td>
@@ -341,7 +346,7 @@ crumbLabel: Web Components
     <code-block language="javascript" label="Reactive consumer" data-escape>const persona = document.querySelector('user-persona');
 await new Promise(r =&gt; persona.addEventListener('user-persona:upgraded', r, { once: true }));
 persona.data = {
-  name: 'Sarah Chen', role: 'Product Manager', age: 34, location: 'Portland, OR',
+  name: 'Sarah Chen', jobTitle: 'Product Manager', age: 34, location: 'Portland, OR',
   quote: 'I want to ship faster without breaking things.',
   goals: ['Ship weekly', 'Reduce churn'],
   frustrations: ['Slow CI', 'Unclear specs'],
@@ -351,6 +356,8 @@ persona.data = {
   <section>
     <h2>Accessibility</h2>
     <ul>
+      <li>The job title is the <code>job-title</code> attribute, not <code>role</code>: <code>role</code> sets the element's ARIA role, so <code>role="Product Manager"</code> is an invalid role. Markup from 0.2.x that still uses <code>role</code> for the title is repaired on upgrade (the value moves to <code>job-title</code>, <code>role</code> is removed and a one-time console warning suggests the fix); a real ARIA role such as <code>role="region"</code> is left alone.</li>
+      <li>The avatar initials are white on a background whose lightness is fixed low enough for at least 4.5:1 contrast at every hue</li>
       <li>The outer card uses <code>role="article"</code> with an <code>aria-label</code> of "User persona: [name]"</li>
       <li>The avatar element has <code>role="img"</code> with <code>aria-label="Avatar for [name]"</code></li>
       <li>The decorative quotation mark uses <code>aria-hidden="true"</code> so screen readers skip it</li>

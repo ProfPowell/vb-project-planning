@@ -8,7 +8,9 @@
  * - `UXShadowElement` is the Shadow DOM base class for the six record cards
  *   (user-persona, user-story, user-journey, empathy-map, work-item, adr-wc).
  *   It owns the one-time setup / reconnect guard, the single-fetch `src`
- *   loader, the once-only `*:ready` event and the `*:upgraded` event.
+ *   loader, the once-only `<tag>:ready` event (plus, for user-persona,
+ *   user-story and user-journey, its deprecated un-namespaced alias) and the
+ *   `<tag>:upgraded` event.
  *   Light DOM components (impact-effort, story-map, kanban-board, …) extend
  *   VBElement from src/lib/vb-element.js instead.
  */
@@ -45,6 +47,49 @@ export function hashColor(name) {
   const hash = stringHash(name);
   const hue = ((hash % 360) + 360) % 360;
   return `oklch(48% 0.13 ${hue})`;
+}
+
+/* ── ARIA role detection (user-persona's legacy `role` attribute) ── */
+
+/** WAI-ARIA 1.2 roles plus the Graphics ARIA roles (DPUB `doc-*` roles are matched by prefix). */
+const ARIA_ROLES = new Set([
+  'alert', 'alertdialog', 'application', 'article', 'banner', 'blockquote', 'button', 'caption',
+  'cell', 'checkbox', 'code', 'columnheader', 'combobox', 'comment', 'complementary', 'contentinfo',
+  'definition', 'deletion', 'dialog', 'directory', 'document', 'emphasis', 'feed', 'figure', 'form',
+  'generic', 'grid', 'gridcell', 'group', 'heading', 'img', 'image', 'insertion', 'link', 'list',
+  'listbox', 'listitem', 'log', 'main', 'mark', 'marquee', 'math', 'menu', 'menubar', 'menuitem',
+  'menuitemcheckbox', 'menuitemradio', 'meter', 'navigation', 'none', 'note', 'option', 'paragraph',
+  'presentation', 'progressbar', 'radio', 'radiogroup', 'region', 'row', 'rowgroup', 'rowheader',
+  'scrollbar', 'search', 'searchbox', 'separator', 'slider', 'spinbutton', 'status', 'strong',
+  'subscript', 'suggestion', 'superscript', 'switch', 'tab', 'table', 'tablist', 'tabpanel', 'term',
+  'textbox', 'time', 'timer', 'toolbar', 'tooltip', 'tree', 'treegrid', 'treeitem',
+  'graphics-document', 'graphics-object', 'graphics-symbol',
+]);
+
+/**
+ * Whether a `role` attribute value is a valid ARIA role list: every
+ * whitespace-separated token is a known ARIA role. "Product Manager" is not;
+ * "region" is.
+ * @param {string | null | undefined} value
+ * @returns {boolean}
+ */
+export function isAriaRole(value) {
+  const tokens = String(value ?? '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return tokens.length > 0 && tokens.every((t) => ARIA_ROLES.has(t) || t.startsWith('doc-'));
+}
+
+/**
+ * Job title of a `<user-persona>` element, upgraded or not: its `job-title`
+ * attribute, else a legacy `role` attribute that is not an ARIA role (0.2.x
+ * markup such as `<user-persona role="Product Manager">`). '' when neither.
+ * @param {Element} persona
+ * @returns {string}
+ */
+export function personaJobTitle(persona) {
+  const title = persona.getAttribute('job-title')?.trim();
+  if (title) return title;
+  const legacy = persona.getAttribute('role')?.trim() || '';
+  return legacy && !isAriaRole(legacy) ? legacy : '';
 }
 
 /**
@@ -303,8 +348,13 @@ export function markEmptySections(root, sectionSelector) {
  * `_attributeChanged()`, so they also run when a data record sets it.
  */
 export class UXShadowElement extends HTMLElement {
-  /** Ready event name, e.g. `story-ready`. */
+  /** Ready event name, e.g. `user-story:ready`. */
   static readyEvent = '';
+  /**
+   * Deprecated un-namespaced alias of the ready event (e.g. `story-ready`),
+   * dispatched right after it with the same detail. 0.3.x only.
+   */
+  static legacyReadyEvent = '';
 
   /** Fallback text for slots whose light-DOM child was removed after setup. */
   _slotCache = new Map();
@@ -455,10 +505,22 @@ export class UXShadowElement extends HTMLElement {
     const type = /** @type {typeof UXShadowElement} */ (this.constructor).readyEvent;
     if (!type) return;
     this.#readyFired = true;
-    this.dispatchEvent(new CustomEvent(type, {
-      detail: this._readyDetail(),
-      bubbles: true, composed: true,
-    }));
+    const legacy = /** @type {typeof UXShadowElement} */ (this.constructor).legacyReadyEvent;
+    this._emit(type, this._readyDetail(), legacy);
+  }
+
+  /**
+   * Dispatch a bubbling, composed CustomEvent and, when `legacyType` is
+   * given, a deprecated alias of it right after with the same detail.
+   * @param {string} type
+   * @param {unknown} detail
+   * @param {string} [legacyType]
+   */
+  _emit(type, detail, legacyType) {
+    this.dispatchEvent(new CustomEvent(type, { detail, bubbles: true, composed: true }));
+    if (legacyType) {
+      this.dispatchEvent(new CustomEvent(legacyType, { detail, bubbles: true, composed: true }));
+    }
   }
 
   /**
