@@ -9350,7 +9350,7 @@ function buildTriangleSvg({
   center.setAttribute("role", "button");
   center.setAttribute(
     "aria-label",
-    `Quality \u2014 ${formatQualitySummary(qualitySummary)}. Activate to open the NFR compass.`
+    `Quality \u2014 ${formatQualitySummary(qualitySummary)}. Activate to open the quality decision.`
   );
   const backdrop = document.createElementNS(SVG_NS, "circle");
   backdrop.setAttribute("class", "capacity-backdrop");
@@ -9587,7 +9587,7 @@ var IronTriangle = class extends VBElement {
   }
   /** Imperatively open a vertex editor. */
   openEditor(axis) {
-    if (!SECTIONS.includes(axis)) return;
+    if (!SECTIONS.includes(axis) || this.#inert) return;
     const dialog = this.#ensureDialog(axis);
     if (typeof dialog.showModal === "function") dialog.showModal();
     else dialog.setAttribute("open", "");
@@ -9653,7 +9653,7 @@ var IronTriangle = class extends VBElement {
     const center = event.target.closest?.('.center[data-target="quality"]');
     if (center && this.contains(center)) {
       event.preventDefault();
-      this.#fireQualityOpen();
+      if (!this.hasAttribute("disabled")) this.#fireQualityOpen();
     }
   }
   #onKeydown(event) {
@@ -9667,7 +9667,7 @@ var IronTriangle = class extends VBElement {
     const center = event.target.closest?.('.center[data-target="quality"]');
     if (center && this.contains(center)) {
       event.preventDefault();
-      this.#fireQualityOpen();
+      if (!this.hasAttribute("disabled")) this.#fireQualityOpen();
     }
   }
   #fireQualityOpen() {
@@ -9723,6 +9723,7 @@ var IronTriangle = class extends VBElement {
       dialog.close("save");
       this.#recompute({ source: "dialog", field: axis });
     });
+    this.#syncDisabledLocked();
     return dialog;
   }
   #captureDialog(axis, form) {
@@ -9803,6 +9804,7 @@ var IronTriangle = class extends VBElement {
     const existing = this.querySelector(":scope > svg");
     if (existing) existing.replaceWith(svg);
     else this.prepend(svg);
+    this.#syncHitTargetsInert();
     this.dataset.capacityPoints = String(this.#value.capacityPoints);
     this.dataset.capacitySource = this.#value.capacitySource;
   }
@@ -9824,11 +9826,39 @@ var IronTriangle = class extends VBElement {
     } catch {
     }
   }
+  get #inert() {
+    return this.hasAttribute("disabled") || this.hasAttribute("locked");
+  }
+  /**
+   * disabled / locked: no editing path stays open. styles.css already sets
+   * pointer-events: none; this closes the keyboard and programmatic paths
+   * (vertex targets leave the tab order, openEditor() is a no-op) and
+   * disables the mode switch and every dialog control, including dialogs
+   * built later.
+   *
+   * The centre Quality target is navigation, not editing, so under `locked`
+   * it stays focusable and clickable (styles.css re-enables its pointer).
+   * Under `disabled` it goes inert too: browsers suppress mouse events
+   * inside a disabled form-associated element, so keeping only its
+   * keyboard path alive would be inconsistent.
+   */
   #syncDisabledLocked() {
-    const off = this.hasAttribute("disabled") || this.hasAttribute("locked");
+    const off = this.#inert;
     if (this.#modeButton) this.#modeButton.disabled = off;
     for (const dialog of Object.values(this.#dialogs)) {
       for (const el of dialog.querySelectorAll("input, select, textarea, button")) el.disabled = off;
+    }
+    this.#syncHitTargetsInert();
+  }
+  /** Hit targets follow disabled / locked across re-renders. */
+  #syncHitTargetsInert() {
+    const editingOff = this.#inert;
+    const navOff = this.hasAttribute("disabled");
+    for (const target of this.querySelectorAll(':scope > svg [role="button"][tabindex]')) {
+      const off = target.matches('.center[data-target="quality"]') ? navOff : editingOff;
+      target.setAttribute("tabindex", off ? "-1" : "0");
+      if (off) target.setAttribute("aria-disabled", "true");
+      else target.removeAttribute("aria-disabled");
     }
   }
   // ── Internal: status strip (a11y hooks) ──────────────────────────
@@ -9846,7 +9876,7 @@ var IronTriangle = class extends VBElement {
     readout.setAttribute("aria-atomic", "true");
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "iron-triangle-mode";
+    button.className = "iron-triangle-mode ghost";
     button.setAttribute("aria-pressed", "false");
     button.textContent = "Manual capacity";
     button.addEventListener("click", () => this.#openCapacityDialog());
@@ -9876,10 +9906,9 @@ var IronTriangle = class extends VBElement {
     if (this.#readout.textContent !== text) this.#readout.textContent = text;
     if (this.#modeButton) {
       this.#modeButton.setAttribute("aria-pressed", manual ? "true" : "false");
-      this.#modeButton.setAttribute(
-        "aria-label",
-        manual ? `Manual capacity: ${capacityPoints} points. Activate to edit or return to the formula.` : "Manual capacity. Activate to override the formula with a fixed number."
-      );
+      const label = manual && capacityPoints > 0 ? `Manual capacity: ${capacityPoints} pts` : "Manual capacity";
+      if (this.#modeButton.textContent !== label) this.#modeButton.textContent = label;
+      this.#modeButton.setAttribute("aria-label", manual ? `${label}. Activate to edit or return to the formula.` : `${label}. Activate to override the formula with a fixed number.`);
     }
     if (this.#deadlineWarning) {
       this.#deadlineWarning.textContent = overDeadline ? `Deadline has passed (${deadline})` : "";
@@ -9961,6 +9990,7 @@ var IronTriangle = class extends VBElement {
       dialog.close("save");
       if (Number.isFinite(n) && n > 0) this.setManual(n);
     });
+    this.#syncDisabledLocked();
     return dialog;
   }
   // ── Internal: revise() field accessors ───────────────────────────
@@ -10576,6 +10606,7 @@ function anchorFor(p) {
 }
 
 // src/web-components/quality-target/logic.js
+var instanceCount = 0;
 var QualityTarget = class extends VBElement {
   static formAssociated = true;
   static get observedAttributes() {
@@ -10584,7 +10615,6 @@ var QualityTarget = class extends VBElement {
       "data-capacity-points",
       "data-cost-weights",
       "data-radius",
-      "data-show-envelope",
       "data-min-rationale",
       "data-max-rationale",
       "data-min-overrun-rationale",
@@ -10615,6 +10645,9 @@ var QualityTarget = class extends VBElement {
   #dialogs = {};
   /** @type {HTMLElement | null} */
   #footer = null;
+  /** Per-instance prefix so generated label/control ids never collide
+   *  when a page holds more than one target. */
+  #uid = `quality-target-${++instanceCount}`;
   constructor() {
     super();
     this.#internals = this.attachInternals();
@@ -10625,6 +10658,7 @@ var QualityTarget = class extends VBElement {
     this.#bindToTriangle();
     this.#renderViz();
     this.#ensureFooter();
+    this.#publishFormValue();
     this.listen(this, "click", (e) => this.#onClick(e));
     this.listen(this, "keydown", (e) => this.#onKeydown(e));
     this.listen(this, "input", (e) => this.#onFooterInput(e));
@@ -10643,8 +10677,11 @@ var QualityTarget = class extends VBElement {
     } else if (name === "data-cost-weights") {
       this.#refreshCostWeights();
       this.#renderViz();
-    } else if (name === "data-radius" || name === "data-show-envelope") {
+    } else if (name === "data-radius") {
       this.#renderViz();
+    } else if (name === "data-min-overrun-rationale" || name === "data-max-overrun-rationale") {
+      this.#updateFooter();
+      this.#publishFormValue();
     } else if (name === "disabled" || name === "locked") {
       this.#syncDisabledLocked();
     }
@@ -10716,7 +10753,7 @@ var QualityTarget = class extends VBElement {
   }
   /** Imperatively open one axis's editor. */
   openEditor(ility) {
-    if (!this.#ilities.includes(ility)) return;
+    if (!this.#ilities.includes(ility) || this.#inert) return;
     const dialog = this.#ensureDialog(ility);
     if (typeof dialog.showModal === "function") dialog.showModal();
     else dialog.setAttribute("open", "");
@@ -10794,10 +10831,10 @@ var QualityTarget = class extends VBElement {
     form.append(fs);
     const ff = document.createElement("form-field");
     const rl = document.createElement("label");
-    rl.setAttribute("for", `quality-${ility}-rationale`);
+    rl.setAttribute("for", `${this.#uid}-${ility}-rationale`);
     rl.textContent = "Rationale (required when Critical)";
     const ta = document.createElement("textarea");
-    ta.id = `quality-${ility}-rationale`;
+    ta.id = `${this.#uid}-${ility}-rationale`;
     ta.name = "rationale";
     ta.rows = 3;
     ta.minLength = this.#minRationale();
@@ -10851,6 +10888,7 @@ var QualityTarget = class extends VBElement {
       this.#publish("dialog", ility);
     });
     this.#syncDialogFromState(ility);
+    this.#syncDisabledLocked();
     return dialog;
   }
   #syncDialogFromState(ility) {
@@ -10893,8 +10931,8 @@ var QualityTarget = class extends VBElement {
       <strong>Over budget \u2014 explain why.</strong>
       <small data-overrun-prompt></small>
       <form-field>
-        <label for="quality-overrun">Overrun rationale (\u2265 ${this.#minOverrunRationale()} chars)</label>
-        <textarea id="quality-overrun" name="overrunRationale"
+        <label for="${this.#uid}-overrun">Overrun rationale (\u2265 ${this.#minOverrunRationale()} chars)</label>
+        <textarea id="${this.#uid}-overrun" name="overrunRationale"
                   minlength="${this.#minOverrunRationale()}"
                   maxlength="${this.#maxOverrunRationale()}"
                   rows="3"></textarea>
@@ -10908,6 +10946,7 @@ var QualityTarget = class extends VBElement {
     footer.append(errors);
     this.append(footer);
     this.#footer = footer;
+    this.#syncDisabledLocked();
   }
   #updateFooter() {
     if (!this.#footer) return;
@@ -10921,8 +10960,20 @@ var QualityTarget = class extends VBElement {
     if (overrun) {
       overrun.hidden = !isOver;
       const prompt = overrun.querySelector("[data-overrun-prompt]");
-      if (prompt && Number.isFinite(cap)) {
-        prompt.textContent = `You're over budget by ${sum - cap} points (${sum}/${cap}).`;
+      if (prompt) {
+        const over = sum - cap;
+        prompt.textContent = isOver ? `You're over budget by ${over} ${over === 1 ? "point" : "points"} (${sum}/${cap}).` : "";
+      }
+      const min = this.#minOverrunRationale();
+      const label = overrun.querySelector("label");
+      if (label) label.textContent = `Overrun rationale (\u2265 ${min} chars)`;
+      const ta = (
+        /** @type {HTMLTextAreaElement | null} */
+        overrun.querySelector("textarea")
+      );
+      if (ta) {
+        ta.minLength = min;
+        ta.maxLength = this.#maxOverrunRationale();
       }
     }
   }
@@ -11005,6 +11056,7 @@ var QualityTarget = class extends VBElement {
     const existing = this.querySelector(":scope > svg");
     if (existing) existing.replaceWith(svg);
     else this.prepend(svg);
+    this.#syncAxesInert();
   }
   #publish(source, field) {
     this.#renderViz();
@@ -11031,13 +11083,66 @@ var QualityTarget = class extends VBElement {
       this.#internals.setFormValue(JSON.stringify(this.value));
     } catch {
     }
+    this.#syncValidity();
   }
+  /**
+   * Mirror validateVector() into ElementInternals so a parent form's
+   * checkValidity() / submit is blocked too, not just this element's own
+   * checkValidity() method. The overrun textarea anchors the message when
+   * the overrun rationale is the problem.
+   */
+  #syncValidity() {
+    if (typeof this.#internals.setValidity !== "function") return;
+    const { valid, errors } = validateVector({
+      vector: this.#vector,
+      rationales: this.#rationales,
+      costWeights: this.#costWeights,
+      capacityPoints: this.#resolveCapacity(),
+      overrunRationale: this.#overrunRationale,
+      minRationale: this.#minRationale(),
+      minOverrunRationale: this.#minOverrunRationale()
+    });
+    if (valid) {
+      this.#internals.setValidity({});
+      return;
+    }
+    const overrunTa = (
+      /** @type {HTMLElement | null} */
+      this.overBudget ? this.querySelector("[data-quality-overrun] textarea") : null
+    );
+    try {
+      this.#internals.setValidity({ customError: true }, errors.join(" "), overrunTa ?? void 0);
+    } catch {
+      this.#internals.setValidity({ customError: true }, errors.join(" "));
+    }
+  }
+  get #inert() {
+    return this.hasAttribute("disabled") || this.hasAttribute("locked");
+  }
+  /**
+   * disabled / locked: no editing path stays open. styles.css already sets
+   * pointer-events: none; this closes the keyboard and programmatic paths
+   * (axes leave the tab order, openEditor() is a no-op) and disables every
+   * dialog and footer control, including dialogs built later.
+   */
   #syncDisabledLocked() {
-    const off = this.hasAttribute("disabled") || this.hasAttribute("locked");
+    const off = this.#inert;
     for (const dialog of Object.values(this.#dialogs)) {
       for (const el of dialog.querySelectorAll("input, textarea, select, button")) {
         el.disabled = off;
       }
+    }
+    for (const el of this.#footer?.querySelectorAll("textarea") ?? []) {
+      el.disabled = off;
+    }
+    this.#syncAxesInert();
+  }
+  #syncAxesInert() {
+    const off = this.#inert;
+    for (const axis of this.querySelectorAll(":scope > svg .axis[data-ility]")) {
+      axis.setAttribute("tabindex", off ? "-1" : "0");
+      if (off) axis.setAttribute("aria-disabled", "true");
+      else axis.removeAttribute("aria-disabled");
     }
   }
   // ── Internal: config readers ──────────────────────────────────────
@@ -11193,6 +11298,8 @@ var TEMPLATE = `
   </article>
 `;
 var RequirementCard = class extends VBElement {
+  /** True when this element added role="button" itself (so it may remove it). */
+  #ownsRole = false;
   static get observedAttributes() {
     return ["data-priority", "data-conflict", "tabindex"];
   }
@@ -11215,6 +11322,15 @@ var RequirementCard = class extends VBElement {
     this.#syncDefaultPill();
     this.#syncInteractive();
     this.listen(this, "click", (e) => this.#onActivate(e));
+    const wrapper = this.closest("a[href], button");
+    if (wrapper) {
+      this.listen(wrapper, "click", (e) => {
+        if (!this.contains(
+          /** @type {Node} */
+          e.target
+        )) this.#onActivate(e);
+      });
+    }
     this.listen(this, "keydown", (e) => {
       const ke = (
         /** @type {KeyboardEvent} */
@@ -11274,6 +11390,14 @@ var RequirementCard = class extends VBElement {
   }
   #syncInteractive() {
     this.setState("interactive", !!this.#interactive);
+    const needsRole = this.hasAttribute("tabindex") && !this.closest("a[href], button");
+    if (needsRole && !this.hasAttribute("role")) {
+      this.setAttribute("role", "button");
+      this.#ownsRole = true;
+    } else if (!needsRole && this.#ownsRole) {
+      this.removeAttribute("role");
+      this.#ownsRole = false;
+    }
   }
   #onActivate(event) {
     if (!this.#interactive) return;

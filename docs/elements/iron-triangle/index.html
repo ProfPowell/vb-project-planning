@@ -85,10 +85,10 @@
 
   <title>iron-triangle — VB Project Planning</title>
   <meta name="description" content="Project-shape constraint surface — captures Time × Cost × Scope and computes a single capacityPoints budget that downstream planning components can spend on quality decisions.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mvzzz4vf">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mvzzz4vf">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mvzzz4vf">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mvzzz4vf">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw01sf4c">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw01sf4c">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw01sf4c">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw01sf4c">
   
 </head>
 <body style="overflow-x: clip;">
@@ -2733,8 +2733,8 @@ triangle.addEventListener(&#39;iron-triangle:change&#39;, (e) =&amp;gt; {
 <tr><td><code>data-min-capacity</code></td><td>number</td><td><code>1</code></td><td>Floor for capacityPoints</td></tr>
 <tr><td><code>data-quality-href</code></td><td>string</td><td>—</td><td>Navigation fallback when iron-triangle:open-quality isn't preventDefault-ed</td></tr>
 <tr><td><code>data-quality-summary</code></td><td>string</td><td>—</td><td>Short summary text shown in the center's native tooltip + aria-label (e.g. '3 critical: perf, sec, a11y')</td></tr>
-<tr><td><code>disabled</code></td><td>boolean</td><td>—</td><td>All inputs disabled</td></tr>
-<tr><td><code>locked</code></td><td>boolean</td><td>—</td><td>Read-only mode for shipped vectors</td></tr></tbody></table>
+<tr><td><code>disabled</code></td><td>boolean</td><td>—</td><td>Fully off: vertex and centre Quality targets leave the tab order (aria-disabled), openEditor() is a no-op, the mode switch and all dialog controls are disabled. setManual() / setFormula() / revise() still work for the host.</td></tr>
+<tr><td><code>locked</code></td><td>boolean</td><td>—</td><td>Read-only mode for shipped shapes: the same editing lock as disabled, but the centre Quality target still opens the quality decision (iron-triangle:open-quality / data-quality-href)</td></tr></tbody></table>
 </section>
 
 <section>
@@ -2836,9 +2836,11 @@ triangle.addEventListener(&#39;iron-triangle:change&#39;, (e) =&amp;gt; {
   <ul>
     <li><strong>Keyboard.</strong> Every hit target is a focusable <code>role="button"</code> (<code>tabindex="0"</code>) inside an SVG <code>role="group"</code>; Enter and Space activate exactly like a click. Each target's <code>aria-label</code> carries its name and current summary ("Time — 6 weeks (3 × 2wk). Activate to edit.").</li>
     <li><strong>Live readout.</strong> The capacity number lives in an <code>&lt;output aria-live="polite" aria-atomic="true"&gt;</code> below the SVG. It is visually hidden (the big number already shows on screen) and announces "Capacity: 18 points (formula)." after every recompute, including mode flips and any deadline warning.</li>
-    <li><strong>Mode switch.</strong> The formula / manual switch is a real <code>&lt;button aria-pressed&gt;</code>, not a checkbox-and-label hack. Its accessible name states the current manual number when pressed. Activating it opens a native <code>&lt;dialog&gt;</code> (focus is trapped and returned by the browser) with a single numeric <code>&lt;form-field&gt;</code> plus <em>Use formula</em>, Cancel, and Save.</li>
+    <li><strong>Mode switch.</strong> The formula / manual switch is a real <code>&lt;button aria-pressed&gt;</code>, not a checkbox-and-label hack. It is styled as a quiet ghost button so it stays secondary to the triangle. When pressed, its visible label becomes "Manual capacity: 20 pts" and gains an underline, so the state never rests on colour; the accessible name starts with that same visible text (label in name). Activating it opens a native <code>&lt;dialog&gt;</code> (focus is trapped and returned by the browser) with a single numeric <code>&lt;form-field&gt;</code> plus <em>Use formula</em>, Cancel, and Save.</li>
     <li><strong>Never colour-only.</strong> A deadline in the past changes the triangle stroke <em>and</em> shows the literal text "Deadline has passed (date)" in the status strip; the same text is announced through the live region. An unbudgeted capacity shows "—" rather than relying on colour alone.</li>
-    <li><strong>Editors.</strong> Dialog inputs are labelled <code>&lt;form-field&gt;</code> rows with native validation (<code>min</code>, <code>step</code>, <code>maxlength</code>); each dialog has an <code>aria-label</code> naming the vertex. <code>disabled</code> / <code>locked</code> disable the mode switch and every dialog control.</li>
+    <li><strong>Editors.</strong> Dialog inputs are labelled <code>&lt;form-field&gt;</code> rows with native validation (<code>min</code>, <code>step</code>, <code>maxlength</code>); each dialog has an <code>aria-label</code> naming the vertex.</li>
+    <li><strong>Locked.</strong> Editing is off: the vertex targets leave the tab order and carry <code>aria-disabled="true"</code>, <code>openEditor()</code> does nothing, and the mode switch and every dialog control are disabled. The centre Quality target still works by mouse and keyboard, so a read-only shape can still lead to its quality decision.</li>
+    <li><strong>Disabled.</strong> Everything is off, the centre Quality target included, as with any disabled control. In both modes the host can still call <code>setManual()</code>, <code>setFormula()</code>, and <code>revise()</code>.</li>
     <li><strong>Logical properties</strong> throughout keep RTL and vertical writing modes clean.</li>
   </ul>
 </section>
@@ -2904,10 +2906,10 @@ triangle.addEventListener(&#39;iron-triangle:change&#39;, (e) =&amp;gt; {
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mvzzz4vf"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mvzzz4vf"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mvzzz4vf"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mvzzz4vf"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw01sf4c"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw01sf4c"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw01sf4c"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw01sf4c"></script>
   
 </body>
 </html>
