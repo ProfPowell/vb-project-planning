@@ -60,8 +60,9 @@ test.describe('product-roadmap — HTML-first contract', () => {
     expect(first.end).toBe('2026-12-31');
     expect(first.status).toBe('in-progress');
     expect(first.x).toBe('0.0000');
-    expect(parseFloat(first.w)).toBeCloseTo(183 / 364, 3);   // Jul 1 → Dec 31 over a 364-day range
-    expect(first.aria).toBe('Multi-tenant database — 2026-07-01 to 2026-12-31 in Platform');
+    // Ends are inclusive: Jul 1 → Dec 31 is 184 days of a 365-day (Jul 1 → Jun 30) range.
+    expect(parseFloat(first.w)).toBeCloseTo(184 / 365, 3);
+    expect(first.aria).toBe('Multi-tenant database — July 1, 2026 to December 31, 2026 in Platform, status: in progress');
 
     // A single-quarter initiative spans exactly a quarter of the axis.
     const push = state.lanes[2].bars[1];
@@ -70,9 +71,9 @@ test.describe('product-roadmap — HTML-first contract', () => {
     expect(push.end).toBe('2026-09-30');
     expect(push.status).toBe('shipped');
     expect(push.x).toBe('0.0000');
-    expect(push.w).toBe('0.2500');
+    expect(parseFloat(push.w)).toBeCloseTo(92 / 365, 3);
 
-    // Read-only: bars are not draggable and carry no resize handle.
+    // Read-only: bars carry no resize handle (and never use native drag).
     expect(state.lanes.flatMap((l) => l.bars).every((b) => b.draggable === null && !b.hasHandle)).toBe(true);
   });
 
@@ -83,7 +84,7 @@ test.describe('product-roadmap — HTML-first contract', () => {
     const state = await page.evaluate(() => {
       const rm = document.createElement('product-roadmap');
       rm.setAttribute('start', '2026-01-01');
-      rm.setAttribute('end', '2026-04-01');
+      rm.setAttribute('end', '2026-03-31');
       rm.setAttribute('view', 'month');
       rm.innerHTML = `
         <section data-lane="Core">
@@ -118,7 +119,7 @@ test.describe('product-roadmap — HTML-first contract', () => {
     expect(spill.start).toBe('2025-12-01');
     expect(spill.end).toBe('2026-02-01');
     expect(spill.x).toBe(0);
-    expect(spill.w).toBeCloseTo(31 / 90, 3);        // Jan 1 → Feb 1 over a 90-day range
+    expect(spill.w).toBeCloseTo(32 / 90, 3);        // Jan 1 → Feb 1 inclusive over a 90-day range
     expect(runs.start).toBe('2026-03-01');
     expect(runs.end).toBe('2026-09-30');
     expect(runs.status).toBe('blocked');
@@ -203,7 +204,7 @@ test.describe('product-roadmap — HTML-first contract', () => {
     expect(result[0].status).toBe('planned');
   });
 
-  test('editable: bars are draggable with a resize handle; pointer drag snaps to quarter and fires reschedule', async ({ page }) => {
+  test('editable: bars carry a resize handle; pointer drag snaps to quarter and fires reschedule', async ({ page }) => {
     await page.goto(editableDemo);
     await page.waitForSelector('product-roadmap[data-upgraded]');
 
@@ -211,12 +212,14 @@ test.describe('product-roadmap — HTML-first contract', () => {
       const bars = [...document.querySelectorAll('product-roadmap .rm-bar')];
       return {
         count: bars.length,
-        allDraggable: bars.every((b) => b.getAttribute('draggable') === 'true'),
-        allHaveHandle: bars.every((b) => b.querySelector('.rm-bar-handle')?.getAttribute('aria-label') === 'Resize end date'),
+        // Pointer events drive every drag (no native HTML5 DnD).
+        noneDraggable: bars.every((b) => !b.hasAttribute('draggable')),
+        // The handle is a pointer-only affordance; Shift+Arrow is the keyboard path.
+        allHaveHandle: bars.every((b) => b.querySelector('.rm-bar-handle')?.getAttribute('aria-hidden') === 'true'),
       };
     });
     expect(shape.count).toBe(3);
-    expect(shape.allDraggable).toBe(true);
+    expect(shape.noneDraggable).toBe(true);
     expect(shape.allHaveHandle).toBe(true);
 
     // Capture events on the document before dragging.
@@ -236,8 +239,8 @@ test.describe('product-roadmap — HTML-first contract', () => {
     });
 
     // Drag "Multi-tenant database" (Q3 2026 → Q4 2026) right by 30% of the
-    // track. Start lands mid-October → snaps to 2026-10-01; end lands
-    // mid-April → snaps to 2027-04-01.
+    // track. Start lands mid-October → snaps to 2026-10-01; the end boundary
+    // lands mid-April → snaps to Apr 1, so the inclusive end is 2027-03-31.
     const bar = page.locator('product-roadmap .rm-lane[data-lane="Platform"] .rm-bar').first();
     const track = page.locator('product-roadmap .rm-lane[data-lane="Platform"] .rm-track');
     const barBox = await bar.boundingBox();
@@ -273,14 +276,14 @@ test.describe('product-roadmap — HTML-first contract', () => {
       initiativeTitle: 'Multi-tenant database',
       lane: 'Platform',
       start: '2026-10-01',
-      end: '2027-04-01',
+      end: '2027-03-31',
     }]);
     // Bar re-snaps to the grid and the author's <article> is updated in place.
     expect(result.barStart).toBe('2026-10-01');
-    expect(result.barEnd).toBe('2027-04-01');
-    expect(result.barX).toBe('0.2527');     // Oct 1 over a Jul 1 → Jun 30 (364-day) range
+    expect(result.barEnd).toBe('2027-03-31');
+    expect(result.barX).toBe('0.2521');     // Oct 1 = day 92 of a Jul 1 → Jun 30 (365-day) range
     expect(result.sourceStart).toBe('2026-10-01');
-    expect(result.sourceEnd).toBe('2027-04-01');
+    expect(result.sourceEnd).toBe('2027-03-31');
   });
 
   // Regression guard: the element must declare observedAttributes so that

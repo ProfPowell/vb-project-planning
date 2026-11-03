@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/api.schema.json",
   "element": "product-roadmap",
   "type": "web-component",
-  "description": "Interactive themes \u00d7 quarters product roadmap. Auto-discovers lane sections + initiative articles; editable mode wires drag-to-reschedule, drag-to-resize, and drop-on-lane.",
+  "description": "Interactive themes × quarters product roadmap. Auto-discovers lane sections + initiative articles; editable mode adds pointer and keyboard rescheduling, resizing, and lane moves.",
   "attributes": [
     {
       "name": "start",
@@ -27,14 +27,15 @@
         "quarter",
         "month"
       ],
-      "description": "Time-axis granularity (default: quarter)"
+      "description": "Time-axis granularity (default: quarter)",
+      "default": "\"quarter\""
     },
     {
       "name": "editable",
       "kind": "host-api",
       "purpose": "config",
       "type": "boolean",
-      "description": "Wire drag-to-reschedule, drag-to-resize, and lane drop"
+      "description": "Enable editing: drag a bar (or press ←/→) to reschedule, drag its right edge (or Shift+←/→) to resize, drag onto another lane (or Alt+↑/↓) to move it"
     },
     {
       "name": "today-marker",
@@ -46,12 +47,12 @@
   ],
   "structure": [
     {
-      "element": "<section data-lane=\"\u2026\">",
+      "element": "<section data-lane=\"…\">",
       "description": "One per swimlane row"
     },
     {
-      "element": "<article data-start=\"\u2026\" data-end=\"\u2026\">",
-      "description": "One per initiative bar inside a lane (data-status sets the bar color)"
+      "element": "<article data-start=\"…\" data-end=\"…\">",
+      "description": "One per initiative bar inside a lane (data-status sets the bar colour and status label)"
     }
   ],
   "childAttributes": [
@@ -65,13 +66,13 @@
       "name": "data-start",
       "on": "article",
       "type": "string",
-      "description": "Initiative start date (ISO 8601 or YYYY-Qn)"
+      "description": "Initiative start date (ISO 8601 or YYYY-Qn → first day of the quarter)"
     },
     {
       "name": "data-end",
       "on": "article",
       "type": "string",
-      "description": "Initiative end date (ISO 8601 or YYYY-Qn)"
+      "description": "Initiative end date, inclusive (ISO 8601 or YYYY-Qn → last day of the quarter). Equal to data-start for a one-day initiative"
     },
     {
       "name": "data-status",
@@ -84,29 +85,29 @@
         "shipped",
         "blocked"
       ],
-      "description": "Status enum; drives bar color"
+      "description": "Status enum; drives the bar colour and a visible status label (custom values are shown as text with the default colour)"
     }
   ],
   "events": [
     {
       "name": "product-roadmap:select",
       "detail": "{ initiative, lane, start, end, status }",
-      "description": "Fired on bar click"
+      "description": "Fired when a bar is clicked or activated with Enter/Space. start/end are inclusive YYYY-MM-DD"
     },
     {
       "name": "product-roadmap:reschedule",
       "detail": "{ initiative, lane, start, end }",
-      "description": "Fired after drag-to-move snaps to grid"
+      "description": "Fired when a drag along the time axis (or ←/→ in editable mode) changes the dates. Both ends snap to the nearest period boundary; end is inclusive (e.g. 2027-03-31). Not fired when a drag snaps back to the same dates"
     },
     {
       "name": "product-roadmap:resize",
       "detail": "{ initiative, lane, start, end }",
-      "description": "Fired after drag-to-resize snaps to grid"
+      "description": "Fired when dragging the right edge (or Shift+←/→) changes the end date; the end snaps to the last day of the nearest period, never shorter than one period"
     },
     {
       "name": "product-roadmap:move",
       "detail": "{ initiative, fromLane, toLane, start, end }",
-      "description": "Fired after a bar drops on a different lane"
+      "description": "Fired when a bar is dropped on a different lane (pointer drag or Alt+↑/↓). The source <article> is moved into the target <section data-lane>. If the drag also changed the dates, reschedule fires first"
     }
   ],
   "htmlvalidate": {

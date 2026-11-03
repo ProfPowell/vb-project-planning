@@ -42,6 +42,7 @@ crumbLabel: Web Components
   </code-block>
 
   <p>Dates accept <strong>ISO 8601</strong> (<code>2026-07-01</code>) or <strong>quarter shorthand</strong> (<code>2026-Q3</code>). For <code>data-end</code>, quarter shorthand resolves to the last day of the quarter.</p>
+  <p>Every end date is <strong>inclusive</strong> — the host's <code>end</code> and each initiative's <code>data-end</code>. <code>data-start="2026-Q3" data-end="2026-Q3"</code> covers July 1 – September 30, and an initiative whose <code>data-start</code> equals its <code>data-end</code> is drawn as a one-day bar. Dates are calendar days in the viewer's local time zone.</p>
 </section>
 
 <section>
@@ -53,8 +54,8 @@ crumbLabel: Web Components
 </section>
 
 <section>
-  <h2>Status colors</h2>
-  <p>Set <code>data-status</code> on each initiative to drive the bar color. Recognized values:</p>
+  <h2>Status</h2>
+  <p>Set <code>data-status</code> on each initiative. The status is shown as a text label inside the bar and included in the bar's accessible name; the colour is an additional cue, never the only one. Recognized values and their colours:</p>
   <ul>
     <li><code>planned</code> — info blue</li>
     <li><code>in-progress</code> — accent</li>
@@ -62,20 +63,36 @@ crumbLabel: Web Components
     <li><code>shipped</code> — success green</li>
     <li><code>blocked</code> — danger red</li>
   </ul>
-  <p>Custom statuses fall back to the default accent. Override <code>--color-accent</code> or per-status tokens to retheme.</p>
+  <p>Custom statuses are shown as text with the default accent colour. Override <code>--color-accent</code> or per-status tokens to retheme.</p>
 </section>
 
 <section>
   <h2>Editable mode</h2>
-  <p>Add the <code>editable</code> attribute to enable interactive editing:</p>
+  <p>Add the <code>editable</code> attribute to enable interactive editing. A press that moves less than 4&nbsp;px is a click; only a real drag changes dates.</p>
   <ul>
-    <li><strong>Drag bar body</strong> → snaps to the nearest quarter (or month, if <code>view="month"</code>); fires <code>product-roadmap:reschedule</code>; updates <code>data-start</code>/<code>data-end</code> on both the rendered bar AND the source <code>&lt;article&gt;</code>.</li>
-    <li><strong>Drag right edge</strong> → resizes the end date; fires <code>product-roadmap:resize</code>.</li>
-    <li><strong>Drag onto another lane</strong> → moves the source <code>&lt;article&gt;</code>; fires <code>product-roadmap:move</code>.</li>
-    <li><strong>Click bar</strong> → fires <code>product-roadmap:select</code> with full detail.</li>
+    <li><strong>Drag bar body</strong> (or <kbd>←</kbd>/<kbd>→</kbd> on a focused bar) → both ends snap to the nearest quarter boundary (or month, if <code>view="month"</code>); fires <code>product-roadmap:reschedule</code>; writes ISO <code>data-start</code>/<code>data-end</code> (inclusive end, e.g. <code>2027-03-31</code>) to the source <code>&lt;article&gt;</code>.</li>
+    <li><strong>Drag right edge</strong> (or <kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd>) → the end snaps to the last day of the nearest period, never shorter than one period; fires <code>product-roadmap:resize</code>.</li>
+    <li><strong>Drag onto another lane</strong> (or <kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd>) → moves the source <code>&lt;article&gt;</code> into that <code>&lt;section data-lane&gt;</code>; fires <code>product-roadmap:move</code>. If the same drag also changed the dates, <code>reschedule</code> fires first.</li>
+    <li><strong>Click bar</strong> (or <kbd>Enter</kbd>/<kbd>Space</kbd>) → fires <code>product-roadmap:select</code> with full detail. Works in read-only mode too.</li>
   </ul>
+  <p>A drag that snaps back to the original dates and lane fires nothing.</p>
 
   <browser-window url="product-roadmap-editable" src="/demos/product-roadmap-editable/"></browser-window>
+</section>
+
+<section>
+  <h2>Events</h2>
+  {{ eventsTable("product-roadmap", apiRegistry) }}
+</section>
+
+<section>
+  <h2>Accessibility</h2>
+  <ul>
+    <li>Each bar is a focusable <code>role="button"</code> whose accessible name gives the title, dates, lane and status (e.g. “iOS rewrite — July 1, 2026 to March 31, 2027 in Mobile, status: at risk”). <kbd>Enter</kbd> or <kbd>Space</kbd> selects it.</li>
+    <li>Status is shown as visible text, not by colour alone.</li>
+    <li>In editable mode every pointer edit has a keyboard equivalent (see above); the bars reference a visually hidden description of the keys, and changes are announced through a polite live region. Focus stays on the edited bar.</li>
+    <li>The resize handle is a pointer-only target and is hidden from assistive technology; <kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd> is its keyboard equivalent.</li>
+  </ul>
 </section>
 
 <section>
@@ -88,7 +105,7 @@ crumbLabel: Web Components
   <ol>
     <li><strong>HTML.</strong> Without JS, the component CSS hides source lanes (otherwise <code>&lt;article&gt;</code> headings would flash before upgrade). Authors who need a visible no-JS fallback should render a sibling table or list.</li>
     <li><strong>CSS.</strong> The <code>:not(:defined)</code> selector keeps the host visible pre-upgrade.</li>
-    <li><strong>JS.</strong> Auto-discovers lanes + initiatives, builds the time-axis header, positions bars by date fraction, optionally wires drag-to-reschedule and lane drops.</li>
+    <li><strong>JS.</strong> Auto-discovers lanes + initiatives, builds the time-axis header, positions bars by date fraction, optionally wires pointer and keyboard editing.</li>
   </ol>
 </section>
 
@@ -97,7 +114,7 @@ crumbLabel: Web Components
   <ul>
     <li>Overlapping initiatives in the same lane render stacked (later DOM order on top). Sequence non-overlapping work in a single lane, or split overlapping work into multiple lanes.</li>
     <li>Initiatives whose dates fall entirely outside the visible range are skipped. Initiatives crossing the boundary are clipped.</li>
-    <li>No keyboard shortcuts for drag-to-reschedule yet (use the explicit <code>data-start</code>/<code>data-end</code> attributes for screen-reader-driven editing).</li>
+    <li>Edits write ISO dates back to the source <code>&lt;article&gt;</code>; quarter shorthand is not preserved after an edit.</li>
   </ul>
 </section>
 
