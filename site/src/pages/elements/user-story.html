@@ -432,6 +432,7 @@ document.body.appendChild(us);</code-block>
     <ul>
       <li>The full and compact card is an <code>&lt;article&gt;</code> with <code>aria-label="User story: [story-id]"</code> (or "User story" without an id)</li>
       <li>The minimal card is a real <code>&lt;button&gt;</code> named "[story-id]: [title]" with <code>aria-haspopup="dialog"</code>; Enter and Space open the detail dialog</li>
+      <li>On a board (a minimal card directly inside a <code>&lt;drag-surface&gt;</code>, as in <code>&lt;kanban-board&gt;</code>, <code>&lt;story-map&gt;</code> or <code>&lt;impact-effort&gt;</code>) the card itself is the single tab stop and the inner button leaves the tab order. <kbd>Enter</kbd> opens the detail dialog; <kbd>Space</kbd> grabs the card for keyboard reordering; while grabbed, the arrow keys move it, <kbd>Space</kbd> or <kbd>Enter</kbd> drops it and <kbd>Escape</kbd> cancels. A click opens the dialog.</li>
       <li>Priority and status badges use color plus text labels &mdash; never color alone</li>
       <li>The story points badge shows the number and includes visually hidden text, so it reads as "[n] story points"</li>
       <li>The Acceptance Criteria, Tasks, and Notes sections each have a visible <code>&lt;h3&gt;</code> heading for screen reader navigation</li>

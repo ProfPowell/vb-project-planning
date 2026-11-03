@@ -32,6 +32,10 @@
  * @fires user-story:upgraded     - Once, after first connect
  * @fires user-story:data-changed - After .data assignment, detail: { data, source: 'property' }
  *
+ * Keyboard: a minimal card is a button (Enter / Space open the detail
+ * dialog). On a board (directly inside a <drag-surface>) the host is the
+ * single tab stop: Enter opens the dialog, Space grabs for reordering.
+ *
  * @example
  * <user-story
  *   persona-id="persona-sarah"
@@ -76,6 +80,11 @@ class UserStory extends UXShadowElement {
 
   /** @type {HTMLDialogElement | null} */
   #dialog = null;
+
+  constructor() {
+    super();
+    this.addEventListener('keydown', this.#onBoardKeydown);
+  }
 
   /* ── Data API ──────────────────────────────────── */
 
@@ -138,6 +147,8 @@ class UserStory extends UXShadowElement {
 
   _connect() {
     this.#observeLinkedPersona();
+    // Moved onto / off a board: switch the minimal card's tab stop.
+    this.#syncBoardFocus();
   }
 
   _disconnect() {
@@ -369,6 +380,43 @@ class UserStory extends UXShadowElement {
     dialog.remove();
   }
 
+  // ── Board keyboard model ─────────────────────────────────────────
+
+  /**
+   * True when this card is a direct child of a <drag-surface> (kanban-board,
+   * story-map, impact-effort), which makes the host its focusable,
+   * keyboard-reorderable list item.
+   */
+  get #onBoard() {
+    return this.parentElement?.localName === 'drag-surface';
+  }
+
+  /**
+   * On a board the host (tabindex 0, set by drag-surface) is the card's
+   * only tab stop, so the minimal card's inner button leaves the tab order.
+   * Off a board the button is the tab stop and works as a normal button.
+   */
+  #syncBoardFocus() {
+    const button = /** @type {HTMLButtonElement | null | undefined} */ (this.shadowRoot?.querySelector('.story-card--minimal'));
+    if (button) button.tabIndex = this.#onBoard ? -1 : 0;
+  }
+
+  /**
+   * Board keyboard model for a minimal card: Enter opens the detail
+   * dialog; Space (drag-surface's grab key) grabs and drops; while grabbed,
+   * Enter drops and arrows move. Runs on the host, before the drag-surface's
+   * own handler, and stops Enter there so it does not start a grab.
+   * @param {KeyboardEvent} e
+   */
+  #onBoardKeydown = (e) => {
+    if (e.key !== 'Enter' || e.defaultPrevented || !this.#onBoard) return;
+    if (this._detailLevel !== 'minimal' || this.getAttribute('aria-grabbed') === 'true') return;
+    if (!this.shadowRoot?.querySelector('.story-card--minimal')) return;
+    e.preventDefault();          // the inner button must not also click
+    e.stopPropagation();         // keep drag-surface from starting a grab
+    this.showDetail();
+  };
+
   // ── Private ──────────────────────────────────────────────────────
 
   _render() {
@@ -398,6 +446,7 @@ class UserStory extends UXShadowElement {
         </button>
       `;
       this.shadowRoot.querySelector('.story-card--minimal')?.addEventListener('click', () => this.showDetail());
+      this.#syncBoardFocus();
     } else {
       this.shadowRoot.innerHTML = `
         <style>${styles}</style>

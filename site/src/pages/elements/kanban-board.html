@@ -217,15 +217,14 @@ board.addEventListener('kanban-board:items-changed', (e) =&gt; {
 
 <section>
     <h2>Keyboard Navigation</h2>
-    <p>All keyboard support is provided by the underlying <code>&lt;drag-surface&gt;</code> component:</p>
+    <p>Card keyboard support comes from the underlying <code>&lt;drag-surface&gt;</code>. Each card is one tab stop:</p>
     <ul>
-      <li><kbd>Tab</kbd> to focus a column's drag surface</li>
-      <li><kbd>Space</kbd> or <kbd>Enter</kbd> to grab an item</li>
-      <li><kbd>Up</kbd> / <kbd>Down</kbd> to reorder within a column</li>
-      <li><kbd>Left</kbd> / <kbd>Right</kbd> to transfer between columns</li>
-      <li><kbd>Space</kbd> to drop the item</li>
-      <li><kbd>Escape</kbd> to cancel</li>
+      <li><kbd>Tab</kbd> moves between cards; <kbd>Up</kbd> / <kbd>Down</kbd> move focus within a column</li>
+      <li><kbd>Space</kbd> grabs the focused card (<kbd>Enter</kbd> does too, except on a minimal <code>&lt;user-story&gt;</code>, see below)</li>
+      <li>While grabbed: <kbd>Up</kbd> / <kbd>Down</kbd> reorder within the column, <kbd>Left</kbd> / <kbd>Right</kbd> move the card to the previous / next column</li>
+      <li><kbd>Space</kbd> or <kbd>Enter</kbd> drops the card; <kbd>Escape</kbd> cancels and puts it back</li>
     </ul>
+    <p>A minimal <code>&lt;user-story&gt;</code> card (as in the demo above) keeps its own action: <kbd>Enter</kbd> opens its detail dialog and <kbd>Space</kbd> grabs it. A click opens the dialog too.</p>
 </section>
 
 <section>

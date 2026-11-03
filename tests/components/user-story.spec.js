@@ -483,6 +483,47 @@ test.describe('user-story — src, lifecycle and regressions', () => {
     await expect(page.getByRole('dialog', { name: 'Keyboard story' })).toBeVisible();
   });
 
+  test('on a kanban board a minimal card is one tab stop: Enter opens details, Space grabs, arrows move', async ({ page }) => {
+    await page.goto('demos/kanban-board-basic/');
+    await page.waitForSelector('kanban-board[data-upgraded] user-story[data-upgraded]');
+    await page.waitForFunction(() => customElements.get('drag-surface'));
+    const focusState = () => page.evaluate(() => {
+      const a = document.activeElement;
+      return { id: a?.dataset?.id ?? a?.localName, inner: a?.shadowRoot?.activeElement?.localName ?? null };
+    });
+
+    const card = page.locator('kanban-board user-story[data-id="PROJ-201"]');
+    await card.focus();
+    expect(await focusState()).toEqual({ id: 'PROJ-201', inner: null });
+    // One tab stop per card: Tab leaves the card instead of entering its button.
+    await page.keyboard.press('Tab');
+    expect((await focusState()).id).not.toBe('PROJ-201');
+
+    // Enter opens the detail dialog (and does not start a grab).
+    await card.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(card).toHaveAttribute('aria-grabbed', 'false');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('dialog')).toHaveCount(0);
+
+    // Space grabs; ArrowRight moves to the next column; Enter drops (no dialog).
+    await card.focus();
+    const fromColumn = await card.evaluate((el) => el.closest('[data-column-id]').dataset.columnId);
+    await page.keyboard.press('Space');
+    await expect(card).toHaveAttribute('aria-grabbed', 'true');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Enter');
+    await expect(card).toHaveAttribute('aria-grabbed', 'false');
+    await expect(page.locator('dialog')).toHaveCount(0);
+    const toColumn = await card.evaluate((el) => el.closest('[data-column-id]').dataset.columnId);
+    expect(toColumn).not.toBe(fromColumn);
+
+    // A mouse click on the card still opens the dialog.
+    await card.click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+  });
+
   test('stories without ids get separate dialogs; a removed story removes its dialog', async ({ page }) => {
     await openUpgradePage(page, {
       events: EVENTS,
