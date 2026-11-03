@@ -13,8 +13,8 @@
     { "name": "data-min-capacity",     "kind": "data",     "purpose": "config",         "type": "number",  "default": "1",        "description": "Floor for capacityPoints" },
     { "name": "data-quality-href",     "kind": "data",     "purpose": "config",         "type": "string",  "description": "Navigation fallback when iron-triangle:open-quality isn't preventDefault-ed" },
     { "name": "data-quality-summary",  "kind": "data",     "purpose": "config",         "type": "string",  "description": "Short summary text shown in the center's native tooltip + aria-label (e.g. '3 critical: perf, sec, a11y')" },
-    { "name": "disabled",              "kind": "native",   "purpose": "config",         "type": "boolean", "description": "All inputs disabled" },
-    { "name": "locked",                "kind": "host-api", "purpose": "semantic-state", "type": "boolean", "description": "Read-only mode for shipped vectors" }
+    { "name": "disabled",              "kind": "native",   "purpose": "config",         "type": "boolean", "description": "Fully off: vertex and centre Quality targets leave the tab order (aria-disabled), openEditor() is a no-op, the mode switch and all dialog controls are disabled. setManual() / setFormula() / revise() still work for the host." },
+    { "name": "locked",                "kind": "host-api", "purpose": "semantic-state", "type": "boolean", "description": "Read-only mode for shipped shapes: the same editing lock as disabled, but the centre Quality target still opens the quality decision (iron-triangle:open-quality / data-quality-href)" }
   ],
   "slots": [],
   "events": [

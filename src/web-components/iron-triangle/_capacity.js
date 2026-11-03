@@ -40,7 +40,7 @@ export function defaultFormulaText(time, cost, focusFactor) {
 
 /**
  * FNV-1a (32-bit) hash over a stable JSON serialization of the triangle.
- * Used for drift detection by downstream consumers (notably <nfr-compass>'s
+ * Used for drift detection by downstream consumers (notably <quality-target>'s
  * ironTriangleHash field).
  *
  * Matches the fnv1a in src/web-components/color-picker/_color-utils.js so
