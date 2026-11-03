@@ -193,6 +193,10 @@ matrix.addEventListener('impact-effort:move', (e) => {
             in place of <code>label</code>). Runs a keyed diff by <code>id</code>:
             cards whose id is already on the board &mdash; including HTML-authored
             ones &mdash; are moved, not duplicated; ids not in the array are removed.
+            Items without an <code>id</code> are keyed by their label (the second
+            item with the same label keeps the second such card), so they also
+            survive drags and round-trips; give items an <code>id</code> if their
+            labels can change.
             The getter reads the current DOM, so it reflects drags: each entry is
             the record you assigned with its current <code>quadrant</code>
             (authored cards read as <code>{ id, quadrant, label }</code>), and

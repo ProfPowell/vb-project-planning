@@ -92,6 +92,44 @@ test.describe('impact-effort — lifecycle', () => {
     expect(state.attr).toBe('money-pit');
   });
 
+  test('id-less items keep their card across a drag and an .items round-trip', async ({ page }) => {
+    await page.goto(demoPage);
+    await page.waitForSelector('impact-effort[data-upgraded]');
+    const state = await page.evaluate(() => {
+      const ie = document.querySelector('impact-effort');
+      ie.items = [
+        { quadrant: 'quick-wins', label: 'No id', owner: 'kim' },
+        { quadrant: 'fill-ins', label: 'Twin' },
+        { quadrant: 'fill-ins', label: 'Twin' },
+      ];
+      const card = [...ie.querySelectorAll('.ie-card')].find((el) => el.textContent === 'No id');
+      const fromSurface = card.closest('drag-surface');
+      const toSurface = ie.querySelector('[data-quadrant-zone="big-bets"] drag-surface');
+      toSurface.appendChild(card);
+      toSurface.dispatchEvent(new CustomEvent('drag-surface:transfer', {
+        bubbles: true, detail: { item: card, itemId: undefined, fromSurface, toSurface, newIndex: 0 },
+      }));
+      const afterDrag = ie.items;
+      const twins = [...ie.querySelectorAll('.ie-card')].filter((el) => el.textContent === 'Twin');
+      ie.items = afterDrag;   // documented round-trip
+      const now = [...ie.querySelectorAll('.ie-card')];
+      return {
+        afterDrag: afterDrag.map(({ id, ...rest }) => rest),
+        sameCard: now.includes(card) && card.closest('[data-quadrant-zone]').dataset.quadrantZone,
+        twinsKept: twins.every((t) => now.includes(t)),
+        count: now.length,
+      };
+    });
+    expect(state.afterDrag).toEqual([
+      { quadrant: 'big-bets', label: 'No id', owner: 'kim' },
+      { quadrant: 'fill-ins', label: 'Twin' },
+      { quadrant: 'fill-ins', label: 'Twin' },
+    ]);
+    expect(state.sameCard).toBe('big-bets');
+    expect(state.twinsKept).toBe(true);
+    expect(state.count).toBe(3);
+  });
+
   test('authored cards are seeded: assigning an existing id moves the card instead of duplicating it', async ({ page }) => {
     await page.goto(demoPage);
     await page.waitForSelector('impact-effort[data-upgraded]');

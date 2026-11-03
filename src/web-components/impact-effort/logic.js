@@ -258,7 +258,10 @@ class ImpactEffort extends VBElement {
    * Each item: `{ id, quadrant, label }` (`text` is accepted as an alias of
    * `label`; story fields — persona, action, benefit, storyId — render a
    * `<user-story>` card). Runs a keyed diff by `id`, so cards whose id
-   * persists (including authored ones) are moved, not recreated. New ids
+   * persists (including authored ones) are moved, not recreated. Items
+   * without an `id` are keyed by their label (the nth repeat of a label
+   * keeps the nth such card), so they also survive drags and round-trips;
+   * give items an `id` if their labels change. New ids
    * render as `<article class="ie-card">` by default; override via
    * `.renderItem`.
    *
@@ -277,9 +280,28 @@ class ImpactEffort extends VBElement {
     }));
   }
 
-  /** @param {any} it */
-  static #keyOf(it) {
-    return it.id ?? `${it.quadrant}:${it.label ?? it.text}`;
+  /**
+   * Diff keys for a list of items: the `id` when present; otherwise the
+   * label (`label` or `text`), with a counter for repeats, so the nth
+   * id-less item with a given label keeps the nth such card. The quadrant
+   * is not part of the key, so a dragged id-less card survives an
+   * `.items` round-trip.
+   * @param {any[]} list
+   * @returns {Map<any, unknown>}
+   */
+  static #keysFor(list) {
+    /** @type {Map<string, number>} */
+    const seen = new Map();
+    /** @type {Map<any, unknown>} */
+    const keys = new Map();
+    for (const it of list) {
+      if (it.id != null) { keys.set(it, it.id); continue; }
+      const label = String(it.label ?? it.text ?? '');
+      const n = seen.get(label) ?? 0;
+      seen.set(label, n + 1);
+      keys.set(it, n ? `label:${label}#${n}` : `label:${label}`);
+    }
+    return keys;
   }
 
   /** @param {Element} el */
@@ -290,16 +312,17 @@ class ImpactEffort extends VBElement {
 
   /** @param {any[]} next */
   #applyItems(next) {
+    const keys = ImpactEffort.#keysFor(next);
     diffByKey({
       newItems: next,
       nodes: this.#nodes,
-      keyOf: ImpactEffort.#keyOf,
+      keyOf: (it) => keys.get(it),
       renderItem: (it) => this.#renderCard(it),
       containerFor: (it) => this.#surfaces[it.quadrant] || this.#surfaces['quick-wins'],
     });
     this.#records.clear();
     for (const it of next) {
-      const key = ImpactEffort.#keyOf(it);
+      const key = keys.get(it);
       this.#records.set(key, it);
       const el = this.#nodes.get(key);
       el?.setAttribute('data-quadrant', this.#surfaces[it.quadrant] ? it.quadrant : 'quick-wins');
