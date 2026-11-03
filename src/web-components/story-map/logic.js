@@ -15,7 +15,9 @@
  *
  * @fires story-map:reorder - Item reordered within a column
  * @fires story-map:transfer - Item moved between columns
- * @fires story-map:ready - Fired after component initializes
+ * @fires story-map:ready - Once after the first render (with src: after the JSON renders)
+ * @fires story-map:activities-changed - { activities, source: 'property' } after .activities is set
+ * @fires story-map:upgraded - Each time the map connects and upgrades
  *
  * @example
  * <story-map>
@@ -28,6 +30,13 @@
 import { registerComponent } from '../../lib/bundle-registry.js';
 import { VBElement } from '../../lib/vb-element.js';
 import { viewTransitionSwap } from '../../lib/vb-view-transition.js';
+import {
+  SrcLoader, announce, createLiveRegion, createStoryCard, itemLabel, syncPlaceholder, titleCase,
+} from '../../lib/board-surface.js';
+
+/**
+ * @typedef {{ id: string, label: string, journeyPhase: string | null }} ActivityMeta
+ */
 
 class StoryMap extends VBElement {
   static get observedAttributes() { return ['src', 'compact', 'title']; }
@@ -42,207 +51,211 @@ class StoryMap extends VBElement {
   #surfaces = {};
   /** @type {HTMLDivElement | null} */
   #liveRegion = null;
+  /** @type {HTMLHeadingElement | null} */
+  #titleEl = null;
   /** @type {string} */
   #groupId = '';
-  /** @type {Array<{ id: string, label: string, journeyPhase: string | null, children: HTMLElement[] }>} */
+  /** @type {ActivityMeta[]} */
   #activities = [];
+  /** Last story records assigned via `.activities` / src, keyed by data-id. */
+  /** @type {Map<string, Record<string, any>>} */
+  #records = new Map();
+  /** Shell built (survives disconnect so a moved map keeps its stories). */
+  #built = false;
+  /** Listeners attached for the current connection. */
+  #wired = false;
+  #readyFired = false;
+  #loader = new SrcLoader();
 
   setup() {
-    this.#groupId = `sm-${++StoryMap.#instanceCount}`;
+    if (!this.#groupId) this.#groupId = `sm-${++StoryMap.#instanceCount}`;
 
-    // 1. Snapshot <section data-activity> children
-    const sections = /** @type {HTMLElement[]} */ ([
-      ...this.querySelectorAll(':scope > section[data-activity]')
-    ]);
+    if (!this.#built) {
+      this.#built = true;
+      const sections = /** @type {HTMLElement[]} */ ([
+        ...this.querySelectorAll(':scope > section[data-activity]')
+      ]);
+      const parsed = sections.map(section => StoryMap.#parseSection(section));
+      for (const section of sections) section.remove();
 
-    this.#activities = sections.map(section => {
-      const id = section.getAttribute('data-activity') || '';
-      const rawLabel = section.getAttribute('data-activity-label') || '';
-      const label = rawLabel || this.#titleCase(id);
-      const journeyPhase = section.getAttribute('data-journey-phase') || null;
-      const children = /** @type {HTMLElement[]} */ ([...section.children]);
-      return { id, label, journeyPhase, children };
-    });
-
-    // 2. Remove original sections (children already captured)
-    for (const section of sections) {
-      section.remove();
+      this.#syncTitle();
+      this.#scroll = document.createElement('div');
+      this.#scroll.className = 'sm-scroll';
+      this.#scroll.setAttribute('role', 'region');
+      this.#scroll.setAttribute('tabindex', '0');
+      this.#liveRegion = createLiveRegion('sm-live-region');
+      this.#renderColumns(parsed.map(p => p.meta), parsed.map(p => p.children));
+      this.append(this.#scroll, this.#liveRegion);
     }
 
-    // 3. Build scroll container
-    this.#scroll = document.createElement('div');
-    this.#scroll.className = 'sm-scroll';
-    this.#scroll.setAttribute('role', 'region');
-    this.#scroll.setAttribute('aria-label', 'Story map');
-    this.#scroll.setAttribute('tabindex', '0');
+    if (!this.#wired) {
+      this.#wired = true;
+      this.listen(this, 'drag-surface:reorder', this.#onReorder);
+      this.listen(this, 'drag-surface:transfer', this.#onTransfer);
+    }
 
-    // 4. Build columns container
-    this.#columnsEl = document.createElement('div');
-    this.#columnsEl.className = 'sm-columns';
+    // Data mode: fetch once per src value; ready fires after it renders.
+    const src = this.getAttribute('src');
+    if (src) {
+      if (src !== this.#loader.url) this._loadSrc(src);
+      return;
+    }
 
-    // 5. Build each activity column
-    let totalStories = 0;
+    if (!this.#readyFired) this.#dispatchReady();
+  }
 
-    for (const activity of this.#activities) {
+  teardown() {
+    // Listeners are removed by VBElement. The title, columns and stories
+    // stay in place so a map that is moved in the DOM keeps its content;
+    // the next connect only re-attaches listeners.
+    this.#wired = false;
+  }
+
+  /**
+   * @param {HTMLElement} section
+   * @returns {{ meta: ActivityMeta, children: HTMLElement[] }}
+   */
+  static #parseSection(section) {
+    const id = section.getAttribute('data-activity') || '';
+    const label = section.getAttribute('data-activity-label') || titleCase(id);
+    const journeyPhase = section.getAttribute('data-journey-phase') || null;
+    const children = /** @type {HTMLElement[]} */ ([...section.children]);
+    return { meta: { id, label, journeyPhase }, children };
+  }
+
+  /**
+   * Replace the columns inside the scroll container. `children[i]` are the
+   * story cards for activity i (moved, not cloned).
+   * @param {ActivityMeta[]} metas
+   * @param {HTMLElement[][]} children
+   */
+  #renderColumns(metas, children) {
+    this.#activities = metas;
+    this.#surfaces = {};
+    const columns = document.createElement('div');
+    columns.className = 'sm-columns';
+
+    metas.forEach((activity, i) => {
       const column = document.createElement('section');
       column.className = 'sm-column';
       column.setAttribute('data-activity-column', activity.id);
 
-      // Header with count badge
       const header = document.createElement('header');
       header.className = 'sm-activity-header';
       const h3 = document.createElement('h3');
       h3.textContent = activity.label;
       const countBadge = document.createElement('span');
       countBadge.className = 'sm-activity-count';
-      countBadge.textContent = String(activity.children.length);
       h3.appendChild(countBadge);
       header.appendChild(h3);
       column.appendChild(header);
 
-      // Drag surface
       const surface = document.createElement('drag-surface');
       surface.setAttribute('group', this.#groupId);
       surface.setAttribute('aria-label', `${activity.label} stories`);
       surface.setAttribute('data-layout', 'stack');
       surface.setAttribute('data-layout-gap', 'xs');
-
-      // Move captured children into the drag-surface
-      if (activity.children.length > 0) {
-        for (const child of activity.children) {
-          surface.appendChild(child);
-        }
-        totalStories += activity.children.length;
-      } else {
-        const placeholder = document.createElement('p');
-        placeholder.className = 'sm-empty';
-        placeholder.textContent = 'No stories yet';
-        surface.appendChild(placeholder);
-      }
+      for (const child of children[i] || []) surface.appendChild(child);
 
       column.appendChild(surface);
-      this.#columnsEl.appendChild(column);
+      columns.appendChild(column);
       this.#surfaces[activity.id] = surface;
-    }
+      this.#updateCount(activity.id);
+      syncPlaceholder(surface, 'sm-empty', 'No stories yet');
+    });
 
-    // 6. Assemble: title + scroll > columns, append to this
+    this.#columnsEl?.remove();
+    this.#columnsEl = columns;
+    this.#scroll?.appendChild(columns);
+    this.#scroll?.setAttribute('aria-label', this.getAttribute('title') || 'Story map');
+  }
+
+  /** Create, update, or remove the optional heading from the title attribute. */
+  #syncTitle() {
     const title = this.getAttribute('title');
     if (title) {
-      const heading = document.createElement('h2');
-      heading.className = 'sm-title';
-      heading.textContent = title;
-      this.appendChild(heading);
-    }
-
-    this.#scroll.appendChild(this.#columnsEl);
-    this.appendChild(this.#scroll);
-
-    // 7. Create live region
-    this.#liveRegion = document.createElement('div');
-    this.#liveRegion.className = 'sm-live-region';
-    this.#liveRegion.setAttribute('role', 'status');
-    this.#liveRegion.setAttribute('aria-live', 'polite');
-    this.#liveRegion.setAttribute('aria-atomic', 'true');
-    this.appendChild(this.#liveRegion);
-
-    // 8. Listen for drag-surface:reorder
-    this.listen(this, 'drag-surface:reorder', (e) => {
-      const detail = /** @type {CustomEvent} */ (e).detail;
-      const surface = /** @type {HTMLElement | null} */ (/** @type {HTMLElement} */ (e.target).closest('drag-surface'));
-      const activityId = this.#findActivityForSurface(surface);
-      if (!activityId) return;
-
-      this.#updateCount(activityId);
-
-      this.dispatchEvent(new CustomEvent('story-map:reorder', {
-        bubbles: true,
-        detail: {
-          itemId: detail.itemId,
-          activity: activityId,
-          oldIndex: detail.oldIndex,
-          newIndex: detail.newIndex,
-        },
-      }));
-    });
-
-    // 9. Listen for drag-surface:transfer
-    this.listen(this, 'drag-surface:transfer', (e) => {
-      const detail = /** @type {CustomEvent} */ (e).detail;
-      const fromSurface = detail.fromSurface;
-      const toSurface = detail.toSurface;
-      const fromActivity = this.#findActivityForSurface(fromSurface);
-      const toActivity = this.#findActivityForSurface(toSurface);
-      if (!fromActivity || !toActivity) return;
-
-      // Update count badges
-      this.#updateCount(fromActivity);
-      this.#updateCount(toActivity);
-
-      // Remove placeholder from receiving column if it had one
-      const toPlaceholder = toSurface.querySelector('.sm-empty');
-      if (toPlaceholder) toPlaceholder.remove();
-
-      // Add placeholder to sending column if now empty
-      const fromDraggables = fromSurface.querySelectorAll(':scope > [draggable="true"]');
-      if (fromDraggables.length === 0 && !fromSurface.querySelector('.sm-empty')) {
-        const placeholder = document.createElement('p');
-        placeholder.className = 'sm-empty';
-        placeholder.textContent = 'No stories yet';
-        fromSurface.appendChild(placeholder);
+      if (!this.#titleEl) {
+        this.#titleEl = document.createElement('h2');
+        this.#titleEl.className = 'sm-title';
+        this.prepend(this.#titleEl);
       }
-
-      // Announce via live region
-      const itemLabel = this.#itemLabel(detail.item);
-      this.#announce(`${itemLabel} moved from ${fromActivity} to ${toActivity}`);
-
-      this.dispatchEvent(new CustomEvent('story-map:transfer', {
-        bubbles: true,
-        detail: {
-          itemId: detail.itemId,
-          fromActivity,
-          toActivity,
-          newIndex: detail.newIndex,
-        },
-      }));
-    });
-
-    // 10. Handle src attribute for data mode
-    const src = this.getAttribute('src');
-    if (src) {
-      this._loadSrc(src);
-      return; // ready event fires after src loads
+      this.#titleEl.textContent = title;
+    } else if (this.#titleEl) {
+      this.#titleEl.remove();
+      this.#titleEl = null;
     }
+    this.#scroll?.setAttribute('aria-label', title || 'Story map');
+  }
 
-    // 11. Dispatch ready event
+  #dispatchReady() {
+    this.#readyFired = true;
+    let storyCount = 0;
+    for (const surface of Object.values(this.#surfaces)) {
+      storyCount += surface.querySelectorAll(':scope > [draggable="true"]').length;
+    }
     this.dispatchEvent(new CustomEvent('story-map:ready', {
       bubbles: true,
-      detail: {
-        activityCount: this.#activities.length,
-        storyCount: totalStories,
-      },
+      detail: { activityCount: this.#activities.length, storyCount },
     }));
   }
 
-  teardown() {
-    if (this.#scroll) {
-      this.#scroll.remove();
-      this.#scroll = null;
-    }
-    if (this.#liveRegion) {
-      this.#liveRegion.remove();
-      this.#liveRegion = null;
-    }
-    this.#columnsEl = null;
-    this.#surfaces = {};
-    this.#activities = [];
-  }
+  /** @param {Event} e */
+  #onReorder = (e) => {
+    const detail = /** @type {CustomEvent} */ (e).detail;
+    const surface = /** @type {HTMLElement | null} */ (/** @type {HTMLElement} */ (e.target).closest('drag-surface'));
+    const activityId = this.#findActivityForSurface(surface);
+    if (!activityId) return;
+
+    this.#updateCount(activityId);
+
+    this.dispatchEvent(new CustomEvent('story-map:reorder', {
+      bubbles: true,
+      detail: {
+        itemId: detail.itemId,
+        activity: activityId,
+        oldIndex: detail.oldIndex,
+        newIndex: detail.newIndex,
+      },
+    }));
+  };
+
+  /** @param {Event} e */
+  #onTransfer = (e) => {
+    const detail = /** @type {CustomEvent} */ (e).detail;
+    const fromSurface = detail.fromSurface;
+    const toSurface = detail.toSurface;
+    const fromActivity = this.#findActivityForSurface(fromSurface);
+    const toActivity = this.#findActivityForSurface(toSurface);
+    if (!fromActivity || !toActivity) return;
+
+    this.#updateCount(fromActivity);
+    this.#updateCount(toActivity);
+    syncPlaceholder(toSurface, 'sm-empty', 'No stories yet');
+    syncPlaceholder(fromSurface, 'sm-empty', 'No stories yet');
+
+    announce(this.#liveRegion,
+      `${itemLabel(detail.item)} moved from ${this.#activityLabel(fromActivity)} to ${this.#activityLabel(toActivity)}`);
+
+    this.dispatchEvent(new CustomEvent('story-map:transfer', {
+      bubbles: true,
+      detail: {
+        itemId: detail.itemId,
+        fromActivity,
+        toActivity,
+        newIndex: detail.newIndex,
+      },
+    }));
+  };
 
   // ── Data API (HTML-first / JS-first dual contract) ──────────────
 
   /**
-   * Read the current activities + stories as a nested data array.
-   * Each activity: `{ id, label, journeyPhase?, stories: [...] }`.
-   * Each story: `{ id?, title?, ... }` (passed through to renderItem).
+   * Read the current activities + stories as a nested data array, in DOM
+   * order (drags are reflected):
+   *   `[{ id, label, journeyPhase?, stories: [{ id, ...record }] }]`.
+   * A story assigned through `.activities` or `src` returns the record it
+   * was given (so the getter round-trips through the setter); an authored
+   * `<user-story>` returns its `.data`; any other card `{ id, title }`.
    */
   get activities() {
     return this.#activities.map(a => ({
@@ -250,69 +263,47 @@ class StoryMap extends VBElement {
       label: a.label,
       journeyPhase: a.journeyPhase || undefined,
       stories: [...(this.#surfaces[a.id]?.querySelectorAll(':scope > [draggable="true"]') || [])]
-        .map(el => ({
-          id: el.getAttribute('data-id') || undefined,
-          storyId: el.getAttribute('story-id') || undefined,
-          title: el.querySelector('[slot="title"]')?.textContent?.trim() || undefined,
-        })),
+        .map(el => this.#storyRecord(/** @type {HTMLElement} */ (el))),
     }));
   }
 
   /**
    * Replace the entire story map. Accepts a nested tree:
-   *   [{ id, label, journeyPhase?, stories: [{ id, ... }] }]
-   * Stories are rendered as <user-story> elements (via .data) by default;
-   * override via `.renderStory`.
+   *   `[{ id, label?, journeyPhase?, stories: [{ id, title?, persona?, action?, benefit?, ... }] }]`
+   * Stories render as `<user-story>` cards (persona/action/benefit/title
+   * become slotted children) by default; override via `.renderStory`.
    *
-   * v1 is record-shaped — full rebuild on assignment. Per-story
-   * preservation across diffs is on the roadmap.
+   * Record-shaped: the columns are rebuilt on assignment (no per-story
+   * node preservation). Assigning before the element upgrades is fine —
+   * the tree is rendered on connect.
    *
-   * Emits story-map:activities-changed { activities, source: 'property' }.
+   * Emits `story-map:activities-changed { activities, source: 'property' }`.
    */
   set activities(value) {
     const next = Array.isArray(value) ? value : [];
+    this.#records.clear();
+    /** @type {HTMLElement[][]} */
+    const children = [];
+    /** @type {ActivityMeta[]} */
+    const metas = next.map(a => {
+      const id = String(a.id ?? '');
+      children.push((a.stories || []).map((/** @type {any} */ story) => this.#cardFromRecord(story, undefined)));
+      return { id, label: a.label || titleCase(id), journeyPhase: a.journeyPhase || null };
+    });
 
-    // Clear children, then synthesize the <section data-activity> markup
-    // that setup() expects. Re-run setup().
-    while (this.firstChild) this.firstChild.remove();
-    for (const a of next) {
-      const section = document.createElement('section');
-      section.setAttribute('data-activity', a.id || '');
-      if (a.label) section.setAttribute('data-activity-label', a.label);
-      if (a.journeyPhase) section.setAttribute('data-journey-phase', a.journeyPhase);
-      for (const story of (a.stories || [])) {
-        let el;
-        const self = /** @type {any} */ (this);
-        if (typeof self.renderStory === 'function') {
-          const out = self.renderStory(story);
-          el = out instanceof Element ? out : null;
-        }
-        if (!el) {
-          if (customElements.get('user-story')) {
-            el = document.createElement('user-story');
-            /** @type {any} */ (el).data = story;
-          } else {
-            el = document.createElement('article');
-            el.className = 'sm-card';
-            el.textContent = story.title || story.id || '';
-          }
-        }
-        if (!el.hasAttribute('draggable')) el.setAttribute('draggable', 'true');
-        if (story.id && !el.hasAttribute('data-id')) el.setAttribute('data-id', String(story.id));
-        section.appendChild(el);
-      }
-      this.appendChild(section);
-    }
-
-    const swap = () => {
-      this.teardown();
-      this.removeAttribute('data-upgraded');
-      this.setup();
-    };
-    if (this.hasAttribute('data-upgraded') && this.#scroll) {
-      viewTransitionSwap(this, swap, 'sm-vt');
+    if (!this.#built) {
+      // Not upgraded yet: leave sections for setup() to parse.
+      for (const section of this.querySelectorAll(':scope > section[data-activity]')) section.remove();
+      metas.forEach((meta, i) => {
+        const section = document.createElement('section');
+        section.setAttribute('data-activity', meta.id);
+        section.setAttribute('data-activity-label', meta.label);
+        if (meta.journeyPhase) section.setAttribute('data-journey-phase', meta.journeyPhase);
+        section.append(...children[i]);
+        this.appendChild(section);
+      });
     } else {
-      swap();
+      viewTransitionSwap(this, () => this.#renderColumns(metas, children), 'sm-vt');
     }
 
     this.dispatchEvent(new CustomEvent('story-map:activities-changed', {
@@ -321,56 +312,88 @@ class StoryMap extends VBElement {
     }));
   }
 
+  /**
+   * Build a draggable card for a story record and remember the record.
+   * @param {Record<string, any>} story
+   * @param {string | undefined} defaultDetail
+   * @returns {HTMLElement}
+   */
+  #cardFromRecord(story, defaultDetail) {
+    /** @type {Element | null} */
+    let el = null;
+    const self = /** @type {any} */ (this);
+    if (typeof self.renderStory === 'function') {
+      const out = self.renderStory(story);
+      el = out instanceof Element ? out : null;
+    }
+    if (!el) el = createStoryCard(story, defaultDetail);
+    const card = /** @type {HTMLElement} */ (el);
+    if (!card.hasAttribute('draggable')) card.setAttribute('draggable', 'true');
+    const id = story.id ?? story.storyId;
+    if (id != null && !card.hasAttribute('data-id')) card.setAttribute('data-id', String(id));
+    const key = card.getAttribute('data-id');
+    if (key) this.#records.set(key, story);
+    return card;
+  }
+
+  /**
+   * @param {HTMLElement} el
+   * @returns {Record<string, any>}
+   */
+  #storyRecord(el) {
+    const id = el.getAttribute('data-id') || undefined;
+    const known = id ? this.#records.get(id) : undefined;
+    if (known) return { ...known, id: known.id ?? id };
+    const data = /** @type {any} */ (el).data;
+    if (el.localName === 'user-story' && data && typeof data === 'object') {
+      /** @type {Record<string, any>} */
+      const out = { id };
+      for (const [k, v] of Object.entries(data)) if (v !== undefined) out[k] = v;
+      return out;
+    }
+    return {
+      id,
+      storyId: el.getAttribute('story-id') || undefined,
+      title: (el.querySelector('[slot="title"]')?.textContent || el.textContent || '').replace(/\s+/g, ' ').trim() || undefined,
+    };
+  }
+
   // ── Attribute changes ────────────────────────────────
 
   attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue === newValue || !this.isConnected) return;
-    if (name === 'src') this._loadSrc(newValue);
+    if (oldValue === newValue || !this.#built) return;
+    if (name === 'src' && newValue && newValue !== this.#loader.url) this._loadSrc(newValue);
+    if (name === 'title') this.#syncTitle();
   }
 
   // ── JSON loading ────────────────────────────────────
 
+  /**
+   * Fetch `{ activities: [{ id, label?, journeyPhase?, stories: [...] }] }`
+   * and replace the map with it. One request per src value; a newer src
+   * aborts an older in-flight one. Fires `story-map:ready` once the data
+   * has rendered.
+   * @param {string} url
+   */
   async _loadSrc(url) {
     if (!url) return;
     try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      // Clear existing children
-      while (this.firstChild) this.firstChild.remove();
-      // Create sections from activities
-      for (const activity of (data.activities || [])) {
-        const section = document.createElement('section');
-        section.setAttribute('data-activity', activity.id);
-        section.setAttribute('data-activity-label', activity.label || activity.id);
-        if (activity.journeyPhase) section.setAttribute('data-journey-phase', activity.journeyPhase);
-        for (const story of (activity.stories || [])) {
-          const el = document.createElement('user-story');
-          el.setAttribute('draggable', 'true');
-          el.dataset.id = story.id || story.storyId;
-          if (story.storyId || story.id) el.setAttribute('story-id', story.storyId || story.id);
-          if (story.title) el.setAttribute('title', story.title);
-          if (story.persona) el.setAttribute('persona', story.persona);
-          if (story.action) el.setAttribute('action', story.action);
-          if (story.benefit) el.setAttribute('benefit', story.benefit);
-          if (story.priority) el.setAttribute('priority', story.priority);
-          if (story.status) el.setAttribute('status', story.status);
-          if (story.points) el.setAttribute('points', String(story.points));
-          el.setAttribute('detail', story.detail || 'compact');
-          section.appendChild(el);
-        }
-        this.appendChild(section);
-      }
-      const swap = () => {
-        this.teardown();
-        this.removeAttribute('data-upgraded');
-        this.setup();
-      };
-      if (this.hasAttribute('data-upgraded') && this.#scroll) {
-        viewTransitionSwap(this, swap, 'sm-vt');
-      } else {
-        swap();
-      }
+      const result = await this.#loader.fetchJson(url);
+      if (!result) return;
+      const { data, isCurrent } = result;
+      this.#records.clear();
+      /** @type {HTMLElement[][]} */
+      const children = [];
+      /** @type {ActivityMeta[]} */
+      const metas = (data.activities || []).map((/** @type {any} */ activity) => {
+        const id = String(activity.id ?? '');
+        children.push((activity.stories || []).map((/** @type {any} */ story) => this.#cardFromRecord(story, 'compact')));
+        return { id, label: activity.label || titleCase(id), journeyPhase: activity.journeyPhase || null };
+      });
+      // viewTransitionSwap runs the swap synchronously when it can't animate.
+      const tx = viewTransitionSwap(this, () => this.#renderColumns(metas, children), 'sm-vt');
+      if (tx) await tx.updateCallbackDone;
+      if (isCurrent()) this.#dispatchReady();
     } catch (err) {
       console.warn(`[story-map] Failed to load src="${url}":`, err);
     }
@@ -391,6 +414,11 @@ class StoryMap extends VBElement {
     return null;
   }
 
+  /** @param {string} activityId */
+  #activityLabel(activityId) {
+    return this.#activities.find(a => a.id === activityId)?.label || titleCase(activityId);
+  }
+
   /**
    * Update the count badge in the column header for a given activity.
    * @param {string} activityId
@@ -400,44 +428,8 @@ class StoryMap extends VBElement {
     if (!surface) return;
     const count = surface.querySelectorAll(':scope > [draggable="true"]').length;
     const column = surface.closest('[data-activity-column]');
-    if (!column) return;
-    const badge = column.querySelector('.sm-activity-count');
+    const badge = column?.querySelector('.sm-activity-count');
     if (badge) badge.textContent = String(count);
-  }
-
-  /**
-   * Announce a message via the live region.
-   * @param {string} msg
-   */
-  #announce(msg) {
-    if (!this.#liveRegion) return;
-    this.#liveRegion.textContent = '';
-    requestAnimationFrame(() => {
-      if (this.#liveRegion) this.#liveRegion.textContent = msg;
-    });
-  }
-
-  /**
-   * Get a human-readable label for a story item.
-   * @param {HTMLElement} item
-   * @returns {string}
-   */
-  #itemLabel(item) {
-    return item.getAttribute('story-id')
-      || item.getAttribute('data-id')
-      || item.textContent?.trim().slice(0, 40)
-      || 'item';
-  }
-
-  /**
-   * Convert a hyphenated or lowercase id to Title Case.
-   * @param {string} str
-   * @returns {string}
-   */
-  #titleCase(str) {
-    return str
-      .replace(/[-_]/g, ' ')
-      .replace(/\b\w/g, c => c.toUpperCase());
   }
 }
 

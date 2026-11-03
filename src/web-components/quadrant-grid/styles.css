@@ -122,6 +122,13 @@ quadrant-grid {
     font-size: var(--font-size-sm, 0.875rem);
   }
 
+  /* The <li> around a coordinate-pinned child: the pin is absolutely
+     positioned against the quadrant, so the <li> draws no chip and takes
+     no space in the list. */
+  .qg-items > li.qg-pin-item {
+    display: contents;
+  }
+
   /* Coordinate-pinned children get absolute placement.
      Section-local coords (0..1) are computed by JS and stored as
      --qg-local-x / --qg-local-y. The component also measures each pin

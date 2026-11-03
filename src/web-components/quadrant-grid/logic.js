@@ -45,7 +45,9 @@
  * @attr {number} data-y        - 0..1 normalized y coordinate
  * @attr {string} data-id       - Stable identifier for moves
  *
- * @fires quadrant-grid:move - { item, itemId, from, to, x?, y? }
+ * @fires quadrant-grid:move - { item, itemId, from, to }. A coordinate-pinned
+ *   child that is dragged to another quadrant drops its data-x/data-y (a drop
+ *   has no position) and joins that quadrant's stack as a regular card.
  */
 
 import { registerComponent } from '../../lib/bundle-registry.js';
@@ -54,8 +56,19 @@ import { VBElement } from '../../lib/vb-element.js';
 class QuadrantGrid extends VBElement {
   static #instanceCount = 0;
 
+  /** Quadrant indices in visual reading order: TL (Q2), TR (Q1), BL (Q3), BR (Q4). */
+  static VISUAL_ORDER = [1, 0, 2, 3];
+
   setup() {
-    this.#groupId = `qg-${++QuadrantGrid.#instanceCount}`;
+    if (!this.#groupId) this.#groupId = `qg-${++QuadrantGrid.#instanceCount}`;
+
+    // Reconnect (or a repeated setup() call): the grid is already built and
+    // still holds every child, so only re-attach listeners and observers.
+    if (this.#built) {
+      this.#wire();
+      return;
+    }
+    this.#built = true;
 
     const xLabel = this.getAttribute('x-label') || '';
     const yLabel = this.getAttribute('y-label') || '';
@@ -86,7 +99,7 @@ class QuadrantGrid extends VBElement {
     const yScale = document.createElement('aside');
     yScale.className = 'qg-y-scale';
     yScale.setAttribute('aria-hidden', 'true');
-    yScale.innerHTML = `<span>${yHigh}</span><span>${yLow}</span>`;
+    yScale.append(QuadrantGrid.#span(yHigh), QuadrantGrid.#span(yLow));
 
     const grid = document.createElement('div');
     grid.className = 'qg-grid';
@@ -94,16 +107,18 @@ class QuadrantGrid extends VBElement {
     const xScale = document.createElement('aside');
     xScale.className = 'qg-x-scale';
     xScale.setAttribute('aria-hidden', 'true');
-    xScale.innerHTML = `<span>${xLow}</span><span>${xHigh}</span>`;
+    xScale.append(QuadrantGrid.#span(xLow), QuadrantGrid.#span(xHigh));
 
     const xLabelEl = document.createElement('footer');
     xLabelEl.className = 'qg-x-label';
     xLabelEl.setAttribute('aria-hidden', 'true');
     xLabelEl.textContent = `${xLabel} →`;
 
-    /* Cartesian DOM order: place sections in the visual grid by index.
-       Indices 0..3 correspond to Q1..Q4. CSS grid-area positions them. */
-    for (let q = 0; q < 4; q++) {
+    /* Indices 0..3 are Cartesian Q1..Q4 (Q1 top-right, Q2 top-left).
+       Append in visual reading order (top-left, top-right, bottom-left,
+       bottom-right) so DOM, reading and tab order match what is seen;
+       CSS still places each zone by data-quadrant-zone. */
+    for (const q of QuadrantGrid.VISUAL_ORDER) {
       const section = document.createElement('section');
       section.className = 'qg-quadrant';
       section.dataset.quadrantZone = String(q);
@@ -167,11 +182,14 @@ class QuadrantGrid extends VBElement {
         }
       }
 
-      // Wrap non-drag children in <li> so list semantics hold.
+      // Wrap non-drag children in <li> so list semantics hold. A pinned
+      // child is absolutely positioned out of its <li>, so that <li> must
+      // not draw a chip of its own.
       if (draggable) {
         target.appendChild(child);
       } else {
         const li = document.createElement('li');
+        if (child.classList.contains('qg-pinned')) li.className = 'qg-pin-item';
         li.appendChild(child);
         target.appendChild(li);
       }
@@ -192,11 +210,18 @@ class QuadrantGrid extends VBElement {
     this.appendChild(wrapper);
     this.appendChild(liveRegion);
 
-    this.#grid = grid;
     this.#liveRegion = liveRegion;
     this.#qLabels = qLabels;
+    this.#draggable = draggable;
 
-    if (draggable) {
+    this.#wire();
+  }
+
+  /** Attach listeners and pin observers once per connection. */
+  #wire() {
+    if (this.#wired) return;
+    this.#wired = true;
+    if (this.#draggable) {
       this.listen(this, 'drag-surface:transfer', this.#onTransfer);
     }
 
@@ -206,6 +231,13 @@ class QuadrantGrid extends VBElement {
        measurement live across font load, container resize, and content
        changes. */
     this.#observePins();
+  }
+
+  /** @param {string} text */
+  static #span(text) {
+    const span = document.createElement('span');
+    span.textContent = text;
+    return span;
   }
 
   #observePins() {
@@ -250,6 +282,10 @@ class QuadrantGrid extends VBElement {
         pin.removeAttribute('tabindex');
         delete pin.dataset.qgTabbed;
       }
+      if (pin.dataset.qgRole !== undefined) {
+        pin.removeAttribute('role');
+        delete pin.dataset.qgRole;
+      }
     }
 
     let clusterSeq = 0;
@@ -284,9 +320,16 @@ class QuadrantGrid extends VBElement {
           pin.dataset.cluster = id;
           pin.style.setProperty('--qg-cluster-i', String(i));
           pin.style.setProperty('--qg-cluster-n', String(members.length));
+          // Clustered pins become focusable so keyboard users can fan the
+          // cluster out (:focus-within); a focusable generic element needs a
+          // role, so expose it as a group.
           if (!pin.hasAttribute('tabindex') && !pin.matches('a, button, [contenteditable]')) {
             pin.setAttribute('tabindex', '0');
             pin.dataset.qgTabbed = '';
+            if (!pin.hasAttribute('role')) {
+              pin.setAttribute('role', 'group');
+              pin.dataset.qgRole = '';
+            }
           }
         });
       }
@@ -294,6 +337,9 @@ class QuadrantGrid extends VBElement {
   }
 
   teardown() {
+    // Listeners are removed by VBElement; the built grid and its children
+    // stay in place so a moved grid keeps its content.
+    this.#wired = false;
     this.#pinObserver?.disconnect();
     this.#pinObserver = null;
     if (this.#clusterRaf) cancelAnimationFrame(this.#clusterRaf);
@@ -320,6 +366,8 @@ class QuadrantGrid extends VBElement {
     if (from == null || to == null) return;
 
     item.setAttribute('data-quadrant', String(to));
+    if (item.classList.contains('qg-pinned')) this.#unpin(item);
+    this.#scheduleClusterPass();
     this.#announce(`Moved ${this.#itemLabel(item)} to ${this.#qLabels[to]}`);
 
     this.dispatchEvent(new CustomEvent('quadrant-grid:move', {
@@ -332,6 +380,25 @@ class QuadrantGrid extends VBElement {
       },
     }));
   };
+
+  /**
+   * A dropped pin has no coordinates in its new quadrant: drop data-x /
+   * data-y and the pin styling so it joins the quadrant's stack.
+   * @param {HTMLElement} item
+   */
+  #unpin(item) {
+    this.#pinObserver?.unobserve(item);
+    item.removeAttribute('data-x');
+    item.removeAttribute('data-y');
+    item.classList.remove('qg-pinned', 'qg-clustered');
+    for (const prop of ['--qg-local-x', '--qg-local-y', '--qg-pin-half-w', '--qg-pin-half-h',
+      '--qg-cluster-i', '--qg-cluster-n']) {
+      item.style.removeProperty(prop);
+    }
+    delete item.dataset.cluster;
+    if (item.dataset.qgTabbed !== undefined) { item.removeAttribute('tabindex'); delete item.dataset.qgTabbed; }
+    if (item.dataset.qgRole !== undefined) { item.removeAttribute('role'); delete item.dataset.qgRole; }
+  }
 
   #resolveQuadrant(child) {
     const q = parseInt(child.getAttribute('data-quadrant'), 10);
@@ -374,14 +441,15 @@ class QuadrantGrid extends VBElement {
   }
 
   #groupId = '';
+  #built = false;
+  #wired = false;
+  #draggable = false;
   /** @type {Record<number, HTMLElement>} */
   #surfaces = {};
   /** @type {Record<number, HTMLElement>} */
   #lists = {};
   /** @type {Record<number, HTMLElement>} */
   #sections = {};
-  /** @type {HTMLElement | null} */
-  #grid = null;
   /** @type {HTMLElement | null} */
   #liveRegion = null;
   /** @type {string[]} */

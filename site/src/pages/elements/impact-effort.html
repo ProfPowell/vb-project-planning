@@ -56,36 +56,7 @@ crumbLabel: Web Components
 
   <section>
     <h2>Attributes</h2>
-    <table class="props-table">
-      <thead>
-        <tr>
-          <th>Attribute</th>
-          <th>Type</th>
-          <th>Default</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>src</code></td>
-          <td>string (URL)</td>
-          <td>&mdash;</td>
-          <td>Path to a JSON file containing an array of item objects</td>
-        </tr>
-        <tr>
-          <td><code>compact</code></td>
-          <td>boolean</td>
-          <td>&mdash;</td>
-          <td>Reduces grid height, padding, and label sizes for denser layouts</td>
-        </tr>
-        <tr>
-          <td><code>title</code></td>
-          <td>string</td>
-          <td>&mdash;</td>
-          <td>Optional heading displayed above the matrix</td>
-        </tr>
-      </tbody>
-    </table>
+    {{ attributeTable("impact-effort", apiRegistry) }}
   </section>
 
   <section>
@@ -171,7 +142,7 @@ crumbLabel: Web Components
     <ul>
       <li><strong>Drag</strong> &mdash; grab any item and drop it onto a different quadrant. The item's <code>data-quadrant</code> attribute updates automatically.</li>
       <li><strong>Keyboard</strong> &mdash; <code>&lt;drag-surface&gt;</code> provides keyboard reorder and transfer. Focus an item and use the keyboard shortcuts to move it between surfaces.</li>
-      <li><strong>Live announcement</strong> &mdash; when an item moves between quadrants, a hidden live region announces the change for screen readers (e.g., "Moved PROJ-101 to Big Bets").</li>
+      <li><strong>Live announcement</strong> &mdash; when an item moves between quadrants, a hidden live region announces the change for screen readers using the item's text (e.g., "Moved Add keyboard shortcuts to Big Bets").</li>
     </ul>
 
     <code-block language="javascript" show-lines label="Listening for moves" data-escape>const matrix = document.querySelector('impact-effort');
@@ -183,7 +154,7 @@ matrix.addEventListener('impact-effort:move', (e) => {
 
   <section>
     <h2>Data Mode</h2>
-    <p>Load items from a JSON file by setting the <code>src</code> attribute. The file should contain an array of item objects, each with an <code>id</code>, <code>quadrant</code>, and <code>label</code> (or <code>text</code>).</p>
+    <p>Load items from a JSON file by setting the <code>src</code> attribute. The file should contain an array of item objects &mdash; the same shape as <code>.items</code> &mdash; each with an <code>id</code>, <code>quadrant</code>, and <code>label</code> (or <code>text</code>). The URL is fetched once; <code>impact-effort:ready</code> fires once the loaded cards are in the DOM, with their counts. Changing <code>src</code> replaces the items (a response for an older URL is ignored).</p>
 
     <code-block language="json" show-lines label="JSON data format">[
   { "id": "PROJ-101", "quadrant": "quick-wins", "label": "Add keyboard shortcuts" },
@@ -194,42 +165,12 @@ matrix.addEventListener('impact-effort:move', (e) => {
 
     <code-block language="html" show-lines label="Loading from JSON" data-escape><impact-effort src="/data/prioritization.json"></impact-effort></code-block>
 
-    <p>Each JSON entry creates an <code>&lt;article&gt;</code> element with <code>draggable="true"</code> and the appropriate <code>data-quadrant</code> and <code>data-id</code> attributes. For richer item rendering, use <code>&lt;user-story&gt;</code> children directly in HTML instead of JSON mode.</p>
+    <p>Each JSON entry creates an <code>&lt;article class="ie-card"&gt;</code> with <code>draggable="true"</code> and the appropriate <code>data-quadrant</code> and <code>data-id</code> attributes. Entries with story fields (<code>storyId</code>, <code>persona</code>, <code>action</code>, <code>benefit</code>) become a <code>&lt;user-story detail="minimal"&gt;</code> with those fields in its <code>persona</code> / <code>action</code> / <code>benefit</code> slots.</p>
   </section>
 
   <section>
     <h2>Events</h2>
-    <table class="props-table">
-      <thead>
-        <tr>
-          <th>Event</th>
-          <th>Detail</th>
-          <th>When</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>impact-effort:move</code></td>
-          <td><code>{ itemId, from, to, item }</code></td>
-          <td>Fires when an item is dragged between quadrants. <code>from</code> and <code>to</code> are quadrant names.</td>
-        </tr>
-        <tr>
-          <td><code>impact-effort:ready</code></td>
-          <td><code>{ quadrantCounts }</code></td>
-          <td>Fires after the component initializes. <code>quadrantCounts</code> is an object mapping each quadrant name to the number of items it contains.</td>
-        </tr>
-        <tr>
-          <td><code>impact-effort:upgraded</code></td>
-          <td>&mdash;</td>
-          <td>Once after first connect. Wait for this before assigning <code>.items</code> from a framework.</td>
-        </tr>
-        <tr>
-          <td><code>impact-effort:items-changed</code></td>
-          <td><code>{ items, source: 'property' }</code></td>
-          <td>After <code>.items</code> assignment.</td>
-        </tr>
-      </tbody>
-    </table>
+    {{ eventsTable("impact-effort", apiRegistry) }}
   </section>
 
   <section>
@@ -248,14 +189,20 @@ matrix.addEventListener('impact-effort:move', (e) => {
           <td><code>Item[]</code></td>
           <td>
             Replace the matrix items with an array of
-            <code>{ id, quadrant, label }</code> records. Idempotent;
-            round-trips through the getter.
+            <code>{ id, quadrant, label }</code> records (<code>text</code> is accepted
+            in place of <code>label</code>). Runs a keyed diff by <code>id</code>:
+            cards whose id is already on the board &mdash; including HTML-authored
+            ones &mdash; are moved, not duplicated; ids not in the array are removed.
+            The getter reads the current DOM, so it reflects drags: each entry is
+            the record you assigned with its current <code>quadrant</code>
+            (authored cards read as <code>{ id, quadrant, label }</code>), and
+            assigning it back changes nothing.
           </td>
         </tr>
       </tbody>
     </table>
     <code-block language="javascript" label="Reactive consumer" data-escape>const matrix = document.querySelector('impact-effort');
-await new Promise(r =&gt; matrix.addEventListener('impact-effort:upgraded', r, { once: true }));
+if (!matrix.hasAttribute('data-upgraded')) await new Promise(r =&gt; matrix.addEventListener('impact-effort:upgraded', r, { once: true }));
 matrix.items = [
   { id: 'PROJ-101', quadrant: 'quick-wins', label: 'Add keyboard shortcuts' },
   { id: 'PROJ-102', quadrant: 'big-bets',   label: 'Rebuild reporting' },
@@ -268,7 +215,7 @@ matrix.items = [
       <li>The grid uses <code>role="region"</code> with <code>aria-label="Impact-Effort prioritization matrix"</code></li>
       <li>Each quadrant section has an <code>aria-label</code> combining the quadrant name and its impact/effort description (e.g., "Quick Wins: High impact &middot; Low effort")</li>
       <li>Axis labels ("Impact" and "Effort") use <code>aria-hidden="true"</code> since the quadrant labels already convey the meaning</li>
-      <li>A hidden live region with <code>aria-live="polite"</code> announces item moves between quadrants</li>
+      <li>A hidden live region with <code>aria-live="polite"</code> announces item moves between quadrants using the item's text and the quadrant name</li>
       <li>Keyboard transfer is provided by the underlying <code>&lt;drag-surface&gt;</code> components</li>
       <li>Respects <code>prefers-reduced-motion: reduce</code> by disabling all transitions</li>
       <li>Uses <code>container-type: inline-size</code> and stacks to a single column at narrow viewports (&lt;30rem)</li>
