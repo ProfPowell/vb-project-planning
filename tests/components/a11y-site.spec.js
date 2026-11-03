@@ -47,16 +47,11 @@ const UPSTREAM = [
 
 /**
  * Narrow, temporary allowances: [rule, page, predicate on the node target].
- * Unlabelled <code-block>s render role="region" named by their language
- * ("HTML"), so two on one page collide. Fix: give each a distinct label="…"
- * in the element doc page; then delete the entry.
+ * Keep this empty; add an entry only with a comment naming the fix and who
+ * owns it, and delete it when the fix lands.
  */
-const ALLOW = [
-  ...['burndown-chart', 'quadrant-grid', 'risk-register', 'traceability-matrix'].map((el) => [
-    'landmark-unique', `${MOUNT}elements/${el}/`,
-    (target) => JSON.stringify(target).includes('.code-container[role=\\"region\\"]'),
-  ]),
-];
+/** @type {Array<[string, string, (target: unknown) => boolean]>} */
+const ALLOW = [];
 const allowed = (rule, path, target) =>
   ALLOW.some(([r, p, match]) => r === rule && p === path && match(target));
 

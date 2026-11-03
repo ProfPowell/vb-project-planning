@@ -44,7 +44,7 @@ crumbLabel: Web Components
 
 <section>
   <h2>Persona × Story example</h2>
-  <code-block language="html" data-escape>
+  <code-block label="Persona × story matrix" language="html" data-escape>
 <traceability-matrix
   rows='[data-row-kind="story"]'
   cols='[data-row-kind="persona"]'
@@ -67,7 +67,7 @@ crumbLabel: Web Components
 <section>
   <h2>Story × Work-item example</h2>
   <p>Pack elements work too — point at <code>&lt;user-story&gt;</code> / <code>&lt;work-item&gt;</code> directly. A work item's <code>story-ids</code> are matched against each story's <code>story-id</code>, so the stories don't need a matching <code>id</code>:</p>
-  <code-block language="html" data-escape>
+  <code-block label="Story × work-item matrix" language="html" data-escape>
 <traceability-matrix
   rows="work-item"
   cols="user-story"
@@ -95,7 +95,7 @@ crumbLabel: Web Components
   </ul>
   <p>Only one chain is highlighted at a time; rows and columns without an <code>id</code> highlight too. The highlight is cleared from the page when the matrix is removed. The default stylesheet adds an outline to highlighted source elements so authors can scan the page and see the connection. Listen for <code>traceability-matrix:highlight</code> to wire additional behaviour (auto-scroll, side panel, etc.).</p>
 
-  <code-block language="js">
+  <code-block label="Listening for highlight events" language="js">
 document.querySelector('traceability-matrix')
   .addEventListener('traceability-matrix:highlight', (e) => {
     const { rowEl, colEl, on } = e.detail;
