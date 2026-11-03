@@ -265,6 +265,9 @@ quadrant-grid {
     border-radius: var(--radius-s, 0.25rem);
     font-size: var(--font-size-sm, 0.875rem);
   }
+  .qg-items > li.qg-pin-item {
+    display: contents;
+  }
   .qg-pinned {
     position: absolute;
     inline-size: max-content;

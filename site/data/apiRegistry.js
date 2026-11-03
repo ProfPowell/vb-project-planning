@@ -1305,14 +1305,21 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "ADR identifier (e.g., ADR-001), auto-sets HTML id"
+        "description": "ADR identifier (e.g., ADR-001); sets the HTML id on first connect when none is set"
       },
       {
         "name": "status",
         "kind": "host-api",
         "purpose": "config",
-        "type": "string",
-        "description": "Status: proposed | accepted | deprecated | superseded"
+        "type": "enum",
+        "values": [
+          "proposed",
+          "accepted",
+          "deprecated",
+          "superseded"
+        ],
+        "default": "proposed",
+        "description": "Decision status"
       },
       {
         "name": "supersedes",
@@ -1332,8 +1339,14 @@ export default {
         "name": "detail",
         "kind": "host-api",
         "purpose": "config",
-        "type": "string",
-        "description": "Detail level: full | compact | minimal"
+        "type": "enum",
+        "values": [
+          "full",
+          "compact",
+          "minimal"
+        ],
+        "default": "full",
+        "description": "Detail level. minimal shows id, status and title only."
       },
       {
         "name": "compact",
@@ -1347,7 +1360,7 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "URL to JSON data"
+        "description": "URL of a JSON ADR record. Fetched once per value; a newer value aborts the older request. A YYYY-MM-DD date is shown as that calendar day in every time zone."
       }
     ],
     "slots": [
@@ -1376,7 +1389,17 @@ export default {
       {
         "name": "adr-wc:ready",
         "detail": "{ adrId, title, status }",
-        "description": "Fired after render"
+        "description": "Once per element, after the first render at any detail level. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by attribute changes or moves."
+      },
+      {
+        "name": "adr-wc:upgraded",
+        "detail": "",
+        "description": "Once, in a microtask after first connect. Wait for this before assigning .data from a framework."
+      },
+      {
+        "name": "adr-wc:data-changed",
+        "detail": "{ data, source: 'property' }",
+        "description": "After .data is assigned"
       }
     ]
   },
@@ -1946,7 +1969,7 @@ export default {
     "$schema": "../../../schemas/api.schema.json",
     "element": "burndown-chart",
     "type": "web-component",
-    "description": "Sprint burndown plot. Wraps <chart-wc> with auto-computed ideal line and scope-change annotations.",
+    "description": "Sprint burndown plot. Wraps <chart-wc> with auto-computed ideal line and scope-change annotations. All attributes are observed: changing one on a live element re-renders.",
     "htmlvalidate": {
       "flow": true,
       "permittedContent": [
@@ -1959,14 +1982,14 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Sprint start date (ISO 8601, required)"
+        "description": "Sprint start date (YYYY-MM-DD, local calendar day; required)"
       },
       {
         "name": "end",
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Sprint end date (ISO 8601, inclusive, required)"
+        "description": "Sprint end date (YYYY-MM-DD, inclusive; required)"
       },
       {
         "name": "total",
@@ -1980,7 +2003,8 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Display unit, default \"points\""
+        "description": "Display unit for the y-axis and scope-change notes (rendered as text)",
+        "default": "\"points\""
       },
       {
         "name": "label",
@@ -1998,7 +2022,8 @@ export default {
           "include",
           "exclude"
         ],
-        "description": "Whether weekends count toward the ideal-line slope"
+        "description": "Whether weekends count toward the ideal-line slope",
+        "default": "\"include\""
       }
     ],
     "structure": [
@@ -2012,7 +2037,7 @@ export default {
       {
         "name": "burndown-chart:ready",
         "detail": "{ dayCount, total, scopeChanges }",
-        "description": "Fired after the chart renders"
+        "description": "Fired after each upgrade (first connect, reconnect, or a retried upgrade), in a microtask. Not re-fired when a live attribute change re-renders"
       }
     ]
   },
@@ -4548,13 +4573,6 @@ export default {
     },
     "attributes": [
       {
-        "name": "title",
-        "kind": "host-api",
-        "purpose": "config",
-        "type": "string",
-        "description": "Map heading"
-      },
-      {
         "name": "persona",
         "kind": "host-api",
         "purpose": "config",
@@ -4566,21 +4584,14 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Links to a user-persona element by id"
-      },
-      {
-        "name": "summary",
-        "kind": "host-api",
-        "purpose": "config",
-        "type": "string",
-        "description": "One-line description"
+        "description": "Links the persona name to a user-persona element by id"
       },
       {
         "name": "src",
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "URL to JSON file containing quadrant data"
+        "description": "URL of a JSON record (title, persona, personaId, summary, quadrants, goals, painPoints). Fetched once per value; a newer value aborts the older request."
       },
       {
         "name": "editable",
@@ -4600,31 +4611,31 @@ export default {
     "slots": [
       {
         "name": "title",
-        "description": "Map heading (slot fallback for attribute)"
-      },
-      {
-        "name": "persona",
-        "description": "Persona name (slot fallback for attribute)"
+        "description": "Map heading (e.g. <h2>). Defaults to \"Empathy Map\"."
       },
       {
         "name": "summary",
-        "description": "One-line description (slot fallback for attribute)"
+        "description": "One-line description (e.g. <p>)"
+      },
+      {
+        "name": "persona",
+        "description": "Not projected: the text of a slot=\"persona\" child is read as the persona name when the persona attribute is absent"
       },
       {
         "name": "says",
-        "description": "Content for the Says quadrant"
+        "description": "Content for the Says quadrant (until the quadrant is edited)"
       },
       {
         "name": "thinks",
-        "description": "Content for the Thinks quadrant"
+        "description": "Content for the Thinks quadrant (until the quadrant is edited)"
       },
       {
         "name": "does",
-        "description": "Content for the Does quadrant"
+        "description": "Content for the Does quadrant (until the quadrant is edited)"
       },
       {
         "name": "feels",
-        "description": "Content for the Feels quadrant"
+        "description": "Content for the Feels quadrant (until the quadrant is edited)"
       },
       {
         "name": "goals",
@@ -4639,12 +4650,22 @@ export default {
       {
         "name": "empathy-map:ready",
         "detail": "{ title, persona }",
-        "description": "Fired after initial render"
+        "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by later renders or moves."
       },
       {
         "name": "empathy-map:update",
         "detail": "{ quadrant, items }",
-        "description": "Fired when quadrant content changes via edit"
+        "description": "When an open quadrant editor is closed (Done, Escape, or closeQuadrant()). Not fired when no editor is open."
+      },
+      {
+        "name": "empathy-map:upgraded",
+        "detail": "",
+        "description": "Once, in a microtask after first connect. Wait for this before assigning .data from a framework."
+      },
+      {
+        "name": "empathy-map:data-changed",
+        "detail": "{ data, source: 'property' }",
+        "description": "After .data is assigned"
       }
     ]
   },
@@ -4859,21 +4880,29 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Chart heading"
+        "description": "Chart heading (a src JSON \"title\" sets it)"
       },
       {
         "name": "src",
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "URL to JSON task data"
+        "description": "URL of JSON task data ({ title?, tasks: [...] }). Fetched once on connect or when the attribute changes; the fetched tasks replace the child table. A newer value aborts an older in-flight request. Skipped on connect when .tasks was already assigned, and an in-flight request is aborted when .tasks is assigned (.tasks takes precedence)"
       },
       {
         "name": "view",
         "kind": "host-api",
         "purpose": "config",
-        "type": "string",
-        "description": "Timeline granularity: auto | day | week | month | quarter"
+        "type": "enum",
+        "values": [
+          "auto",
+          "day",
+          "week",
+          "month",
+          "quarter"
+        ],
+        "default": "\"auto\"",
+        "description": "Timeline granularity. auto picks day (≤ 3 weeks), week (≤ 90 days), month (≤ 1 year) or quarter"
       },
       {
         "name": "show-today",
@@ -4894,26 +4923,105 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "boolean",
-        "description": "Draw dependency arrows between tasks"
+        "description": "Draw dependency arrows between tasks (row positions are measured, so compact and grouped charts line up)"
       },
       {
         "name": "compact",
         "kind": "host-api",
         "purpose": "config",
         "type": "boolean",
-        "description": "Reduced spacing variant"
+        "description": "Reduced row height and spacing"
+      }
+    ],
+    "structure": [
+      {
+        "element": "<table>",
+        "required": false,
+        "description": "Task source: one <tbody> <tr> per task; first cell is the name, two <time datetime=\"YYYY-MM-DD\"> give start and end, an optional <progress> gives progress. Kept in the DOM, visually hidden, for screen readers and print"
+      }
+    ],
+    "childAttributes": [
+      {
+        "name": "data-task-id",
+        "on": "tr",
+        "type": "string",
+        "description": "Unique task identifier (used by data-depends)"
+      },
+      {
+        "name": "data-group",
+        "on": "tr",
+        "type": "string",
+        "description": "Swim lane group; with two or more groups each gets a header row"
+      },
+      {
+        "name": "data-depends",
+        "on": "tr",
+        "type": "string",
+        "description": "Comma-separated task IDs this task depends on (drawn with show-dependencies)"
+      },
+      {
+        "name": "data-status",
+        "on": "tr",
+        "type": "enum",
+        "values": [
+          "not-started",
+          "in-progress",
+          "done",
+          "blocked"
+        ],
+        "description": "Task status: shown as text in the task list and in the bar's accessible name; also tints the bar"
+      },
+      {
+        "name": "data-assignee",
+        "on": "tr",
+        "type": "string",
+        "description": "Assignee name (included in the bar's accessible name)"
+      },
+      {
+        "name": "data-milestone",
+        "on": "tr",
+        "type": "boolean",
+        "description": "Render a diamond marker at the start date instead of a duration bar"
+      },
+      {
+        "name": "data-color",
+        "on": "tr",
+        "type": "string",
+        "description": "Custom bar colour (any CSS colour)"
+      },
+      {
+        "name": "data-story-ids",
+        "on": "tr",
+        "type": "string",
+        "description": "Comma-separated linked user-story IDs (exposed as task.storyIds)"
+      },
+      {
+        "name": "data-item-ids",
+        "on": "tr",
+        "type": "string",
+        "description": "Comma-separated linked work-item IDs (exposed as task.itemIds)"
       }
     ],
     "events": [
       {
+        "name": "gantt-chart:upgraded",
+        "detail": "",
+        "description": "Once per connect, in a microtask after setup; a safe signal for the first .tasks assignment (fires for an empty chart too)"
+      },
+      {
         "name": "gantt-chart:ready",
-        "detail": "{ taskCount, dateRange }",
-        "description": "Fired after initial render"
+        "detail": "{ taskCount, dateRange: { start, end } }",
+        "description": "Once per element: after the first connect render that has tasks (table or .tasks), or else after the first src load. Not re-fired on reconnect or by later src loads (those fire tasks-changed with source 'src'). dateRange values are YYYY-MM-DD"
       },
       {
         "name": "gantt-chart:task-click",
         "detail": "{ task }",
-        "description": "Fired when a task bar is clicked"
+        "description": "When a bar or milestone is clicked or activated with Enter/Space"
+      },
+      {
+        "name": "gantt-chart:tasks-changed",
+        "detail": "{ tasks, source: 'property' | 'src' }",
+        "description": "After .tasks is assigned (source 'property') or src data loads (source 'src'), with the normalized tasks"
       }
     ]
   },
@@ -5648,7 +5756,7 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "URL to JSON data for items"
+        "description": "URL to a JSON array of items ({ id, quadrant, label }). Fetched once per value; a new value replaces the items and aborts an older in-flight request"
       },
       {
         "name": "title",
@@ -5662,7 +5770,7 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "boolean",
-        "description": "Reduced spacing variant"
+        "description": "Reduces grid height, padding, and label sizes for denser layouts"
       }
     ],
     "childAttributes": [
@@ -5676,31 +5784,41 @@ export default {
           "fill-ins",
           "money-pit"
         ],
-        "description": "Target quadrant for this item"
+        "description": "Target quadrant for this item (default quick-wins); kept up to date as the item is dragged"
       },
       {
         "name": "draggable",
         "on": "any child",
         "type": "boolean",
-        "description": "Required for drag capability"
+        "description": "Required for drag capability (added if missing)"
       },
       {
         "name": "data-id",
         "on": "any child",
         "type": "string",
-        "description": "Stable identifier for the item"
+        "description": "Stable identifier for the item, used as the .items key (generated if missing)"
       }
     ],
     "events": [
       {
         "name": "impact-effort:move",
         "detail": "{ itemId, from, to, item }",
-        "description": "Fired when an item is dragged between quadrants"
+        "description": "Fired when an item is dragged between quadrants; from and to are quadrant names"
       },
       {
         "name": "impact-effort:ready",
         "detail": "{ quadrantCounts }",
-        "description": "Fired after component initializes"
+        "description": "Fired once after the first render, with the number of items per quadrant. With src, fired once the loaded cards are in the DOM (after the View Transition's update). Once per element: not re-fired by a later src change (watch items-changed with source 'src') or when the matrix is moved in the DOM"
+      },
+      {
+        "name": "impact-effort:items-changed",
+        "detail": "{ items, source: 'property' | 'src' }",
+        "description": "Fired after each .items assignment (source 'property') and after each src load's cards are in the DOM (source 'src')"
+      },
+      {
+        "name": "impact-effort:upgraded",
+        "detail": "",
+        "description": "Fired (in a microtask) each time the matrix connects and upgrades"
       }
     ]
   },
@@ -5897,14 +6015,14 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "URL to JSON data for columns and items"
+        "description": "URL to JSON data for columns and items. Fetched once per value; a new value replaces the board and aborts an older in-flight request"
       },
       {
         "name": "title",
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Optional heading above the board"
+        "description": "Optional heading above the board; also names the board region"
       },
       {
         "name": "compact",
@@ -5954,12 +6072,22 @@ export default {
       {
         "name": "kanban-board:ready",
         "detail": "{ columnCount, itemCount }",
-        "description": "Fired after component initializes"
+        "description": "Fired once after the first render. With src, fired once the JSON has loaded and rendered. Once per element: not re-fired by a later src change (watch items-changed with source 'src') or when the board is moved in the DOM"
       },
       {
         "name": "kanban-board:wip-exceeded",
         "detail": "{ column, limit, count }",
-        "description": "Fired when a column exceeds its WIP limit"
+        "description": "Fired when a drop takes a column over its WIP limit"
+      },
+      {
+        "name": "kanban-board:items-changed",
+        "detail": "{ items, source: 'api' | 'drag' | 'src' }",
+        "description": "Fired after the items array changes: an .items assignment, or a .columns assignment that drops cards (source 'api'), a drag (source 'drag'), or each src load once its data has rendered (source 'src'). Filter on source to avoid feedback loops"
+      },
+      {
+        "name": "kanban-board:upgraded",
+        "detail": "",
+        "description": "Fired (in a microtask) each time the board connects and upgrades; a safe signal for assigning .columns / .items from a framework"
       }
     ]
   },
@@ -7253,7 +7381,7 @@ export default {
     "$schema": "../../../schemas/api.schema.json",
     "element": "product-roadmap",
     "type": "web-component",
-    "description": "Interactive themes × quarters product roadmap. Auto-discovers lane sections + initiative articles; editable mode wires drag-to-reschedule, drag-to-resize, and drop-on-lane.",
+    "description": "Interactive themes × quarters product roadmap. Auto-discovers lane sections + initiative articles; editable mode adds pointer and keyboard rescheduling, resizing, and lane moves.",
     "attributes": [
       {
         "name": "start",
@@ -7278,14 +7406,15 @@ export default {
           "quarter",
           "month"
         ],
-        "description": "Time-axis granularity (default: quarter)"
+        "description": "Time-axis granularity (default: quarter)",
+        "default": "\"quarter\""
       },
       {
         "name": "editable",
         "kind": "host-api",
         "purpose": "config",
         "type": "boolean",
-        "description": "Wire drag-to-reschedule, drag-to-resize, and lane drop"
+        "description": "Enable editing: drag a bar (or press ←/→) to reschedule, drag its right edge (or Shift+←/→) to resize, drag onto another lane (or Alt+↑/↓) to move it"
       },
       {
         "name": "today-marker",
@@ -7302,7 +7431,7 @@ export default {
       },
       {
         "element": "<article data-start=\"…\" data-end=\"…\">",
-        "description": "One per initiative bar inside a lane (data-status sets the bar color)"
+        "description": "One per initiative bar inside a lane (data-status sets the bar colour and status label)"
       }
     ],
     "childAttributes": [
@@ -7316,13 +7445,13 @@ export default {
         "name": "data-start",
         "on": "article",
         "type": "string",
-        "description": "Initiative start date (ISO 8601 or YYYY-Qn)"
+        "description": "Initiative start date (ISO 8601 or YYYY-Qn → first day of the quarter)"
       },
       {
         "name": "data-end",
         "on": "article",
         "type": "string",
-        "description": "Initiative end date (ISO 8601 or YYYY-Qn)"
+        "description": "Initiative end date, inclusive (ISO 8601 or YYYY-Qn → last day of the quarter). Equal to data-start for a one-day initiative"
       },
       {
         "name": "data-status",
@@ -7335,29 +7464,29 @@ export default {
           "shipped",
           "blocked"
         ],
-        "description": "Status enum; drives bar color"
+        "description": "Status enum; drives the bar colour and a visible status label (custom values are shown as text with the default colour)"
       }
     ],
     "events": [
       {
         "name": "product-roadmap:select",
         "detail": "{ initiative, lane, start, end, status }",
-        "description": "Fired on bar click"
+        "description": "Fired when a bar is clicked or activated with Enter/Space. start/end are inclusive YYYY-MM-DD"
       },
       {
         "name": "product-roadmap:reschedule",
         "detail": "{ initiative, lane, start, end }",
-        "description": "Fired after drag-to-move snaps to grid"
+        "description": "Fired when a drag along the time axis (or ←/→ in editable mode) changes the dates. Both ends snap to the nearest period boundary; end is inclusive (e.g. 2027-03-31). Not fired when a drag snaps back to the same dates"
       },
       {
         "name": "product-roadmap:resize",
         "detail": "{ initiative, lane, start, end }",
-        "description": "Fired after drag-to-resize snaps to grid"
+        "description": "Fired when dragging the right edge (or Shift+←/→) changes the end date; the end snaps to the last day of the nearest period, never shorter than one period"
       },
       {
         "name": "product-roadmap:move",
         "detail": "{ initiative, fromLane, toLane, start, end }",
-        "description": "Fired after a bar drops on a different lane"
+        "description": "Fired when a bar is dropped on a different lane (pointer drag or Alt+↑/↓). The source <article> is moved into the target <section data-lane>. If the drag also changed the dates, reschedule fires first"
       }
     ],
     "htmlvalidate": {
@@ -7581,7 +7710,7 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "boolean",
-        "description": "Enable drag-and-drop between quadrants (composes <drag-surface>)"
+        "description": "Enable drag-and-drop between quadrants (composes one <drag-surface> per quadrant)"
       }
     ],
     "childAttributes": [
@@ -7595,13 +7724,13 @@ export default {
         "name": "data-x",
         "on": "*",
         "type": "number",
-        "description": "Normalized x coordinate 0..1; quadrant is computed from coords"
+        "description": "Normalized x coordinate 0..1; quadrant is computed from coords; removed when the child is dragged to another quadrant"
       },
       {
         "name": "data-y",
         "on": "*",
         "type": "number",
-        "description": "Normalized y coordinate 0..1; quadrant is computed from coords"
+        "description": "Normalized y coordinate 0..1; quadrant is computed from coords; removed when the child is dragged to another quadrant"
       },
       {
         "name": "data-id",
@@ -7614,7 +7743,12 @@ export default {
       {
         "name": "quadrant-grid:move",
         "detail": "{ item, itemId, from, to }",
-        "description": "Fired when a draggable child moves between quadrants"
+        "description": "Fired when a draggable child moves between quadrants (from / to are indices 0..3). A coordinate-pinned child dropped in another quadrant loses its data-x / data-y and joins that quadrant's stack"
+      },
+      {
+        "name": "quadrant-grid:upgraded",
+        "detail": "",
+        "description": "Fired (in a microtask) each time the grid connects and upgrades"
       }
     ],
     "structure": [],
@@ -8064,7 +8198,7 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "URL to JSON file containing pin data"
+        "description": "URL to JSON file containing pin data (an array, or { pins }). A newer value aborts an older in-flight request; removing it, or assigning .pins / importPins(), aborts a pending request (removing it mid-load falls back to the adapter)"
       },
       {
         "name": "editable",
@@ -8131,19 +8265,24 @@ export default {
     ],
     "events": [
       {
+        "name": "review-surface:upgraded",
+        "detail": "—",
+        "description": "Fired once, on first connect, after the adapter is resolved and before the initial pin load. Not re-fired when the element is moved."
+      },
+      {
         "name": "review-surface:ready",
         "detail": "{ pinCount }",
-        "description": "Fired after initial render"
+        "description": "Fired once, after the initial pins (from src, the adapter, or a pre-connect .pins assignment) have loaded and rendered. Not re-fired on later renders."
       },
       {
         "name": "review-surface:add",
         "detail": "{ pin }",
-        "description": "Fired when a pin is created"
+        "description": "Fired when a pin is created (annotate-mode click or addPin())"
       },
       {
         "name": "review-surface:update",
         "detail": "{ pin, changes }",
-        "description": "Fired when a pin is modified"
+        "description": "Fired when a pin is modified (reply added, text set, re-opened)"
       },
       {
         "name": "review-surface:remove",
@@ -8162,8 +8301,13 @@ export default {
       },
       {
         "name": "review-surface:mode",
-        "detail": "{ mode }",
+        "detail": "{ mode: 'view' | 'annotate' }",
         "description": "Fired when view/annotate mode toggles"
+      },
+      {
+        "name": "review-surface:pins-changed",
+        "detail": "{ pins, source: 'property' }",
+        "description": "Fired after a .pins assignment (not for adapter loads or addPin())"
       }
     ]
   },
@@ -8200,11 +8344,6 @@ export default {
         "name": "risk-register:ready",
         "detail": "{ count }",
         "description": "Fired after the table + grid render"
-      },
-      {
-        "name": "risk-register:change",
-        "detail": "{ row, field, value }",
-        "description": "Reserved: emitted on inline edits (future)"
       }
     ],
     "htmlvalidate": {
@@ -9509,21 +9648,21 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "URL to JSON data with activities and stories"
+        "description": "URL to JSON data with activities and stories. Fetched once per value; a new value replaces the map and aborts an older in-flight request"
       },
       {
         "name": "title",
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Optional heading above the story map"
+        "description": "Optional heading above the story map; also names the scroll region"
       },
       {
         "name": "compact",
         "kind": "host-api",
         "purpose": "config",
         "type": "boolean",
-        "description": "Reduced spacing variant"
+        "description": "Reduces column widths, padding, and header font sizes for denser layouts"
       }
     ],
     "childAttributes": [
@@ -9560,7 +9699,17 @@ export default {
       {
         "name": "story-map:ready",
         "detail": "{ activityCount, storyCount }",
-        "description": "Fired after component initializes"
+        "description": "Fired once after the first render. With src, fired once the JSON has loaded and rendered. Once per element: not re-fired by a later src change (watch activities-changed with source 'src') or when the map is moved in the DOM"
+      },
+      {
+        "name": "story-map:activities-changed",
+        "detail": "{ activities, source: 'property' | 'src' }",
+        "description": "Fired after each .activities assignment (source 'property') and after each src load has rendered (source 'src')"
+      },
+      {
+        "name": "story-map:upgraded",
+        "detail": "",
+        "description": "Fired (in a microtask) each time the map connects and upgrades"
       }
     ]
   },
@@ -10396,7 +10545,14 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Attribute on the row element whose value(s) reference column ids; comma-separated values supported"
+        "description": "Attribute on the row element whose value(s) reference column identifiers (see match-attr); comma-separated values supported"
+      },
+      {
+        "name": "match-attr",
+        "kind": "host-api",
+        "purpose": "config",
+        "type": "string",
+        "description": "Attribute on column elements that link-attr values are matched against. Default: the column's id, story-id (<user-story>) or item-id (<work-item>), whichever matches"
       },
       {
         "name": "label",
@@ -10444,7 +10600,7 @@ export default {
       {
         "name": "traceability-matrix:highlight",
         "detail": "{ rowEl, colEl, on }",
-        "description": "Fired when a cell toggles chain highlight"
+        "description": "Fired when a cell toggles chain highlight (click, or Enter/Space on the cell's button)"
       }
     ],
     "structure": [],
@@ -10594,46 +10750,32 @@ export default {
     },
     "attributes": [
       {
-        "name": "title",
-        "kind": "host-api",
-        "purpose": "config",
-        "type": "string",
-        "description": "Journey map title"
-      },
-      {
         "name": "persona",
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Persona name"
+        "description": "Persona name shown in the header"
       },
       {
         "name": "persona-id",
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Links to a user-persona element by id"
-      },
-      {
-        "name": "summary",
-        "kind": "host-api",
-        "purpose": "config",
-        "type": "string",
-        "description": "One-line journey description"
+        "description": "Links the persona name to a user-persona element by id"
       },
       {
         "name": "story-ids",
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Comma-separated related story IDs"
+        "description": "Comma-separated related story IDs, rendered as fragment links"
       },
       {
         "name": "src",
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "URL to JSON file containing phase data"
+        "description": "URL of a JSON journey record (title, persona, personaId, summary, phases). Fetched once per value; a newer value aborts the older request."
       },
       {
         "name": "compact",
@@ -10646,22 +10788,37 @@ export default {
     "slots": [
       {
         "name": "title",
-        "description": "Journey title (slot fallback for attribute)"
-      },
-      {
-        "name": "persona",
-        "description": "Persona name (slot fallback for attribute)"
+        "description": "Journey heading (e.g. <h2>). Defaults to \"User Journey\"; also labels the phase table."
       },
       {
         "name": "summary",
-        "description": "One-line description (slot fallback for attribute)"
+        "description": "One-line description (e.g. <p>)"
+      },
+      {
+        "name": "persona",
+        "description": "Not projected: the text of a slot=\"persona\" child is read as the persona name when the persona attribute is absent"
       }
     ],
     "events": [
       {
         "name": "journey-ready",
         "detail": "{ title, persona, phaseCount }",
-        "description": "Fired after render completes"
+        "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by later renders or moves."
+      },
+      {
+        "name": "user-journey:upgraded",
+        "detail": "",
+        "description": "Once, in a microtask after first connect. Wait for this before assigning .data or .phases from a framework."
+      },
+      {
+        "name": "user-journey:data-changed",
+        "detail": "{ data, source: 'property' }",
+        "description": "After .data is assigned"
+      },
+      {
+        "name": "user-journey:phases-changed",
+        "detail": "{ phases, source: 'property' }",
+        "description": "After .phases is assigned a different array"
       }
     ]
   },
@@ -10669,7 +10826,7 @@ export default {
     "$schema": "../../../schemas/api.schema.json",
     "element": "user-persona",
     "type": "web-component",
-    "description": "Displays a user persona card with avatar, demographics, quote, and slotted sections for goals, frustrations, and behaviors",
+    "description": "Displays a user persona card with avatar, demographics, quote, and slotted sections for background, goals, frustrations, and behaviors",
     "htmlvalidate": {
       "flow": true,
       "permittedContent": [
@@ -10682,7 +10839,7 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Persona name (drives avatar initials and color)"
+        "description": "Persona name, used when there is no slot=\"name\" child (the slot wins). Drives the avatar initials and color."
       },
       {
         "name": "role",
@@ -10696,28 +10853,28 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Age display"
+        "description": "Age, shown as \"[value] years old\""
       },
       {
         "name": "location",
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Location display"
+        "description": "Location, shown with a pin icon"
       },
       {
         "name": "avatar",
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Optional avatar image URL"
+        "description": "Avatar image URL (http(s), relative, or data:image). When omitted, initials are generated from the name."
       },
       {
         "name": "quote",
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Key quote displayed in highlight block"
+        "description": "Key quote, used when there is no slot=\"quote\" child (the slot wins)"
       },
       {
         "name": "compact",
@@ -10731,7 +10888,7 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "URL to JSON file containing persona data"
+        "description": "URL of a JSON persona record. Fetched once per value; the record sets the attributes above and creates (or replaces) the name, quote, bio, goals, frustrations and behaviors slotted children."
       },
       {
         "name": "data-list-stories",
@@ -10739,28 +10896,30 @@ export default {
         "purpose": "config",
         "type": "boolean",
         "description": "Render a Stories section that auto-lists every <user-story persona-id=\"…\"> matching this persona's id. Updates live when stories are added, removed, or relabeled."
+      },
+      {
+        "name": "data-mock",
+        "kind": "host-api",
+        "purpose": "config",
+        "type": "boolean",
+        "description": "Fill any missing name, role, age, location, avatar, quote, goals, frustrations and behaviors with deterministic sample data (seeded by data-seed or the data-mock value)."
+      },
+      {
+        "name": "id",
+        "kind": "host-api",
+        "purpose": "config",
+        "type": "string",
+        "description": "Observed: the id that <user-story persona-id> matches. Changing it re-renders the Stories section."
       }
     ],
     "slots": [
       {
         "name": "name",
-        "description": "Persona name (slot fallback for attribute)"
-      },
-      {
-        "name": "role",
-        "description": "Job title or role (slot fallback for attribute)"
-      },
-      {
-        "name": "age",
-        "description": "Age display (slot fallback for attribute)"
-      },
-      {
-        "name": "location",
-        "description": "Location display (slot fallback for attribute)"
+        "description": "Persona name (e.g. <h2>). Defaults to the name attribute, then \"Unnamed Persona\"."
       },
       {
         "name": "quote",
-        "description": "Key quote (slot fallback for attribute)"
+        "description": "Key quote (e.g. <p>). Defaults to the quote attribute."
       },
       {
         "name": "bio",
@@ -10783,7 +10942,17 @@ export default {
       {
         "name": "persona-ready",
         "detail": "{ name, role }",
-        "description": "Fired after initial render"
+        "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by attribute changes or moves."
+      },
+      {
+        "name": "user-persona:upgraded",
+        "detail": "",
+        "description": "Once, in a microtask after first connect. Wait for this before assigning .data from a framework."
+      },
+      {
+        "name": "user-persona:data-changed",
+        "detail": "{ data, source: 'property' }",
+        "description": "After .data is assigned"
       }
     ]
   },
@@ -10804,7 +10973,7 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Links to a user-persona element by id"
+        "description": "Links to a user-persona element by id. Without a persona slot, the \"As a…\" text uses that persona's role (live-updating)."
       },
       {
         "name": "priority",
@@ -10817,6 +10986,7 @@ export default {
           "medium",
           "low"
         ],
+        "default": "medium",
         "description": "Story priority level"
       },
       {
@@ -10831,6 +11001,7 @@ export default {
           "review",
           "done"
         ],
+        "default": "backlog",
         "description": "Workflow status"
       },
       {
@@ -10838,7 +11009,7 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Story point estimate"
+        "description": "Story point estimate (badge reads \"[n] story points\" to screen readers)"
       },
       {
         "name": "epic",
@@ -10852,7 +11023,7 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Ticket or story identifier, auto-sets HTML id"
+        "description": "Ticket or story identifier; sets the HTML id on first connect when none is set"
       },
       {
         "name": "detail",
@@ -10864,7 +11035,8 @@ export default {
           "compact",
           "minimal"
         ],
-        "description": "Detail level"
+        "default": "full",
+        "description": "Detail level. minimal renders a button that opens the full story in a dialog."
       },
       {
         "name": "compact",
@@ -10878,7 +11050,7 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "URL to JSON data"
+        "description": "URL of a JSON story record. Fetched once per value; a newer value aborts the older request."
       }
     ],
     "slots": [
@@ -10896,7 +11068,7 @@ export default {
       },
       {
         "name": "title",
-        "description": "Short label for minimal mode (e.g., <h3>)"
+        "description": "Short label for minimal mode and the detail dialog heading (e.g., <h3>)"
       },
       {
         "name": "acceptance-criteria",
@@ -10915,17 +11087,27 @@ export default {
       {
         "name": "story-ready",
         "detail": "{ id, persona, action, benefit, priority, status, points }",
-        "description": "Fired after render"
+        "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by attribute changes or moves."
       },
       {
         "name": "status-changed",
         "detail": "{ status, storyId }",
-        "description": "Fired when updateStatus() is called"
+        "description": "Fired when updateStatus() is called with a known status"
       },
       {
         "name": "priority-changed",
         "detail": "{ priority, storyId }",
-        "description": "Fired when updatePriority() is called"
+        "description": "Fired when updatePriority() is called with a known priority"
+      },
+      {
+        "name": "user-story:upgraded",
+        "detail": "",
+        "description": "Once, in a microtask after first connect. Wait for this before assigning .data from a framework."
+      },
+      {
+        "name": "user-story:data-changed",
+        "detail": "{ data, source: 'property' }",
+        "description": "After .data is assigned"
       }
     ]
   },
@@ -11376,28 +11558,52 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Unique work item identifier, auto-sets HTML id"
+        "description": "Unique work item identifier; sets the HTML id on first connect when none is set"
       },
       {
         "name": "type",
         "kind": "host-api",
         "purpose": "config",
-        "type": "string",
-        "description": "Item type: task | bug | chore | spike | feature"
+        "type": "enum",
+        "values": [
+          "task",
+          "bug",
+          "chore",
+          "spike",
+          "feature"
+        ],
+        "default": "task",
+        "description": "Item type"
       },
       {
         "name": "priority",
         "kind": "host-api",
         "purpose": "config",
-        "type": "string",
-        "description": "Priority: critical | high | medium | low"
+        "type": "enum",
+        "values": [
+          "critical",
+          "high",
+          "medium",
+          "low"
+        ],
+        "default": "medium",
+        "description": "Priority"
       },
       {
         "name": "status",
         "kind": "host-api",
         "purpose": "config",
-        "type": "string",
-        "description": "Status: backlog | to-do | in-progress | review | done | blocked"
+        "type": "enum",
+        "values": [
+          "backlog",
+          "to-do",
+          "in-progress",
+          "review",
+          "done",
+          "blocked"
+        ],
+        "default": "backlog",
+        "description": "Workflow status"
       },
       {
         "name": "estimate",
@@ -11411,7 +11617,7 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Assignee name"
+        "description": "Assignee name (shown with initials avatar)"
       },
       {
         "name": "story-ids",
@@ -11424,8 +11630,14 @@ export default {
         "name": "detail",
         "kind": "host-api",
         "purpose": "config",
-        "type": "string",
-        "description": "Detail level: full | compact | minimal"
+        "type": "enum",
+        "values": [
+          "full",
+          "compact",
+          "minimal"
+        ],
+        "default": "full",
+        "description": "Detail level. minimal shows id, type and title only."
       },
       {
         "name": "compact",
@@ -11439,13 +11651,13 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "URL to JSON data"
+        "description": "URL of a JSON work-item record. Fetched once per value; a newer value aborts the older request."
       }
     ],
     "slots": [
       {
         "name": "title",
-        "description": "Work item heading (e.g., <h3>)"
+        "description": "Work item heading (e.g., <h3>). There is no title attribute."
       },
       {
         "name": "description",
@@ -11464,17 +11676,27 @@ export default {
       {
         "name": "work-item:ready",
         "detail": "{ itemId, title, type, priority, status }",
-        "description": "Fired after render"
+        "description": "Once per element, after the first render at any detail level. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by attribute changes or moves."
       },
       {
         "name": "work-item:status",
         "detail": "{ status, itemId }",
-        "description": "Fired when status changes"
+        "description": "When updateStatus() is called with a known status"
       },
       {
         "name": "work-item:priority",
         "detail": "{ priority, itemId }",
-        "description": "Fired when priority changes"
+        "description": "When updatePriority() is called with a known priority"
+      },
+      {
+        "name": "work-item:upgraded",
+        "detail": "",
+        "description": "Once, in a microtask after first connect. Wait for this before assigning .data from a framework."
+      },
+      {
+        "name": "work-item:data-changed",
+        "detail": "{ data, source: 'property' }",
+        "description": "After .data is assigned"
       }
     ]
   },

@@ -64,6 +64,22 @@ component. Some fixes change observable behaviour; those are listed under
 - `traceability-matrix`: links resolve via `story-id`/`item-id` (new
   `match-attr` picks one); rows and columns without ids can be highlighted;
   highlights are cleared when the matrix is removed.
+- All `src` loading goes through one loader (`src/lib/src-loader.js`):
+  superseded requests are aborted in every component (gantt-chart and
+  review-surface kept downloading them), removing `src` mid-load renders the
+  authored content instead of sticking on "Loading…", and a failed load is
+  retried on reconnect.
+- `empathy-map`: an open quadrant editor keeps its draft text and focus
+  across re-renders, and starts from the slotted items when nothing is saved
+  (Done could wipe authored items).
+- `product-roadmap`: dragging or resizing an initiative that extends past the
+  visible range keeps its off-screen dates.
+- `user-story`: a persona link set by `src` or `.data` keeps tracking the
+  persona's role.
+- `kanban-board`: columns set before connect get a drag group, so keyboard
+  moves between columns work.
+- `impact-effort`: id-less items keep their card through drags and `.items`
+  round-trips (keyed by label).
 
 ### Accessibility
 - `review-surface`: pins are exposed as buttons (the overlay was
@@ -89,7 +105,14 @@ component. Some fixes change observable behaviour; those are listed under
   `vb:copy` / `vb:paste` (native-named events broke page handlers reading
   `clipboardData`). **Breaking for listeners on the old names.**
 - `*:ready` (and `persona-ready`, `story-ready`, `journey-ready`) fire once
-  per element; attribute changes and moves no longer re-fire them.
+  per element; attribute changes, later `src` loads and moves no longer
+  re-fire them. A later `src` load reports through
+  `kanban-board:items-changed`, `impact-effort:items-changed` and
+  `story-map:activities-changed` with `source: 'src'`.
+- `gantt-chart`: `.tasks` assigned before connect takes precedence over the
+  initial `src`; assigning `.tasks` cancels a pending load.
+- On boards, a minimal `<user-story>` is a single tab stop: Enter opens its
+  details, Space grabs it for reordering.
 - New `<tag>:upgraded` events on review-surface and the six record cards;
   `*:upgraded` fires on every connect for VBElement components (as before;
   the docs used to say once).
@@ -138,7 +161,10 @@ component. Some fixes change observable behaviour; those are listed under
   unit tests in `America/Los_Angeles`.
 - Shared helpers: `src/lib/dates.js`, `escape.js`, `hash.js`,
   `board-surface.js`, and a `UXShadowElement` base in `_ux-base.js`.
-- 196 component specs (was 103) plus 88 unit checks.
+- 216 component specs (was 103) plus 95 unit checks; the suite passes
+  three times in a row with parallel workers.
+- `UXShadowElement` gains a protected `_attributeEffects()` hook, run after
+  `.data` / `src` records are applied.
 - Docs site: vanilla-breeze 0.5, cook-ssg 2.4, pagefind 1.6; the published
   Lucide icon set is pruned to referenced icons (docs/ 15 MB → 8 MB).
 - @playwright/test 1.64, esbuild 0.28 (identical dist output).
