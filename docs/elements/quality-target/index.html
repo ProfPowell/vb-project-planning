@@ -85,10 +85,10 @@
 
   <title>quality-target — VB Project Planning</title>
   <meta name="description" content="Polygon-as-UI quality prioritization surface. Click any axis to set its level + rationale; the centre readout tracks Critical spend against the project's capacity. Pairs with iron-triangle via data-bind-to.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0xe35o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0y5hfk">
   
 </head>
 <body style="overflow-x: clip;">
@@ -223,7 +223,7 @@
   <p>The <code>&lt;quality-target&gt;</code> component is the planning surface's <em>quality decision</em>. The polygon IS the picker — each of the 11 ility axes is a clickable hit-target that opens a per-ility <code>&lt;dialog&gt;</code> with a level radio group (Critical / Important / Acceptable / Not relevant) plus a required rationale when Critical. The same SVG shows the chosen vector on three level rings, with a centre readout of Critical spend against the project's capacity, so picking and reading happen on the same surface.</p>
   <p>Pair it with <code>&lt;iron-triangle&gt;</code> via <code>data-bind-to</code> and the capacity comes from the project shape. "Quality" is the word the surface uses; the older "NFR" jargon and its separate compass + radar pair collapse into this one component, two roles.</p>
 
-  <browser-window url="quality-target-basic" src="/vb-project-planning/demos/quality-target-basic/"></browser-window>
+  <browser-window url="https://profpowell.github.io/vb-project-planning/demos/quality-target-basic/" src="/vb-project-planning/demos/quality-target-basic/"></browser-window>
 
   <code-block language="html" data-ssr label="Basic usage"><template shadowrootmode="open"><style>
       :host {
@@ -1873,10 +1873,10 @@ target.addEventListener(&#39;quality-target:under-budget&#39;, (e) =&amp;gt; {
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0xe35o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0y5hfk"></script>
   
 </body>
 </html>

@@ -85,10 +85,10 @@
 
   <title>user-persona — VB Project Planning</title>
   <meta name="description" content="Displays user personas in an Agile-friendly visual format with avatar, quote, goals, frustrations, and behaviors.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0xe35o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0y5hfk">
   
 </head>
 <body style="overflow-x: clip;">
@@ -222,7 +222,7 @@
     <h2>Overview</h2>
     <p>A web component for displaying user personas in a structured, visual card format. Includes an auto-generated avatar with initials and a deterministic color derived from the name hash, a quote block, and slotted sections for biography, goals, frustrations, and behaviors. Ideal for design documentation, sprint planning boards, and stakeholder presentations.</p>
 
-    <browser-window src="/vb-project-planning/demos/user-persona-basic/" url="https://vanilla-breeze.dev/user-persona" title="User Persona" shadow="">
+    <browser-window src="/vb-project-planning/demos/user-persona-basic/" url="https://profpowell.github.io/vb-project-planning/demos/user-persona-basic/" title="User Persona" shadow="">
     </browser-window>
 
     <code-block language="html" data-ssr label="Basic usage" show-lines><template shadowrootmode="open"><style>
@@ -1791,7 +1791,7 @@
     <h2>Compact Variant</h2>
     <p>Add the <code>compact</code> attribute for a denser layout with smaller padding, reduced font sizes, and a 56px avatar (down from 80px). Useful when displaying multiple personas side by side or in a dashboard grid.</p>
 
-    <browser-window src="/vb-project-planning/demos/user-persona-compact/" url="https://vanilla-breeze.dev/user-persona/compact" title="Compact Persona" shadow="">
+    <browser-window src="/vb-project-planning/demos/user-persona-compact/" url="https://profpowell.github.io/vb-project-planning/demos/user-persona-compact/" title="Compact Persona" shadow="">
     </browser-window>
 
     <code-block language="html" data-ssr label="Compact persona card" show-lines><template shadowrootmode="open"><style>
@@ -3292,7 +3292,7 @@
     <h2>Mock Data</h2>
     <p>Add <code>data-mock</code> to auto-generate a complete persona with a portrait photo, demographics, quote, and slotted sections. Use <code>data-seed</code> for deterministic results.</p>
 
-    <browser-window src="/vb-project-planning/demos/user-persona-mock/" url="https://vanilla-breeze.dev/user-persona/mock" title="Mock Personas" shadow="">
+    <browser-window src="/vb-project-planning/demos/user-persona-mock/" url="https://profpowell.github.io/vb-project-planning/demos/user-persona-mock/" title="Mock Personas" shadow="">
     </browser-window>
 
     <code-block language="html" data-ssr label="Fully auto-generated persona" show-lines><template shadowrootmode="open"><style>
@@ -3798,7 +3798,7 @@
     <h2>Story Traceability</h2>
     <p>Add <code>data-list-stories</code> and the persona card auto-renders a <strong>Stories</strong> section listing every <code>&lt;user-story&gt;</code> on the page whose <code>persona-id</code> matches this persona's <code>id</code>. The section updates live as stories are added, removed, or relabeled.</p>
 
-    <browser-window src="/vb-project-planning/demos/user-persona-stories/" url="https://vanilla-breeze.dev/user-persona/stories" title="Persona ↔ Stories traceability" shadow="">
+    <browser-window src="/vb-project-planning/demos/user-persona-stories/" url="https://profpowell.github.io/vb-project-planning/demos/user-persona-stories/" title="Persona ↔ Stories traceability" shadow="">
     </browser-window>
 
     <code-block language="html" data-ssr label="Persona linked to stories" show-lines><template shadowrootmode="open"><style>
@@ -5421,7 +5421,7 @@ persona.data = {
       <li><a href="/vb-project-planning/elements/empathy-map/"><code>&lt;empathy-map&gt;</code></a> — Empathy maps linked via <code>persona-id</code></li>
       <li><a href="/vb-project-planning/elements/impact-effort/"><code>&lt;impact-effort&gt;</code></a> — Prioritization matrix for triaging stories</li>
       <li><a href="/vb-project-planning/elements/story-map/"><code>&lt;story-map&gt;</code></a> — Horizontal story mapping for sprint planning</li>
-      <li><a href="https://vanilla-breeze.com/docs/packs/ux-planning/">UX Planning Pack</a> — loads all six UX components together</li>
+      <li><a href="/vb-project-planning/">vb-project-planning</a> — the whole package: <code>import '@profpowell/vb-project-planning'</code> registers every component</li>
     </ul>
   </section>
           </heading-links>
@@ -5476,10 +5476,10 @@ persona.data = {
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0xe35o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0y5hfk"></script>
   
 </body>
 </html>

@@ -85,10 +85,10 @@
 
   <title>risk-register — VB Project Planning</title>
   <meta name="description" content="Composing preset that renders a sortable risk table + a likelihood × impact quadrant grid from one source.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0xe35o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0y5hfk">
   
 </head>
 <body style="overflow-x: clip;">
@@ -224,7 +224,7 @@
   <p>It composes <code>&lt;data-table&gt;</code> (sorting plus a <code>data-heatmap="low-good"</code> Severity column) and <code>&lt;quadrant-grid&gt;</code> — most of the code is glue, since both children do the work.</p>
   <p>The component computes Severity itself and writes it into each Severity cell (as text and <code>data-sort-value</code>). It does not use <code>&lt;data-table&gt;</code>'s <code>data-rollup="product"</code>, because that multiplies <em>every</em> numeric-looking cell in the row — a title such as “2FA rollout” or a mitigation such as “3 vendor quotes” would inflate the score. A row with a missing or non-numeric Likelihood or Impact gets an empty Severity cell and no dot in the grid.</p>
 
-  <browser-window url="risk-register" src="/vb-project-planning/demos/risk-register-basic/"></browser-window>
+  <browser-window url="https://profpowell.github.io/vb-project-planning/demos/risk-register-basic/" src="/vb-project-planning/demos/risk-register-basic/"></browser-window>
 </section>
 
 <section>
@@ -1300,10 +1300,10 @@
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0xe35o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0y5hfk"></script>
   
 </body>
 </html>

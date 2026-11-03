@@ -85,10 +85,10 @@
 
   <title>gantt-chart — VB Project Planning</title>
   <meta name="description" content="HTML-first Gantt chart using native table, progress, and time elements with progressive enhancement to an interactive timeline.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0xe35o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0y5hfk">
   
 </head>
 <body style="overflow-x: clip;">
@@ -222,7 +222,7 @@
     <h2>Overview</h2>
     <p>A web component that progressively enhances a semantic <code>&lt;table&gt;</code> into an interactive Gantt timeline. Without JavaScript, users see a fully readable data table with native <code>&lt;progress&gt;</code> bars and <code>&lt;time&gt;</code> elements. With JavaScript, the component renders a visual timeline with positioned bars, swim lane groups, milestones, progress fill, and a today marker.</p>
 
-    <browser-window src="/vb-project-planning/demos/gantt-chart-basic/" url="https://vanilla-breeze.dev/gantt-chart" title="Gantt Chart" shadow="">
+    <browser-window src="/vb-project-planning/demos/gantt-chart-basic/" url="https://profpowell.github.io/vb-project-planning/demos/gantt-chart-basic/" title="Gantt Chart" shadow="">
     </browser-window>
 
     <code-block language="html" data-ssr label="Basic usage" show-lines><template shadowrootmode="open"><style>
@@ -1859,7 +1859,7 @@ g.addEventListener(&#39;gantt-chart:tasks-changed&#39;, (e) =&amp;gt; {
       <li><a href="/vb-project-planning/elements/impact-effort/"><code>&lt;impact-effort&gt;</code></a> — Prioritize tasks on impact vs effort</li>
       <li><a href="/vb-project-planning/elements/user-story/"><code>&lt;user-story&gt;</code></a> — Story cards used as kanban items</li>
       <li><a href="/vb-project-planning/elements/review-surface/"><code>&lt;review-surface&gt;</code></a> — Annotate the chart with review pins</li>
-      <li><a href="https://vanilla-breeze.com/docs/packs/ux-planning/">UX Planning Pack</a> — Loads all UX planning components together</li>
+      <li><a href="/vb-project-planning/">vb-project-planning</a> — the whole package: <code>import '@profpowell/vb-project-planning'</code> registers every component</li>
     </ul>
   </section>
           </heading-links>
@@ -1914,10 +1914,10 @@ g.addEventListener(&#39;gantt-chart:tasks-changed&#39;, (e) =&amp;gt; {
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0xe35o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0y5hfk"></script>
   
 </body>
 </html>

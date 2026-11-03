@@ -85,10 +85,10 @@
 
   <title>empathy-map — VB Project Planning</title>
   <meta name="description" content="Four-quadrant empathy map visualization (Says, Thinks, Does, Feels) with optional flip-to-edit interaction.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0xe35o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0y5hfk">
   
 </head>
 <body style="overflow-x: clip;">
@@ -222,7 +222,7 @@
     <h2>Overview</h2>
     <p>A web component that renders a four-quadrant empathy map — Says, Thinks, Does, and Feels — with optional Goals and Pain Points summary rows. Supports slotted HTML content, JSON loading via the <code>src</code> attribute, and a flip-to-edit mode for live editing directly in the browser. Designed for design workshops, sprint planning, and stakeholder presentations.</p>
 
-    <browser-window src="/vb-project-planning/demos/empathy-map-basic/" url="https://vanilla-breeze.dev/empathy-map" title="Empathy Map" shadow="">
+    <browser-window src="/vb-project-planning/demos/empathy-map-basic/" url="https://profpowell.github.io/vb-project-planning/demos/empathy-map-basic/" title="Empathy Map" shadow="">
     </browser-window>
 
     <code-block language="html" data-ssr label="Basic usage" show-lines><template shadowrootmode="open"><style>
@@ -818,7 +818,7 @@
     <h2>Editable Mode</h2>
     <p>Add the <code>editable</code> attribute to enable flip-to-edit on each quadrant. Each quadrant header displays an edit button that flips the card to reveal a textarea. Enter one item per line, then press the "Done" button or hit <kbd>Escape</kbd> to save and flip back.</p>
 
-    <browser-window src="/vb-project-planning/demos/empathy-map-editable/" url="https://vanilla-breeze.dev/empathy-map/editable" title="Editable Empathy Map" shadow="">
+    <browser-window src="/vb-project-planning/demos/empathy-map-editable/" url="https://profpowell.github.io/vb-project-planning/demos/empathy-map-editable/" title="Editable Empathy Map" shadow="">
     </browser-window>
 
     <code-block language="html" data-ssr label="Editable empathy map" show-lines><template shadowrootmode="open"><style>
@@ -3508,7 +3508,7 @@ map.data = {
       <li><a href="/vb-project-planning/elements/user-journey/"><code>&lt;user-journey&gt;</code></a> — Journey maps using the same emotion vocabulary</li>
       <li><a href="/vb-project-planning/elements/impact-effort/"><code>&lt;impact-effort&gt;</code></a> — Prioritization matrix for discovered pain points</li>
       <li><a href="/vb-project-planning/elements/story-map/"><code>&lt;story-map&gt;</code></a> — Horizontal story mapping for sprint planning</li>
-      <li><a href="https://vanilla-breeze.com/docs/packs/ux-planning/">UX Planning Pack</a> — loads all six UX components together</li>
+      <li><a href="/vb-project-planning/">vb-project-planning</a> — the whole package: <code>import '@profpowell/vb-project-planning'</code> registers every component</li>
     </ul>
   </section>
           </heading-links>
@@ -3563,10 +3563,10 @@ map.data = {
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0xe35o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0y5hfk"></script>
   
 </body>
 </html>

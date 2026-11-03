@@ -85,10 +85,10 @@
 
   <title>impact-effort — VB Project Planning</title>
   <meta name="description" content="2x2 prioritization matrix with drag-and-drop between quadrants (Quick Wins, Big Bets, Fill-Ins, Money Pit).">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0xe35o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0xe35o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0y5hfk">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0y5hfk">
   
 </head>
 <body style="overflow-x: clip;">
@@ -222,7 +222,7 @@
     <h2>Overview</h2>
     <p>A web component that renders a 2×2 impact/effort prioritization matrix with four quadrants: Quick Wins, Big Bets, Fill-Ins, and Money Pit. Items can be dragged between quadrants using native drag-and-drop or transferred via keyboard. Built on <code>&lt;drag-surface&gt;</code> for reorder and cross-surface transfer. Ideal for sprint prioritization, feature triage, and design workshops.</p>
 
-    <browser-window src="/vb-project-planning/demos/impact-effort-basic/" url="https://vanilla-breeze.dev/impact-effort" title="Impact/Effort Matrix" shadow="">
+    <browser-window src="/vb-project-planning/demos/impact-effort-basic/" url="https://profpowell.github.io/vb-project-planning/demos/impact-effort-basic/" title="Impact/Effort Matrix" shadow="">
     </browser-window>
 
     <code-block language="html" data-ssr label="Basic usage" show-lines><template shadowrootmode="open"><style>
@@ -2869,7 +2869,7 @@ matrix.items = [
       <li><a href="/vb-project-planning/elements/story-map/"><code>&lt;story-map&gt;</code></a> — Horizontal story mapping for sprint planning</li>
       <li><a href="/vb-project-planning/elements/user-persona/"><code>&lt;user-persona&gt;</code></a> — Persona cards providing context for prioritized items</li>
       <li><a href="https://vanilla-breeze.com/docs/elements/web-components/drag-surface/"><code>&lt;drag-surface&gt;</code></a> — The underlying drag-and-drop primitive used by each quadrant</li>
-      <li><a href="https://vanilla-breeze.com/docs/packs/ux-planning/">UX Planning Pack</a> — loads all six UX components together</li>
+      <li><a href="/vb-project-planning/">vb-project-planning</a> — the whole package: <code>import '@profpowell/vb-project-planning'</code> registers every component</li>
     </ul>
   </section>
           </heading-links>
@@ -2924,10 +2924,10 @@ matrix.items = [
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0xe35o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0xe35o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0y5hfk"></script>
   
 </body>
 </html>
