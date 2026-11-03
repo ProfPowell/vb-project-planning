@@ -12,6 +12,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { openUpgradePage, recordedEvents, moveElement } from './helpers/upgrade-page.js';
 
 const basicDemo = 'demos/user-persona-basic/';
 const storiesDemo = 'demos/user-persona-stories/';
@@ -93,7 +94,7 @@ test.describe('user-persona', () => {
     expect(result.roleGone).toBe(true);
     expect(result.personaRole).toBe('');
     expect(result.avatarState.text).toBe('');
-    expect(result.avatarState.style).toContain('url(https://example.test/a.png)');
+    expect(result.avatarState.style).toContain('url("https://example.test/a.png")');
   });
 
   test('persona-ready fires on connect with { name, role }', async ({ page }) => {
@@ -247,5 +248,155 @@ test.describe('user-persona', () => {
     expect(result.withoutId).toBe(false);
     expect(result.count).toBe('0');
     expect(result.empty).toBe('No user stories reference this persona yet.');
+  });
+});
+
+test.describe('user-persona — src, lifecycle and regressions', () => {
+  const EVENTS = ['persona-ready', 'user-persona:upgraded'];
+  const record = {
+    name: 'Dana Field', role: 'Researcher', age: 41, location: 'Oslo, NO',
+    quote: 'Show me the evidence.',
+    bio: 'Runs the usability lab.',
+    goals: ['Recruit faster', 'Share findings'],
+    frustrations: ['Scattered notes'],
+    behaviors: ['Tags every clip'],
+  };
+
+  test('src fetches exactly once and persona-ready fires once, after the data renders', async ({ page }) => {
+    const { requests } = await openUpgradePage(page, {
+      events: EVENTS,
+      fixtures: { 'persona.json': record },
+      body: '<user-persona id="p1" src="persona.json"></user-persona>',
+    });
+    await page.waitForFunction(() => window.__events.some(e => e.type === 'persona-ready'));
+    await page.waitForTimeout(100);
+
+    const state = await page.evaluate(() => {
+      const el = document.getElementById('p1');
+      const sr = el.shadowRoot;
+      const assigned = (name) => sr.querySelector(`slot[name="${name}"]`)?.assignedElements()
+        .map(n => n.textContent.replace(/\s+/g, ' ').trim());
+      return {
+        role: sr.querySelector('.persona-role')?.textContent.trim(),
+        bio: assigned('bio'),
+        goals: assigned('goals'),
+        goalItems: [...el.querySelectorAll('[slot="goals"] li')].map(li => li.textContent),
+        frustrations: assigned('frustrations'),
+        behaviors: assigned('behaviors'),
+        data: el.data,
+      };
+    });
+
+    expect(requests['persona.json']).toBe(1);
+    const ready = await recordedEvents(page, 'persona-ready');
+    expect(ready).toEqual([{ type: 'persona-ready', id: 'p1', detail: { name: 'Dana Field', role: 'Researcher' } }]);
+    expect(await recordedEvents(page, 'user-persona:upgraded')).toHaveLength(1);
+    // Every section from src is rendered, not just cached
+    expect(state.role).toBe('Researcher');
+    expect(state.bio).toEqual(['Runs the usability lab.']);
+    expect(state.goalItems).toEqual(['Recruit faster', 'Share findings']);
+    expect(state.frustrations).toEqual(['Scattered notes']);
+    expect(state.behaviors).toEqual(['Tags every clip']);
+    expect(state.data.goals).toEqual(['Recruit faster', 'Share findings']);
+    expect(state.data.bio).toBe('Runs the usability lab.');
+  });
+
+  test('moving the element does not refetch, re-render, or re-fire persona-ready', async ({ page }) => {
+    const { requests } = await openUpgradePage(page, {
+      events: EVENTS,
+      fixtures: { 'persona.json': record },
+      body: '<user-persona id="p1" src="persona.json"></user-persona>',
+    });
+    await page.waitForFunction(() => window.__events.some(e => e.type === 'persona-ready'));
+
+    const moved = await moveElement(page, '#p1');
+    expect(moved).toEqual({ connected: true, sameNode: true, sameHtml: true, upgraded: true });
+    expect(requests['persona.json']).toBe(1);
+    expect(await recordedEvents(page, 'persona-ready')).toHaveLength(1);
+    expect(await recordedEvents(page, 'user-persona:upgraded')).toHaveLength(1);
+  });
+
+  test('name and quote attributes render when there is no slot (README example)', async ({ page }) => {
+    await openUpgradePage(page, {
+      events: EVENTS,
+      body: `<user-persona id="fred" name="Fred" role="Engineer" quote="Ship small."></user-persona>
+             <user-persona id="both" name="Attr Name"><h2 slot="name">Slot Name</h2></user-persona>`,
+    });
+    await page.waitForSelector('#both[data-upgraded]');
+
+    const state = await page.evaluate(() => {
+      const sr = document.getElementById('fred').shadowRoot;
+      return {
+        label: sr.querySelector('.persona-card').getAttribute('aria-label'),
+        fallbackName: sr.querySelector('.persona-name-fallback')?.textContent.trim(),
+        quote: sr.querySelector('.quote-text')?.textContent.trim(),
+        initials: sr.querySelector('.avatar').textContent.trim(),
+        slotWins: document.getElementById('both').personaName,
+      };
+    });
+    expect(state).toEqual({
+      label: 'User persona: Fred',
+      fallbackName: 'Fred',
+      quote: 'Ship small.',
+      initials: 'F',
+      slotWins: 'Slot Name',
+    });
+
+    // The name attribute is observed
+    const renamed = await page.evaluate(() => {
+      const el = document.getElementById('fred');
+      el.setAttribute('name', 'Frederica');
+      return el.shadowRoot.querySelector('.persona-card').getAttribute('aria-label');
+    });
+    expect(renamed).toBe('User persona: Frederica');
+  });
+
+  test('a second .data assignment replaces name, quote and sections', async ({ page }) => {
+    await openUpgradePage(page, { events: EVENTS, body: '<user-persona id="p"></user-persona>' });
+    await page.waitForSelector('#p[data-upgraded]');
+
+    const result = await page.evaluate(() => {
+      const el = document.getElementById('p');
+      el.data = { name: 'First', quote: 'One', goals: ['a'] };
+      el.data = { name: 'Second', quote: 'Two', goals: ['b', 'c'], bio: 'Now with a bio.' };
+      return {
+        names: [...el.querySelectorAll('[slot="name"]')].map(n => n.textContent),
+        quotes: [...el.querySelectorAll('[slot="quote"]')].map(n => n.textContent),
+        goals: [...el.querySelectorAll('[slot="goals"] li')].map(n => n.textContent),
+        label: el.shadowRoot.querySelector('.persona-card').getAttribute('aria-label'),
+        bioAssigned: el.shadowRoot.querySelector('slot[name="bio"]').assignedElements()[0]?.textContent,
+      };
+    });
+    expect(result).toEqual({
+      names: ['Second'],
+      quotes: ['Two'],
+      goals: ['b', 'c'],
+      label: 'User persona: Second',
+      bioAssigned: 'Now with a bio.',
+    });
+  });
+
+  test('avatar URL is a quoted CSS url() that cannot inject declarations', async ({ page }) => {
+    await openUpgradePage(page, { events: EVENTS, body: '<user-persona id="p"></user-persona>' });
+    await page.waitForSelector('#p[data-upgraded]');
+
+    const style = await page.evaluate(() => {
+      const el = document.getElementById('p');
+      el.setAttribute('avatar', 'a.png) center/cover; color: red; x:(');
+      const avatar = el.shadowRoot.querySelector('.avatar');
+      return { color: avatar.style.color, bg: avatar.style.backgroundImage };
+    });
+    expect(style.color).toBe('');
+    expect(style.bg).toContain('a.png');
+  });
+
+  test('each section has a real heading', async ({ page }) => {
+    await page.goto(basicDemo);
+    await page.waitForSelector('user-persona[data-upgraded]');
+    const headings = await page.evaluate(() =>
+      [...document.querySelector('user-persona').shadowRoot.querySelectorAll('.section-title')]
+        .map(h => `${h.tagName}:${h.textContent.trim()}`)
+    );
+    expect(headings).toEqual(['H3:Background', 'H3:Goals', 'H3:Frustrations', 'H3:Behaviors']);
   });
 });

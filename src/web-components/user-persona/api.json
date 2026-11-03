@@ -2,34 +2,35 @@
   "$schema": "../../../schemas/api.schema.json",
   "element": "user-persona",
   "type": "web-component",
-  "description": "Displays a user persona card with avatar, demographics, quote, and slotted sections for goals, frustrations, and behaviors",
+  "description": "Displays a user persona card with avatar, demographics, quote, and slotted sections for background, goals, frustrations, and behaviors",
   "htmlvalidate": {
     "flow": true,
     "permittedContent": ["@flow"]
   },
   "attributes": [
-    { "name": "name",     "kind": "host-api", "purpose": "config", "type": "string",  "description": "Persona name (drives avatar initials and color)" },
+    { "name": "name",     "kind": "host-api", "purpose": "config", "type": "string",  "description": "Persona name, used when there is no slot=\"name\" child (the slot wins). Drives the avatar initials and color." },
     { "name": "role",     "kind": "host-api", "purpose": "config", "type": "string",  "description": "Job title or role" },
-    { "name": "age",      "kind": "host-api", "purpose": "config", "type": "string",  "description": "Age display" },
-    { "name": "location", "kind": "host-api", "purpose": "config", "type": "string",  "description": "Location display" },
-    { "name": "avatar",   "kind": "host-api", "purpose": "config", "type": "string",  "description": "Optional avatar image URL" },
-    { "name": "quote",    "kind": "host-api", "purpose": "config", "type": "string",  "description": "Key quote displayed in highlight block" },
+    { "name": "age",      "kind": "host-api", "purpose": "config", "type": "string",  "description": "Age, shown as \"[value] years old\"" },
+    { "name": "location", "kind": "host-api", "purpose": "config", "type": "string",  "description": "Location, shown with a pin icon" },
+    { "name": "avatar",   "kind": "host-api", "purpose": "config", "type": "string",  "description": "Avatar image URL (http(s), relative, or data:image). When omitted, initials are generated from the name." },
+    { "name": "quote",    "kind": "host-api", "purpose": "config", "type": "string",  "description": "Key quote, used when there is no slot=\"quote\" child (the slot wins)" },
     { "name": "compact",  "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Reduced spacing variant" },
-    { "name": "src",      "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL to JSON file containing persona data" },
-    { "name": "data-list-stories", "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Render a Stories section that auto-lists every <user-story persona-id=\"…\"> matching this persona's id. Updates live when stories are added, removed, or relabeled." }
+    { "name": "src",      "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL of a JSON persona record. Fetched once per value; the record sets the attributes above and creates (or replaces) the name, quote, bio, goals, frustrations and behaviors slotted children." },
+    { "name": "data-list-stories", "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Render a Stories section that auto-lists every <user-story persona-id=\"…\"> matching this persona's id. Updates live when stories are added, removed, or relabeled." },
+    { "name": "data-mock", "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Fill any missing name, role, age, location, avatar, quote, goals, frustrations and behaviors with deterministic sample data (seeded by data-seed or the data-mock value)." },
+    { "name": "id",       "kind": "host-api", "purpose": "config", "type": "string",  "description": "Observed: the id that <user-story persona-id> matches. Changing it re-renders the Stories section." }
   ],
   "slots": [
-    { "name": "name",         "description": "Persona name (slot fallback for attribute)" },
-    { "name": "role",         "description": "Job title or role (slot fallback for attribute)" },
-    { "name": "age",          "description": "Age display (slot fallback for attribute)" },
-    { "name": "location",     "description": "Location display (slot fallback for attribute)" },
-    { "name": "quote",        "description": "Key quote (slot fallback for attribute)" },
+    { "name": "name",         "description": "Persona name (e.g. <h2>). Defaults to the name attribute, then \"Unnamed Persona\"." },
+    { "name": "quote",        "description": "Key quote (e.g. <p>). Defaults to the quote attribute." },
     { "name": "bio",          "description": "Background narrative paragraph" },
     { "name": "goals",        "description": "List of what the persona wants to achieve" },
     { "name": "frustrations", "description": "List of pain points and blockers" },
     { "name": "behaviors",    "description": "List of observable patterns and habits" }
   ],
   "events": [
-    { "name": "persona-ready", "detail": "{ name, role }", "description": "Fired after initial render" }
+    { "name": "persona-ready", "detail": "{ name, role }", "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by attribute changes or moves." },
+    { "name": "user-persona:upgraded", "detail": "", "description": "Once, in a microtask after first connect. Wait for this before assigning .data from a framework." },
+    { "name": "user-persona:data-changed", "detail": "{ data, source: 'property' }", "description": "After .data is assigned" }
   ]
 }
