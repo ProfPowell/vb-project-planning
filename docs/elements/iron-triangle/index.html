@@ -85,10 +85,10 @@
 
   <title>iron-triangle — VB Project Planning</title>
   <meta name="description" content="Project-shape constraint surface — captures Time × Cost × Scope and computes a single capacityPoints budget that downstream planning components can spend on quality decisions.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0yti0u">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw125meb">
   
 </head>
 <body style="overflow-x: clip;">
@@ -124,7 +124,7 @@
     <button type="button" data-trigger="" popovertarget="mobile-menu" aria-label="Menu">
       <icon-wc name="menu"></icon-wc>
     </button>
-    <nav popover="" id="mobile-menu" class="mobile-menu-panel">
+    <nav popover="" id="mobile-menu" class="mobile-menu-panel" aria-label="Mobile navigation">
       <button type="button" class="mobile-menu-close" popovertarget="mobile-menu" popovertargetaction="hide" aria-label="Close menu">
         <icon-wc name="x"></icon-wc>
       </button>
@@ -158,7 +158,7 @@
 
 
   <main data-pagefind-body="" style="overflow-x: clip;">
-    <input type="checkbox" id="nav-drawer-toggle" class="nav-drawer-checkbox" data-pagefind-ignore="">
+    <input type="checkbox" id="nav-drawer-toggle" class="nav-drawer-checkbox" aria-label="Show elements navigation" data-pagefind-ignore="">
     <label for="nav-drawer-toggle" class="nav-drawer-toggle" data-pagefind-ignore="">
       <icon-wc name="list-tree" size="sm"></icon-wc>
       Navigation
@@ -2835,7 +2835,7 @@ triangle.addEventListener(&#39;iron-triangle:change&#39;, (e) =&amp;gt; {
 <section>
   <h2>Accessibility</h2>
   <ul>
-    <li><strong>Keyboard.</strong> Every hit target is a focusable <code>role="button"</code> (<code>tabindex="0"</code>) inside an SVG <code>role="group"</code>; Enter and Space activate exactly like a click. Each target's <code>aria-label</code> carries its name and current summary ("Time — 6 weeks (3 × 2wk). Activate to edit.").</li>
+    <li><strong>Keyboard.</strong> Every hit target is a focusable <code>role="button"</code> (<code>tabindex="0"</code>) inside an SVG <code>role="group"</code>; Enter and Space activate exactly like a click. Each target's <code>aria-label</code> starts with the text you can see — its name and current summary — then adds the unit hint and an instruction ("Time, 6 weeks (3 × 2wk), measured in hours / days / weeks. Activate to edit."), so voice-control users can activate it by saying what is on screen (WCAG 2.5.3).</li>
     <li><strong>Live readout.</strong> The capacity number lives in an <code>&lt;output aria-live="polite" aria-atomic="true"&gt;</code> below the SVG. It is visually hidden (the big number already shows on screen) and announces "Capacity: 18 points (formula)." after every recompute, including mode flips and any deadline warning.</li>
     <li><strong>Mode switch.</strong> The formula / manual switch is a real <code>&lt;button aria-pressed&gt;</code>, not a checkbox-and-label hack. It is styled as a quiet ghost button so it stays secondary to the triangle. When pressed, its visible label becomes "Manual capacity: 20 pts" and gains an underline, so the state never rests on colour; the accessible name starts with that same visible text (label in name). Activating it opens a native <code>&lt;dialog&gt;</code> (focus is trapped and returned by the browser) with a single numeric <code>&lt;form-field&gt;</code> plus <em>Use formula</em>, Cancel, and Save.</li>
     <li><strong>Never colour-only.</strong> A deadline in the past changes the triangle stroke <em>and</em> shows the literal text "Deadline has passed (date)" in the status strip; the same text is announced through the live region. An unbudgeted capacity shows "—" rather than relying on colour alone.</li>
@@ -2883,7 +2883,7 @@ triangle.addEventListener(&#39;iron-triangle:change&#39;, (e) =&amp;gt; {
 </footer>
 
 
-  <fab-stack>
+  <fab-stack role="complementary" aria-label="Page tools">
     <settings-panel></settings-panel>
     <a href="#" data-back-to-top="" aria-label="Back to top">↑</a>
   </fab-stack>
@@ -2907,10 +2907,10 @@ triangle.addEventListener(&#39;iron-triangle:change&#39;, (e) =&amp;gt; {
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0yti0u"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw125meb"></script>
   
 </body>
 </html>

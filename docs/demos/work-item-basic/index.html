@@ -4,15 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Work Item Demo</title>
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
-  <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js?v=mw0yti0u"></script>
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
+  <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js?v=mw125meb"></script>
 <style>
     body { padding: var(--size-l); background: var(--color-surface); }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: var(--size-m); }
   </style>
 </head>
 <body>
+<main>
   <h1>Work Item Demo</h1>
   <div class="grid">
     <work-item item-id="PROJ-42" type="task" priority="high" status="in-progress" assignee="Sarah Chen" estimate="5" story-ids="PROJ-101,PROJ-102">
@@ -47,6 +48,7 @@
       </ul>
     </work-item>
   </div>
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
+</main>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
 </body>
 </html>

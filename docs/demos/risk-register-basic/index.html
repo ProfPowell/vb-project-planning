@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Risk Register — Basic Demo</title>
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
-  <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/data-table.js?v=mw0yti0u"></script>
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
+  <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/data-table.js?v=mw125meb"></script>
 <style>
     body { padding: var(--size-l); background: var(--color-surface); max-inline-size: 78rem; margin-inline: auto; }
     h1 { font-size: var(--font-size-l); }
@@ -19,6 +19,7 @@
   </style>
 </head>
 <body>
+<main>
   <h1>Risk Register — table + quadrant from one source</h1>
   <p>One <code>&lt;template&gt;</code> data source, two synchronized views: a sortable table with computed Severity (likelihood × impact, low-good heatmap) and a quadrant grid placing each risk by its (likelihood, impact) coordinates.</p>
 
@@ -32,7 +33,7 @@
       <tr data-id="legal-review"><td>Slow legal review</td><td>4</td><td>2</td><td>Legal</td><td>Pre-brief counsel during week 3</td></tr>
     </template>
   </risk-register>
-
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
+</main>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
 </body>
 </html>

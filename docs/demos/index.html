@@ -86,10 +86,10 @@
 
   <title>Demos — VB Project Planning</title>
   <meta name="description" content="Live, themeable demos of every VB Project Planning component, plus the Atlas sprint board showcase.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0yti0u">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw125meb">
   
 </head>
 <body style="overflow-x: clip;">
@@ -125,7 +125,7 @@
     <button type="button" data-trigger="" popovertarget="mobile-menu" aria-label="Menu">
       <icon-wc name="menu"></icon-wc>
     </button>
-    <nav popover="" id="mobile-menu" class="mobile-menu-panel">
+    <nav popover="" id="mobile-menu" class="mobile-menu-panel" aria-label="Mobile navigation">
       <button type="button" class="mobile-menu-close" popovertarget="mobile-menu" popovertargetaction="hide" aria-label="Close menu">
         <icon-wc name="x"></icon-wc>
       </button>
@@ -601,7 +601,7 @@
 </footer>
 
 
-  <fab-stack>
+  <fab-stack role="complementary" aria-label="Page tools">
     <settings-panel></settings-panel>
     <a href="#" data-back-to-top="" aria-label="Back to top">↑</a>
   </fab-stack>
@@ -610,10 +610,10 @@
        wins (define is permanent), so the pack's own — and newer — planning
        components must register first. Core (vanilla-breeze.js) then supplies the
        doc chrome (page-toc, theme-picker, search, …) without re-defining them. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0yti0u"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw125meb"></script>
   
 </body>
 </html>

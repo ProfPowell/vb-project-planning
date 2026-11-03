@@ -85,10 +85,10 @@
 
   <title>quality-target — VB Project Planning</title>
   <meta name="description" content="Polygon-as-UI quality prioritization surface. Click any axis to set its level + rationale; the centre readout tracks Critical spend against the project's capacity. Pairs with iron-triangle via data-bind-to.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0yti0u">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw125meb">
   
 </head>
 <body style="overflow-x: clip;">
@@ -124,7 +124,7 @@
     <button type="button" data-trigger="" popovertarget="mobile-menu" aria-label="Menu">
       <icon-wc name="menu"></icon-wc>
     </button>
-    <nav popover="" id="mobile-menu" class="mobile-menu-panel">
+    <nav popover="" id="mobile-menu" class="mobile-menu-panel" aria-label="Mobile navigation">
       <button type="button" class="mobile-menu-close" popovertarget="mobile-menu" popovertargetaction="hide" aria-label="Close menu">
         <icon-wc name="x"></icon-wc>
       </button>
@@ -158,7 +158,7 @@
 
 
   <main data-pagefind-body="" style="overflow-x: clip;">
-    <input type="checkbox" id="nav-drawer-toggle" class="nav-drawer-checkbox" data-pagefind-ignore="">
+    <input type="checkbox" id="nav-drawer-toggle" class="nav-drawer-checkbox" aria-label="Show elements navigation" data-pagefind-ignore="">
     <label for="nav-drawer-toggle" class="nav-drawer-toggle" data-pagefind-ignore="">
       <icon-wc name="list-tree" size="sm"></icon-wc>
       Navigation
@@ -1806,7 +1806,7 @@ target.addEventListener(&#39;quality-target:under-budget&#39;, (e) =&amp;gt; {
 <section>
   <h2>Accessibility</h2>
   <ul>
-    <li><strong>Keyboard.</strong> Each axis is a focusable <code>role="button"</code> (<code>tabindex="0"</code>) inside an SVG <code>role="group"</code>; Enter and Space activate exactly like a click. Each axis's <code>aria-label</code> carries its name, level, and cost.</li>
+    <li><strong>Keyboard.</strong> Each axis is a focusable <code>role="button"</code> (<code>tabindex="0"</code>) inside an SVG <code>role="group"</code>; Enter and Space activate exactly like a click. Each axis's <code>aria-label</code> starts with its visible name, then its level and cost (“Performance — critical · 5 pts. Activate to edit.”); the hover tooltip shows just the level and cost.</li>
     <li><strong>Editors.</strong> Each dialog is a native <code>&lt;dialog&gt;</code> (focus is trapped and returned by the browser, Escape closes it) with an <code>aria-label</code> naming the ility, a <code>&lt;fieldset&gt;</code>/<code>&lt;legend&gt;</code> radio group, and a labelled rationale textarea. Generated ids are unique per instance, so several targets on one page keep their labels straight.</li>
     <li><strong>Never colour-only.</strong> Priority levels are conveyed by the radio label text and each axis's accessible name, so the red/amber/green/muted coding is reinforcement rather than the only signal. Over budget surfaces as visible text with the exact overrun, plus a required, labelled rationale field, not just a colour change.</li>
     <li><strong>Disabled / locked.</strong> Mouse input is off, the axes leave the tab order and carry <code>aria-disabled="true"</code>, <code>openEditor()</code> does nothing, and every dialog and footer control is disabled.</li>
@@ -1849,7 +1849,7 @@ target.addEventListener(&#39;quality-target:under-budget&#39;, (e) =&amp;gt; {
 </footer>
 
 
-  <fab-stack>
+  <fab-stack role="complementary" aria-label="Page tools">
     <settings-panel></settings-panel>
     <a href="#" data-back-to-top="" aria-label="Back to top">↑</a>
   </fab-stack>
@@ -1873,10 +1873,10 @@ target.addEventListener(&#39;quality-target:under-budget&#39;, (e) =&amp;gt; {
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0yti0u"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw125meb"></script>
   
 </body>
 </html>

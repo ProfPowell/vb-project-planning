@@ -4,22 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Iron Triangle — Basic Demo</title>
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
-  <script type="module" src="/vb-project-planning/assets/vendor/form-field.js?v=mw0yti0u"></script>
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
+  <script type="module" src="/vb-project-planning/assets/vendor/form-field.js?v=mw125meb"></script>
   <style>
     body { padding: var(--size-l); background: var(--color-surface); }
     p { color: var(--color-text-muted); margin-block-end: var(--size-l); }
   </style>
 </head>
-<body data-layout="stack" data-layout-gap="l">
+<body>
+<main data-layout="stack" data-layout-gap="l">
   <header>
     <h1>Iron Triangle</h1>
     <p>The triangle is the UI. Click any vertex (Scope, Time, Cost) to open its editor; click the center “Quality” target to jump to the quality picker. Hover any target for a tooltip preview.</p>
   </header>
 
   <iron-triangle name="triangle" data-focus-factor="0.6" data-quality-href="/vb-project-planning/elements/quality-target/" data-quality-summary="3 critical: perf, sec, a11y"></iron-triangle>
-
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
+</main>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
 </body>
 </html>

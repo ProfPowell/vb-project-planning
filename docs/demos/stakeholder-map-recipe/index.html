@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stakeholder Map Recipe</title>
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
-  <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js?v=mw0yti0u"></script>
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
+  <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js?v=mw125meb"></script>
   <style>
     body {
       padding: var(--size-l);
@@ -183,7 +183,8 @@
     }
   </style>
 </head>
-<body data-layout="stack" data-layout-gap="l">
+<body>
+<main data-layout="stack" data-layout-gap="l">
   <h1>Stakeholder Map Recipe</h1>
   <header>
     <h2>Stakeholder Map — Project Alpha</h2>
@@ -200,48 +201,48 @@
           <section class="sh-quadrant" data-quadrant-zone="keep-satisfied">
             <p class="sh-quadrant-label">Keep Satisfied <span class="sh-quadrant-desc">High power · Low interest</span></p>
             <drag-surface group="stakeholders" aria-label="Keep Satisfied" role="group" data-layout="stack" data-layout-gap="xs">
-              <article class="sh-card" draggable="true" data-id="sh-3">
+              <div class="sh-card" draggable="true" data-id="sh-3">
                 <strong>CFO — Maria Lopez</strong>
                 <small>Finance, budget approval authority</small>
-              </article>
+              </div>
             </drag-surface>
           </section>
 
           <section class="sh-quadrant" data-quadrant-zone="manage-closely">
             <p class="sh-quadrant-label">Manage Closely <span class="sh-quadrant-desc">High power · High interest</span></p>
             <drag-surface group="stakeholders" aria-label="Manage Closely" role="group" data-layout="stack" data-layout-gap="xs">
-              <article class="sh-card" draggable="true" data-id="sh-1">
+              <div class="sh-card" draggable="true" data-id="sh-1">
                 <strong>VP Engineering — James Wu</strong>
                 <small>Technical direction, team resourcing</small>
-              </article>
-              <article class="sh-card" draggable="true" data-id="sh-2">
+              </div>
+              <div class="sh-card" draggable="true" data-id="sh-2">
                 <strong>Product Manager — Sarah Chen</strong>
                 <small>Roadmap ownership, stakeholder liaison</small>
-              </article>
+              </div>
             </drag-surface>
           </section>
 
           <section class="sh-quadrant" data-quadrant-zone="monitor">
             <p class="sh-quadrant-label">Monitor <span class="sh-quadrant-desc">Low power · Low interest</span></p>
             <drag-surface group="stakeholders" aria-label="Monitor" role="group" data-layout="stack" data-layout-gap="xs">
-              <article class="sh-card" draggable="true" data-id="sh-6">
+              <div class="sh-card" draggable="true" data-id="sh-6">
                 <strong>Legal — Compliance Team</strong>
                 <small>Regulatory review when needed</small>
-              </article>
+              </div>
             </drag-surface>
           </section>
 
           <section class="sh-quadrant" data-quadrant-zone="keep-informed">
             <p class="sh-quadrant-label">Keep Informed <span class="sh-quadrant-desc">Low power · High interest</span></p>
             <drag-surface group="stakeholders" aria-label="Keep Informed" role="group" data-layout="stack" data-layout-gap="xs">
-              <article class="sh-card" draggable="true" data-id="sh-4">
+              <div class="sh-card" draggable="true" data-id="sh-4">
                 <strong>UX Lead — Alex Rivera</strong>
                 <small>Design direction, user research</small>
-              </article>
-              <article class="sh-card" draggable="true" data-id="sh-5">
+              </div>
+              <div class="sh-card" draggable="true" data-id="sh-5">
                 <strong>QA Lead — Jordan Park</strong>
                 <small>Test strategy, quality gates</small>
-              </article>
+              </div>
             </drag-surface>
           </section>
 
@@ -253,8 +254,8 @@
 
     <output class="sh-live" aria-live="polite" aria-atomic="true"></output>
   </section>
-
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
+</main>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
   <script type="module">
     const LABELS = {
       'Keep Satisfied': 'Keep Satisfied (high power, low interest)',

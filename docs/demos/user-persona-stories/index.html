@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>User Persona — Stories Traceability Demo</title>
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
-  <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js?v=mw0yti0u"></script>
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
+  <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js?v=mw125meb"></script>
   <style>
     body {
       padding: var(--size-l);
@@ -22,15 +22,17 @@
       gap: var(--size-s);
       grid-template-columns: repeat(auto-fit, minmax(min(28ch, 100%), 1fr));
     }
+    main { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--size-l); }
   </style>
 </head>
 <body>
+<main>
   <header>
     <h1>Persona ↔ Stories traceability</h1>
     <p>Add <code>data-list-stories</code> to <code>&lt;user-persona&gt;</code> and the card auto-lists every <code>&lt;user-story&gt;</code> on the page whose <code>persona-id</code> matches the persona's <code>id</code>. The list updates live as stories are added, removed, or relabeled.</p>
   </header>
 
-  <user-persona id="alex" role="Product Manager" age="34" location="Toronto" data-list-stories="">
+  <user-persona id="alex" job-title="Product Manager" age="34" location="Toronto" data-list-stories="">
     <h2 slot="name">Alex Chen</h2>
     <p slot="quote">I need to ship monthly without spending half my week chasing status.</p>
     <p slot="bio">Mid-career PM at a fintech scale-up. Owns the customer-onboarding surface.</p>
@@ -70,8 +72,8 @@
       <button id="removeBtn" type="button">Remove last story</button>
     </p>
   </section>
-
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
+</main>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
 <script>
     const grid = document.querySelector('section.stories-grid');
     let next = 4;

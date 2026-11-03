@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Roadmap — Editable Demo</title>
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
-  <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js?v=mw0yti0u"></script>
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
+  <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js?v=mw125meb"></script>
 <style>
     body { padding: var(--size-l); background: var(--color-surface); max-inline-size: 78rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--size-m); }
     h1 { font-size: var(--font-size-l); margin: 0; }
@@ -22,9 +22,11 @@
       overflow-y: auto;
       white-space: pre-wrap;
     }
+    main { display: flex; flex-direction: column; gap: var(--size-m); }
   </style>
 </head>
 <body>
+<main>
   <h1>Editable FY27 roadmap</h1>
   <p>Drag a bar body to reschedule (snaps to quarter). Drag the right edge to extend the end date. Drag a bar to a different lane to move it. Click (or press Enter) to inspect. Keyboard: Tab to a bar, then arrow keys move it, Shift+arrows change its end, Alt+up/down change its lane.</p>
 
@@ -48,8 +50,8 @@
 
   <h2 style="margin: 0; font-size: var(--font-size-m)">Event log</h2>
   <output id="log">(drag a bar to see events)</output>
-
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
+</main>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
 <script type="module">
     const log = document.getElementById('log');
     const append = (label, detail) => {

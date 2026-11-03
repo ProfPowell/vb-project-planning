@@ -85,10 +85,10 @@
 
   <title>impact-effort — VB Project Planning</title>
   <meta name="description" content="2x2 prioritization matrix with drag-and-drop between quadrants (Quick Wins, Big Bets, Fill-Ins, Money Pit).">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0yti0u">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw125meb">
   
 </head>
 <body style="overflow-x: clip;">
@@ -124,7 +124,7 @@
     <button type="button" data-trigger="" popovertarget="mobile-menu" aria-label="Menu">
       <icon-wc name="menu"></icon-wc>
     </button>
-    <nav popover="" id="mobile-menu" class="mobile-menu-panel">
+    <nav popover="" id="mobile-menu" class="mobile-menu-panel" aria-label="Mobile navigation">
       <button type="button" class="mobile-menu-close" popovertarget="mobile-menu" popovertargetaction="hide" aria-label="Close menu">
         <icon-wc name="x"></icon-wc>
       </button>
@@ -158,7 +158,7 @@
 
 
   <main data-pagefind-body="" style="overflow-x: clip;">
-    <input type="checkbox" id="nav-drawer-toggle" class="nav-drawer-checkbox" data-pagefind-ignore="">
+    <input type="checkbox" id="nav-drawer-toggle" class="nav-drawer-checkbox" aria-label="Show elements navigation" data-pagefind-ignore="">
     <label for="nav-drawer-toggle" class="nav-drawer-toggle" data-pagefind-ignore="">
       <icon-wc name="list-tree" size="sm"></icon-wc>
       Navigation
@@ -2855,6 +2855,7 @@ matrix.items = [
       <li>Axis labels ("Impact" and "Effort") use <code>aria-hidden="true"</code> since the quadrant labels already convey the meaning</li>
       <li>A hidden live region with <code>aria-live="polite"</code> announces item moves between quadrants using the item's text and the quadrant name</li>
       <li>Keyboard transfer is provided by the underlying <code>&lt;drag-surface&gt;</code> components</li>
+      <li>Each <code>&lt;drag-surface&gt;</code> is exposed as a list of its cards (<code>role="list"</code> / <code>"listitem"</code>, kept in step as cards are added and moved). If any card is an element that may not be a list item, such as <code>&lt;article&gt;</code>, that surface is exposed as a labelled <code>role="group"</code> instead and the cards keep their own role. The drag-surface's own move announcements are moved to a hidden status region just after the list, since a list may only contain list items.</li>
       <li>Respects <code>prefers-reduced-motion: reduce</code> by disabling all transitions</li>
       <li>Uses <code>container-type: inline-size</code> and stacks to a single column at narrow viewports (&lt;30rem)</li>
       <li>Print styles remove minimum heights, set static cursors, and add visible borders</li>
@@ -2900,7 +2901,7 @@ matrix.items = [
 </footer>
 
 
-  <fab-stack>
+  <fab-stack role="complementary" aria-label="Page tools">
     <settings-panel></settings-panel>
     <a href="#" data-back-to-top="" aria-label="Back to top">↑</a>
   </fab-stack>
@@ -2924,10 +2925,10 @@ matrix.items = [
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0yti0u"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw125meb"></script>
   
 </body>
 </html>

@@ -85,10 +85,10 @@
 
   <title>burndown-chart — VB Project Planning</title>
   <meta name="description" content="Sprint burndown plot. Wraps Vanilla Breeze's chart-wc with an auto-computed ideal line and scope-change annotations.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0yti0u">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw125meb">
   
 </head>
 <body style="overflow-x: clip;">
@@ -124,7 +124,7 @@
     <button type="button" data-trigger="" popovertarget="mobile-menu" aria-label="Menu">
       <icon-wc name="menu"></icon-wc>
     </button>
-    <nav popover="" id="mobile-menu" class="mobile-menu-panel">
+    <nav popover="" id="mobile-menu" class="mobile-menu-panel" aria-label="Mobile navigation">
       <button type="button" class="mobile-menu-close" popovertarget="mobile-menu" popovertargetaction="hide" aria-label="Close menu">
         <icon-wc name="x"></icon-wc>
       </button>
@@ -158,7 +158,7 @@
 
 
   <main data-pagefind-body="" style="overflow-x: clip;">
-    <input type="checkbox" id="nav-drawer-toggle" class="nav-drawer-checkbox" data-pagefind-ignore="">
+    <input type="checkbox" id="nav-drawer-toggle" class="nav-drawer-checkbox" aria-label="Show elements navigation" data-pagefind-ignore="">
     <label for="nav-drawer-toggle" class="nav-drawer-toggle" data-pagefind-ignore="">
       <icon-wc name="list-tree" size="sm"></icon-wc>
       Navigation
@@ -235,7 +235,7 @@
     <li><em>(optional)</em> <strong>±delta</strong> — scope change applied that day (e.g. <code>+5</code> or <code>-2</code>)</li>
   </ol>
 
-  <code-block language="html" data-ssr><template shadowrootmode="open"><style>
+  <code-block language="html" data-ssr label="Sprint data in a template"><template shadowrootmode="open"><style>
       :host {
         --_cb-bg: var(--color-surface-raised, #f6f8fa);
         --_cb-code-bg: var(--color-surface, #fff);
@@ -713,7 +713,7 @@
       }
     </style>
       <div class="header">
-        <div class="label-container" id="code-label"><span class="label">HTML</span></div>
+        <div class="label-container" id="code-label"><span class="label">Sprint data in a template</span></div>
         <div class="header-actions"><button class="copy-button" aria-label="Copy code to clipboard" title="Copy code">Copy</button></div>
       </div>
       <div class="code-container" role="region" aria-labelledby="code-label" style="">
@@ -735,7 +735,8 @@
 
 <section>
   <h2>Attributes</h2>
-  <table class="props-table"><thead><tr><th>Attribute</th><th>Values</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>start</code></td><td>string</td><td>—</td><td>Sprint start date (YYYY-MM-DD, local calendar day; required)</td></tr>
+  <table class="props-table"><thead><tr><th>Attribute</th><th>Values</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>heading-level</code></td><td>number</td><td>—</td><td>Level (1–6) of the Scope changes heading. Default: one below the nearest preceding heading on the page.</td></tr>
+<tr><td><code>start</code></td><td>string</td><td>—</td><td>Sprint start date (YYYY-MM-DD, local calendar day; required)</td></tr>
 <tr><td><code>end</code></td><td>string</td><td>—</td><td>Sprint end date (YYYY-MM-DD, inclusive; required)</td></tr>
 <tr><td><code>total</code></td><td>number</td><td>—</td><td>Total points/items at sprint start (required)</td></tr>
 <tr><td><code>unit</code></td><td>string</td><td><code>"points"</code></td><td>Display unit for the y-axis and scope-change notes (rendered as text)</td></tr>
@@ -753,7 +754,7 @@
   <h2>Excluding weekends</h2>
   <p>By default, the ideal line decrements every day equally. For sprints where weekends don't count, set <code>weekends="exclude"</code> — the component holds the ideal value flat over Saturdays and Sundays so the slope reflects working-day capacity:</p>
 
-  <code-block language="html" data-ssr><template shadowrootmode="open"><style>
+  <code-block language="html" data-ssr label="Excluding weekends"><template shadowrootmode="open"><style>
       :host {
         --_cb-bg: var(--color-surface-raised, #f6f8fa);
         --_cb-code-bg: var(--color-surface, #fff);
@@ -1231,7 +1232,7 @@
       }
     </style>
       <div class="header">
-        <div class="label-container" id="code-label"><span class="label">HTML</span></div>
+        <div class="label-container" id="code-label"><span class="label">Excluding weekends</span></div>
         <div class="header-actions"><button class="copy-button" aria-label="Copy code to clipboard" title="Copy code">Copy</button></div>
       </div>
       <div class="code-container" role="region" aria-labelledby="code-label" style="">
@@ -1251,7 +1252,7 @@
     <li><strong>JS.</strong> Reads the template, computes the ideal series, builds a <code>&lt;chart-wc&gt;</code> with two series, and surfaces scope changes as a sibling <code>&lt;aside&gt;</code>.</li>
   </ol>
   <p>This component requires the optional <code>vanilla-breeze-charts</code> bundle for <code>&lt;chart-wc&gt;</code>:</p>
-  <code-block language="html" data-ssr><template shadowrootmode="open"><style>
+  <code-block language="html" data-ssr label="Loading the charts bundle"><template shadowrootmode="open"><style>
       :host {
         --_cb-bg: var(--color-surface-raised, #f6f8fa);
         --_cb-code-bg: var(--color-surface, #fff);
@@ -1729,7 +1730,7 @@
       }
     </style>
       <div class="header">
-        <div class="label-container" id="code-label"><span class="label">HTML</span></div>
+        <div class="label-container" id="code-label"><span class="label">Loading the charts bundle</span></div>
         <div class="header-actions"><button class="copy-button" aria-label="Copy code to clipboard" title="Copy code">Copy</button></div>
       </div>
       <div class="code-container" role="region" aria-labelledby="code-label" style="">
@@ -1776,7 +1777,7 @@
 </footer>
 
 
-  <fab-stack>
+  <fab-stack role="complementary" aria-label="Page tools">
     <settings-panel></settings-panel>
     <a href="#" data-back-to-top="" aria-label="Back to top">↑</a>
   </fab-stack>
@@ -1800,10 +1801,10 @@
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0yti0u"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw125meb"></script>
   
 </body>
 </html>

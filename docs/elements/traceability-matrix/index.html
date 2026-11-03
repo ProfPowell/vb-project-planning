@@ -85,10 +85,10 @@
 
   <title>traceability-matrix — VB Project Planning</title>
   <meta name="description" content="Auto-discovers a 2D cross-reference grid (RTM) from page elements; composes data-table for sortable + heatmap-able presentation, adds chain highlight.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0yti0u">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw125meb">
   
 </head>
 <body style="overflow-x: clip;">
@@ -124,7 +124,7 @@
     <button type="button" data-trigger="" popovertarget="mobile-menu" aria-label="Menu">
       <icon-wc name="menu"></icon-wc>
     </button>
-    <nav popover="" id="mobile-menu" class="mobile-menu-panel">
+    <nav popover="" id="mobile-menu" class="mobile-menu-panel" aria-label="Mobile navigation">
       <button type="button" class="mobile-menu-close" popovertarget="mobile-menu" popovertargetaction="hide" aria-label="Close menu">
         <icon-wc name="x"></icon-wc>
       </button>
@@ -158,7 +158,7 @@
 
 
   <main data-pagefind-body="" style="overflow-x: clip;">
-    <input type="checkbox" id="nav-drawer-toggle" class="nav-drawer-checkbox" data-pagefind-ignore="">
+    <input type="checkbox" id="nav-drawer-toggle" class="nav-drawer-checkbox" aria-label="Show elements navigation" data-pagefind-ignore="">
     <label for="nav-drawer-toggle" class="nav-drawer-toggle" data-pagefind-ignore="">
       <icon-wc name="list-tree" size="sm"></icon-wc>
       Navigation
@@ -260,7 +260,7 @@
 
 <section>
   <h2>Persona × Story example</h2>
-  <code-block language="html" data-ssr><template shadowrootmode="open"><style>
+  <code-block language="html" data-ssr label="Persona × story matrix"><template shadowrootmode="open"><style>
       :host {
         --_cb-bg: var(--color-surface-raised, #f6f8fa);
         --_cb-code-bg: var(--color-surface, #fff);
@@ -738,7 +738,7 @@
       }
     </style>
       <div class="header">
-        <div class="label-container" id="code-label"><span class="label">HTML</span></div>
+        <div class="label-container" id="code-label"><span class="label">Persona × story matrix</span></div>
         <div class="header-actions"><button class="copy-button" aria-label="Copy code to clipboard" title="Copy code">Copy</button></div>
       </div>
       <div class="code-container" role="region" aria-labelledby="code-label" style="">
@@ -766,7 +766,7 @@
 <section>
   <h2>Story × Work-item example</h2>
   <p>Pack elements work too — point at <code>&lt;user-story&gt;</code> / <code>&lt;work-item&gt;</code> directly. A work item's <code>story-ids</code> are matched against each story's <code>story-id</code>, so the stories don't need a matching <code>id</code>:</p>
-  <code-block language="html" data-ssr><template shadowrootmode="open"><style>
+  <code-block language="html" data-ssr label="Story × work-item matrix"><template shadowrootmode="open"><style>
       :host {
         --_cb-bg: var(--color-surface-raised, #f6f8fa);
         --_cb-code-bg: var(--color-surface, #fff);
@@ -1244,7 +1244,7 @@
       }
     </style>
       <div class="header">
-        <div class="label-container" id="code-label"><span class="label">HTML</span></div>
+        <div class="label-container" id="code-label"><span class="label">Story × work-item matrix</span></div>
         <div class="header-actions"><button class="copy-button" aria-label="Copy code to clipboard" title="Copy code">Copy</button></div>
       </div>
       <div class="code-container" role="region" aria-labelledby="code-label" style="">
@@ -1277,7 +1277,7 @@
   </ul>
   <p>Only one chain is highlighted at a time; rows and columns without an <code>id</code> highlight too. The highlight is cleared from the page when the matrix is removed. The default stylesheet adds an outline to highlighted source elements so authors can scan the page and see the connection. Listen for <code>traceability-matrix:highlight</code> to wire additional behaviour (auto-scroll, side panel, etc.).</p>
 
-  <code-block language="js" data-ssr><template shadowrootmode="open"><style>
+  <code-block language="js" data-ssr label="Listening for highlight events"><template shadowrootmode="open"><style>
       :host {
         --_cb-bg: var(--color-surface-raised, #f6f8fa);
         --_cb-code-bg: var(--color-surface, #fff);
@@ -1755,7 +1755,7 @@
       }
     </style>
       <div class="header">
-        <div class="label-container" id="code-label"><span class="label">JS</span></div>
+        <div class="label-container" id="code-label"><span class="label">Listening for highlight events</span></div>
         <div class="header-actions"><button class="copy-button" aria-label="Copy code to clipboard" title="Copy code">Copy</button></div>
       </div>
       <div class="code-container" role="region" aria-labelledby="code-label" style="">
@@ -1774,7 +1774,8 @@
   <ul>
     <li>Body cells keep <code>aria-label="linked"</code> / <code>"not linked"</code> and contain a button named “<em>row</em> × <em>column</em>: linked” (or “not linked”), so the relationship is spoken without relying on the ✓ glyph.</li>
     <li>Buttons use <code>aria-pressed</code> to report the active highlight; row-header buttons are named “Highlight <em>row</em>”.</li>
-    <li>Every cell button is a Tab stop, so very large matrices mean many Tab presses.</li>
+    <li><strong>Keyboard (grid pattern).</strong> The table has <code>role="grid"</code> and is a single Tab stop (roving <code>tabindex</code>): Tab enters at the last cell you used, or the first cell. <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> move between cells, including the sortable column headers; <kbd>Home</kbd> / <kbd>End</kbd> go to the start / end of the row; <kbd>Ctrl</kbd>+<kbd>Home</kbd> / <kbd>Ctrl</kbd>+<kbd>End</kbd> to the first / last cell of the matrix. <kbd>Enter</kbd> or <kbd>Space</kbd> toggles the highlight on a cell (or sorts, on a column header). Rows hidden by filtering are skipped.</li>
+    <li>Why <code>role="grid"</code>: it follows the <a href="https://www.w3.org/WAI/ARIA/apg/patterns/grid/">WAI-ARIA APG grid pattern</a>, so screen readers switch to focus mode and pass the arrow keys to the matrix instead of using them for reading. The native <code>&lt;tr&gt;</code> / <code>&lt;th&gt;</code> / <code>&lt;td&gt;</code> still map to row, column / row header, and grid cell, so headers are announced as you move. The grid is named by the <code>label</code> attribute (or “Traceability matrix”).</li>
   </ul>
 </section>
 
@@ -1823,7 +1824,7 @@
 </footer>
 
 
-  <fab-stack>
+  <fab-stack role="complementary" aria-label="Page tools">
     <settings-panel></settings-panel>
     <a href="#" data-back-to-top="" aria-label="Back to top">↑</a>
   </fab-stack>
@@ -1847,10 +1848,10 @@
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0yti0u"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw125meb"></script>
   
 </body>
 </html>

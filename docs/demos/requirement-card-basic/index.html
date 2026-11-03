@@ -4,15 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Requirement Card — Basic Demo</title>
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
   <style>
     body { padding: var(--size-l); background: var(--color-surface); }
     p.lead { color: var(--color-text-muted); margin-block-end: var(--size-l); }
     a { text-decoration: none; color: inherit; }
   </style>
 </head>
-<body data-layout="stack" data-layout-gap="m">
+<body>
+<main data-layout="stack" data-layout-gap="m">
   <header>
     <h1>Requirement Card</h1>
     <p class="lead">A display-only card for one non-functional requirement (NFR / “ility”). It shows the priority, rationale, and any conflict note. Wrap one in <code>&lt;a href&gt;</code> to make the whole card a drill-down link.</p>
@@ -37,7 +38,7 @@
       <p slot="conflicts">Tension with the current Iron Triangle — re-review.</p>
     </requirement-card>
   </a>
-
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
+</main>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
 </body>
 </html>
