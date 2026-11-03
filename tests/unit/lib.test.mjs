@@ -25,6 +25,11 @@ test('parseISODate rejects junk and roll-overs', () => {
   assert.equal(parseISODate(null), null);
   assert.equal(parseISODate('not a date'), null);
   assert.equal(parseISODate('2026-02-31'), null);
+  // The native parser accepts these; we must not.
+  assert.equal(parseISODate('<img src=x onerror=1>'), null);
+  assert.equal(parseISODate('hello 7'), null);
+  assert.equal(parseISODate('April 1, 2026'), null);
+  assert.equal(toISODate(parseISODate('2026-04-01T09:30:00')), '2026-04-01');
 });
 
 test('enumerateDays is DST-safe (US fall-back, Nov 1 2026)', () => {

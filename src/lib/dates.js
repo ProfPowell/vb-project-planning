@@ -12,12 +12,14 @@
  */
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?![\d:T])/;
+const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 
 /**
  * Parse a calendar date. `YYYY-MM-DD` becomes local midnight; Date objects
- * are copied and truncated to local midnight; full timestamps (with a time
- * part) and numbers are accepted and truncated too. Returns null for
- * anything unparseable.
+ * are copied and truncated to local midnight; ISO timestamps
+ * (`YYYY-MM-DDTHH:mm…`) and numbers are accepted and truncated too.
+ * Everything else returns null: the native Date parser is far too lenient
+ * (it turns "<img 1>" into 2001-01-01).
  * @param {unknown} value
  * @returns {Date | null}
  */
@@ -37,6 +39,7 @@ export function parseISODate(value) {
     if (d.getMonth() !== Number(m[2]) - 1 || d.getDate() !== Number(m[3])) return null;
     return d;
   }
+  if (!ISO_TIMESTAMP.test(s)) return null;
   const d = new Date(s);
   return Number.isNaN(d.getTime()) ? null : startOfDay(d);
 }

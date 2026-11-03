@@ -3430,11 +3430,11 @@ var ImpactEffort = class _ImpactEffort extends VBElement {
       }
       target.appendChild(child);
     });
-    const liveRegion = document.createElement("div");
-    liveRegion.className = "ie-live-region";
-    liveRegion.setAttribute("role", "status");
-    liveRegion.setAttribute("aria-live", "polite");
-    liveRegion.setAttribute("aria-atomic", "true");
+    const liveRegion2 = document.createElement("div");
+    liveRegion2.className = "ie-live-region";
+    liveRegion2.setAttribute("role", "status");
+    liveRegion2.setAttribute("aria-live", "polite");
+    liveRegion2.setAttribute("aria-atomic", "true");
     const title = this.getAttribute("title");
     if (title) {
       const heading = document.createElement("h3");
@@ -3447,9 +3447,9 @@ var ImpactEffort = class _ImpactEffort extends VBElement {
     wrapper.appendChild(yLabel);
     wrapper.appendChild(column);
     this.appendChild(wrapper);
-    this.appendChild(liveRegion);
+    this.appendChild(liveRegion2);
     this.#grid = grid;
-    this.#liveRegion = liveRegion;
+    this.#liveRegion = liveRegion2;
     this.#wrapper = wrapper;
     this.listen(this, "drag-surface:transfer", (e) => {
       const { item, fromSurface, toSurface } = e.detail;
@@ -3750,19 +3750,19 @@ var QuadrantGrid = class _QuadrantGrid extends VBElement {
         target.appendChild(li);
       }
     });
-    const liveRegion = document.createElement("div");
-    liveRegion.className = "qg-live-region visually-hidden";
-    liveRegion.setAttribute("role", "status");
-    liveRegion.setAttribute("aria-live", "polite");
+    const liveRegion2 = document.createElement("div");
+    liveRegion2.className = "qg-live-region visually-hidden";
+    liveRegion2.setAttribute("role", "status");
+    liveRegion2.setAttribute("aria-live", "polite");
     wrapper.appendChild(yLabelEl);
     wrapper.appendChild(yScale);
     wrapper.appendChild(grid);
     wrapper.appendChild(xScale);
     wrapper.appendChild(xLabelEl);
     this.appendChild(wrapper);
-    this.appendChild(liveRegion);
+    this.appendChild(liveRegion2);
     this.#grid = grid;
-    this.#liveRegion = liveRegion;
+    this.#liveRegion = liveRegion2;
     this.#qLabels = qLabels;
     if (draggable) {
       this.listen(this, "drag-surface:transfer", this.#onTransfer);
@@ -3948,6 +3948,19 @@ registerComponent("quadrant-grid", QuadrantGrid);
 
 // src/web-components/risk-register/logic.js
 var SCALE = 5;
+var MIDPOINT = (SCALE + 1) / 2;
+function score(v) {
+  const n = parseInt(String(v ?? ""), 10);
+  if (!Number.isFinite(n) || n < 1) return 0;
+  return Math.min(SCALE, n);
+}
+var toUnit = (v) => (v - 1) / (SCALE - 1);
+function quadrantFor(likelihood, impact) {
+  const right = likelihood > MIDPOINT;
+  const top = impact > MIDPOINT;
+  if (top) return right ? 0 : 1;
+  return right ? 3 : 2;
+}
 var RiskRegister = class _RiskRegister extends VBElement {
   setup() {
     const tmpl = this.querySelector(":scope > template");
@@ -3978,8 +3991,8 @@ var RiskRegister = class _RiskRegister extends VBElement {
       rows.push({
         id,
         title,
-        likelihood: parseInt(cells[1]?.textContent ?? "", 10) || 0,
-        impact: parseInt(cells[2]?.textContent ?? "", 10) || 0,
+        likelihood: score(cells[1]?.textContent),
+        impact: score(cells[2]?.textContent),
         owner: cells[3]?.textContent?.trim() || "",
         mitigation: cells[4]?.textContent?.trim() || ""
       });
@@ -3987,7 +4000,12 @@ var RiskRegister = class _RiskRegister extends VBElement {
     return rows;
   }
   #render(rows) {
-    this.#rows = rows;
+    this.#rows = rows.map((r) => ({
+      ...r,
+      likelihood: score(r?.likelihood),
+      impact: score(r?.impact)
+    }));
+    rows = this.#rows;
     [...this.children].forEach((c) => {
       if (c.tagName !== "TEMPLATE") c.remove();
     });
@@ -4019,22 +4037,24 @@ var RiskRegister = class _RiskRegister extends VBElement {
           <th data-sort="string">Title</th>
           <th data-sort="number">Likelihood</th>
           <th data-sort="number">Impact</th>
-          <th data-sort="number" data-rollup="product" data-heatmap="low-good">Severity</th>
+          <th data-sort="number" data-severity data-heatmap="low-good">Severity</th>
           <th data-sort="string">Owner</th>
           <th data-sort="string">Mitigation</th>
         </tr>
       </thead>
       <tbody>
-        ${rows.map((r) => `
-          <tr data-id="${_RiskRegister.#escape(r.id)}">
-            <td>${_RiskRegister.#escape(r.title)}</td>
+        ${rows.map((r) => {
+      const sev = r.likelihood && r.impact ? r.likelihood * r.impact : null;
+      return `
+          <tr data-id="${esc(r.id)}">
+            <td>${esc(r.title)}</td>
             <td>${r.likelihood || ""}</td>
             <td>${r.impact || ""}</td>
-            <td></td>
-            <td>${_RiskRegister.#escape(r.owner)}</td>
-            <td>${_RiskRegister.#escape(r.mitigation)}</td>
-          </tr>
-        `).join("")}
+            <td${sev === null ? "" : ` data-sort-value="${sev}"`}>${sev ?? ""}</td>
+            <td>${esc(r.owner)}</td>
+            <td>${esc(r.mitigation)}</td>
+          </tr>`;
+    }).join("")}
       </tbody>
     `;
     wrapper.appendChild(table);
@@ -4055,19 +4075,15 @@ var RiskRegister = class _RiskRegister extends VBElement {
     for (const r of rows) {
       if (!r.likelihood || !r.impact) continue;
       const dot = document.createElement("span");
-      const x = Math.min(1, Math.max(0, r.likelihood / SCALE));
-      const y = Math.min(1, Math.max(0, r.impact / SCALE));
-      dot.setAttribute("data-x", x.toFixed(3));
-      dot.setAttribute("data-y", y.toFixed(3));
+      dot.setAttribute("data-x", toUnit(r.likelihood).toFixed(3));
+      dot.setAttribute("data-y", toUnit(r.impact).toFixed(3));
+      dot.setAttribute("data-quadrant", String(quadrantFor(r.likelihood, r.impact)));
       dot.setAttribute("data-id", r.id);
-      dot.setAttribute("title", `${r.title} \u2014 likelihood ${r.likelihood}, impact ${r.impact}`);
+      dot.setAttribute("title", `${r.title} \u2014 likelihood ${r.likelihood}, impact ${r.impact}, severity ${r.likelihood * r.impact}`);
       dot.textContent = r.title;
       grid.appendChild(dot);
     }
     return grid;
-  }
-  static #escape(s) {
-    return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   }
   /** @type {Array<{id:string,title:string,likelihood:number,impact:number,owner:string,mitigation:string}>} */
   #rows = [];
@@ -4081,6 +4097,7 @@ var RiskRegister = class _RiskRegister extends VBElement {
 registerComponent("risk-register", RiskRegister);
 
 // src/web-components/traceability-matrix/logic.js
+var DEFAULT_MATCH_ATTRS = ["id", "story-id", "item-id"];
 var TraceabilityMatrix = class _TraceabilityMatrix extends VBElement {
   setup() {
     const rowsSel = this.getAttribute("rows");
@@ -4090,8 +4107,23 @@ var TraceabilityMatrix = class _TraceabilityMatrix extends VBElement {
       console.warn("traceability-matrix: requires rows, cols, and link-attr attributes");
       return false;
     }
-    queueMicrotask(() => this.#build(rowsSel, colsSel, linkAttr));
+    queueMicrotask(() => {
+      if (this.isConnected) this.#build(rowsSel, colsSel, linkAttr);
+    });
     return true;
+  }
+  teardown() {
+    this.#clearHighlight();
+  }
+  /**
+   * Identifiers a column element answers to.
+   * @param {Element} el
+   * @returns {string[]}
+   */
+  #keysOf(el) {
+    const matchAttr = this.getAttribute("match-attr");
+    const attrs = matchAttr ? [matchAttr] : DEFAULT_MATCH_ATTRS;
+    return attrs.map((a) => (el.getAttribute(a) || "").trim()).filter(Boolean);
   }
   #build(rowsSel, colsSel, linkAttr) {
     const rowEls = [...document.querySelectorAll(rowsSel)].filter((el) => el !== this && !this.contains(el));
@@ -4103,19 +4135,14 @@ var TraceabilityMatrix = class _TraceabilityMatrix extends VBElement {
     const rowAxisLabel = this.getAttribute("row-label") || "";
     const cellMark = this.getAttribute("cell-mark") || "\u2713";
     const flagOrphans = this.hasAttribute("flag-orphans");
-    const links = [];
-    const rowHits = /* @__PURE__ */ new WeakMap();
-    const colHits = /* @__PURE__ */ new WeakMap();
-    for (const rowEl of rowEls) {
+    const colKeys = colEls.map((el) => new Set(this.#keysOf(el)));
+    const linked = rowEls.map((rowEl) => {
       const refs = _TraceabilityMatrix.#parseRefs(rowEl.getAttribute(linkAttr));
-      for (const ref of refs) {
-        const colEl = colEls.find((c) => c.id === ref);
-        if (!colEl) continue;
-        links.push({ rowEl, colEl });
-        rowHits.set(rowEl, (rowHits.get(rowEl) || 0) + 1);
-        colHits.set(colEl, (colHits.get(colEl) || 0) + 1);
-      }
-    }
+      return colKeys.map((keys) => refs.some((r) => keys.has(r)));
+    });
+    const rowHits = linked.map((cells) => cells.filter(Boolean).length);
+    const colHits = colEls.map((_, j) => linked.filter((cells) => cells[j]).length);
+    const linkCount = rowHits.reduce((a, b) => a + b, 0);
     const wrapper = document.createElement("data-table");
     const table = document.createElement("table");
     const thead = document.createElement("thead");
@@ -4124,44 +4151,48 @@ var TraceabilityMatrix = class _TraceabilityMatrix extends VBElement {
     corner.setAttribute("data-sort", "string");
     corner.textContent = rowAxisLabel;
     headerRow.appendChild(corner);
-    for (const colEl of colEls) {
+    const colLabels = colEls.map((el) => _TraceabilityMatrix.#labelOf(el));
+    colEls.forEach((colEl, j) => {
       const th = document.createElement("th");
       th.setAttribute("data-sort", "number");
-      th.textContent = _TraceabilityMatrix.#labelOf(colEl);
-      th.dataset.colId = colEl.id || "";
-      if (flagOrphans && !colHits.get(colEl)) th.dataset.orphan = "";
+      th.textContent = colLabels[j];
+      th.dataset.colId = colEl.id || this.#keysOf(colEl)[0] || "";
+      th.dataset.colIndex = String(j);
+      if (flagOrphans && !colHits[j]) th.dataset.orphan = "";
       headerRow.appendChild(th);
-    }
+    });
     thead.appendChild(headerRow);
     table.appendChild(thead);
     const tbody = document.createElement("tbody");
-    for (const rowEl of rowEls) {
+    rowEls.forEach((rowEl, i) => {
       const tr = document.createElement("tr");
       tr.dataset.rowId = rowEl.id || "";
-      if (flagOrphans && !rowHits.get(rowEl)) tr.dataset.orphan = "";
+      tr.dataset.rowIndex = String(i);
+      if (flagOrphans && !rowHits[i]) tr.dataset.orphan = "";
+      const rowLabel = _TraceabilityMatrix.#labelOf(rowEl);
       const labelCell = document.createElement("th");
       labelCell.scope = "row";
-      labelCell.textContent = _TraceabilityMatrix.#labelOf(rowEl);
+      labelCell.appendChild(_TraceabilityMatrix.#button(rowLabel, `Highlight ${rowLabel}`));
       tr.appendChild(labelCell);
-      const refs = _TraceabilityMatrix.#parseRefs(rowEl.getAttribute(linkAttr));
-      for (const colEl of colEls) {
+      colEls.forEach((colEl, j) => {
         const td = document.createElement("td");
-        const matched = refs.includes(colEl.id);
+        const matched = linked[i][j];
         td.setAttribute("data-sort-value", matched ? "1" : "0");
-        if (matched) {
-          td.dataset.linked = "";
-          td.textContent = cellMark;
-          td.setAttribute("aria-label", "linked");
-        } else {
-          td.setAttribute("aria-label", "not linked");
-        }
-        td.dataset.colId = colEl.id || "";
+        if (matched) td.dataset.linked = "";
+        td.setAttribute("aria-label", matched ? "linked" : "not linked");
+        td.dataset.colId = colEl.id || this.#keysOf(colEl)[0] || "";
+        td.dataset.colIndex = String(j);
+        td.appendChild(_TraceabilityMatrix.#button(
+          matched ? cellMark : "",
+          `${rowLabel} \xD7 ${colLabels[j]}: ${matched ? "linked" : "not linked"}`
+        ));
         tr.appendChild(td);
-      }
+      });
       tbody.appendChild(tr);
-    }
+    });
     table.appendChild(tbody);
     wrapper.appendChild(table);
+    this.#clearHighlight();
     [...this.children].forEach((c) => {
       if (c.tagName !== "TEMPLATE") c.remove();
     });
@@ -4173,26 +4204,38 @@ var TraceabilityMatrix = class _TraceabilityMatrix extends VBElement {
       this.appendChild(h);
     }
     this.appendChild(wrapper);
-    this.#wrapper = wrapper;
-    this.#rowsByDom = new Map(rowEls.map((el) => [el.id, el]));
-    this.#colsByDom = new Map(colEls.map((el) => [el.id, el]));
+    this.#rowEls = rowEls;
+    this.#colEls = colEls;
     this.listen(wrapper, "click", this.#onCellClick);
     queueMicrotask(() => {
       this.dispatchEvent(new CustomEvent("traceability-matrix:ready", {
         bubbles: true,
-        detail: { rowCount: rowEls.length, colCount: colEls.length, linkCount: links.length }
+        detail: { rowCount: rowEls.length, colCount: colEls.length, linkCount }
       }));
     });
+  }
+  /**
+   * @param {string} text visible text
+   * @param {string} name accessible name
+   */
+  static #button(text, name) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tm-cell-btn";
+    btn.textContent = text;
+    btn.setAttribute("aria-label", name);
+    btn.setAttribute("aria-pressed", "false");
+    return btn;
   }
   #onCellClick = (e) => {
     const cell = e.target.closest('td, th[scope="row"]');
     if (!cell) return;
     const tr = cell.closest("tr");
     if (!tr) return;
-    const rowId = tr.dataset.rowId;
-    const colId = cell.dataset.colId;
-    const rowEl = rowId ? this.#rowsByDom.get(rowId) : null;
-    const colEl = colId ? this.#colsByDom.get(colId) : null;
+    const rowIdx = tr.dataset.rowIndex;
+    const colIdx = cell.dataset.colIndex;
+    const rowEl = rowIdx !== void 0 ? this.#rowEls[Number(rowIdx)] ?? null : null;
+    const colEl = colIdx !== void 0 ? this.#colEls[Number(colIdx)] ?? null : null;
     const wasOn = cell.hasAttribute("data-state-highlighted");
     this.#clearHighlight();
     if (wasOn) {
@@ -4203,22 +4246,27 @@ var TraceabilityMatrix = class _TraceabilityMatrix extends VBElement {
       return;
     }
     cell.setAttribute("data-state-highlighted", "");
-    if (rowEl) rowEl.setAttribute("data-state-highlighted", "");
-    if (colEl && colEl !== rowEl) colEl.setAttribute("data-state-highlighted", "");
+    cell.querySelector(".tm-cell-btn")?.setAttribute("aria-pressed", "true");
     tr.setAttribute("data-state-highlighted", "");
+    for (const el of [rowEl, colEl]) {
+      if (el && !this.#highlighted.includes(el)) {
+        el.setAttribute("data-state-highlighted", "");
+        this.#highlighted.push(el);
+      }
+    }
     this.dispatchEvent(new CustomEvent("traceability-matrix:highlight", {
       bubbles: true,
       detail: { rowEl, colEl, on: true }
     }));
   };
   #clearHighlight() {
-    if (!this.#wrapper) return;
-    this.#wrapper.querySelectorAll("[data-state-highlighted]").forEach((el) => el.removeAttribute("data-state-highlighted"));
-    document.querySelectorAll("[data-state-highlighted]").forEach((el) => {
-      if (this.#rowsByDom.has(el.id) || this.#colsByDom.has(el.id)) el.removeAttribute("data-state-highlighted");
-    });
+    this.querySelectorAll("[data-state-highlighted]").forEach((el) => el.removeAttribute("data-state-highlighted"));
+    this.querySelectorAll('.tm-cell-btn[aria-pressed="true"]').forEach((el) => el.setAttribute("aria-pressed", "false"));
+    for (const el of this.#highlighted) el.removeAttribute("data-state-highlighted");
+    this.#highlighted = [];
   }
   #renderEmpty() {
+    this.#clearHighlight();
     [...this.children].forEach((c) => {
       if (c.tagName !== "TEMPLATE") c.remove();
     });
@@ -4234,19 +4282,121 @@ var TraceabilityMatrix = class _TraceabilityMatrix extends VBElement {
   static #labelOf(el) {
     return el.getAttribute("data-matrix-label") || el.id || (el.textContent || "").trim().split("\n")[0].slice(0, 60) || "(unnamed)";
   }
-  /** @type {HTMLElement | null} */
-  #wrapper = null;
-  /** @type {Map<string, Element>} */
-  #rowsByDom = /* @__PURE__ */ new Map();
-  /** @type {Map<string, Element>} */
-  #colsByDom = /* @__PURE__ */ new Map();
+  /** @type {Element[]} */
+  #rowEls = [];
+  /** @type {Element[]} */
+  #colEls = [];
+  /** Source elements this matrix highlighted (cleared on re-highlight and teardown). @type {Element[]} */
+  #highlighted = [];
 };
 registerComponent("traceability-matrix", TraceabilityMatrix);
 
+// src/lib/dates.js
+var ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?![\d:T])/;
+var ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+function parseISODate(value) {
+  if (value == null || value === "") return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : startOfDay(value);
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? startOfDay(new Date(value)) : null;
+  }
+  const s = String(value).trim();
+  const m = s.match(ISO_DATE);
+  if (m) {
+    const d2 = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    if (d2.getMonth() !== Number(m[2]) - 1 || d2.getDate() !== Number(m[3])) return null;
+    return d2;
+  }
+  if (!ISO_TIMESTAMP.test(s)) return null;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : startOfDay(d);
+}
+function startOfDay(d) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+function toISODate(d) {
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+function addDays(d, n) {
+  const out = startOfDay(d);
+  out.setDate(out.getDate() + n);
+  return out;
+}
+function daysBetween(a, b) {
+  const ua = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+  const ub = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+  return Math.round((ub - ua) / 864e5);
+}
+function enumerateDays(start, end) {
+  const out = [];
+  for (let d = startOfDay(start); d <= end; d = addDays(d, 1)) out.push(toISODate(d));
+  return out;
+}
+function startOfMonth(d) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+function endOfMonth(d) {
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+}
+function startOfQuarter(d) {
+  return new Date(d.getFullYear(), Math.floor(d.getMonth() / 3) * 3, 1);
+}
+function addMonths(d, n) {
+  const first = new Date(d.getFullYear(), d.getMonth() + n, 1);
+  const last = endOfMonth(first).getDate();
+  return new Date(first.getFullYear(), first.getMonth(), Math.min(d.getDate(), last));
+}
+function formatDate(d, opts = { year: "numeric", month: "long", day: "numeric" }, locale = void 0) {
+  return d.toLocaleDateString(locale, opts);
+}
+
 // src/web-components/burndown-chart/logic.js
-var MS_PER_DAY = 864e5;
 var BurndownChart = class _BurndownChart extends VBElement {
+  static get observedAttributes() {
+    return ["start", "end", "total", "unit", "label", "weekends"];
+  }
+  /** True between connectedCallback and disconnectedCallback. */
+  #live = false;
+  connectedCallback() {
+    this.#live = true;
+    super.connectedCallback();
+  }
+  disconnectedCallback() {
+    this.#live = false;
+    super.disconnectedCallback();
+  }
+  attributeChangedCallback(_name, oldValue, newValue) {
+    if (oldValue === newValue || !this.#live) return;
+    if (this.hasAttribute("data-upgraded")) {
+      if (!this.#renderFromAttributes()) this.#clearRendered();
+    } else {
+      super.connectedCallback();
+    }
+  }
   setup() {
+    if (!this.#renderFromAttributes()) return false;
+    const { dayCount, total, scopeChanges } = this.#lastRender;
+    queueMicrotask(() => {
+      this.dispatchEvent(new CustomEvent("burndown-chart:ready", {
+        bubbles: true,
+        detail: { dayCount, total, scopeChanges }
+      }));
+    });
+    return true;
+  }
+  /** @type {{ dayCount: number, total: number, scopeChanges: number }} */
+  #lastRender = { dayCount: 0, total: 0, scopeChanges: 0 };
+  #clearRendered() {
+    [...this.children].forEach((c) => {
+      if (c.tagName !== "TEMPLATE") c.remove();
+    });
+  }
+  /** Read attributes + template and render. Returns false when the config is invalid. */
+  #renderFromAttributes() {
     const start = this.getAttribute("start");
     const end = this.getAttribute("end");
     const total = parseFloat(this.getAttribute("total") || "");
@@ -4254,8 +4404,8 @@ var BurndownChart = class _BurndownChart extends VBElement {
       console.warn("burndown-chart: requires start, end, and total attributes");
       return false;
     }
-    const startDate = _BurndownChart.#parseDate(start);
-    const endDate = _BurndownChart.#parseDate(end);
+    const startDate = parseISODate(start);
+    const endDate = parseISODate(end);
     if (!startDate || !endDate || endDate < startDate) {
       console.warn("burndown-chart: start/end dates invalid", start, end);
       return false;
@@ -4266,22 +4416,15 @@ var BurndownChart = class _BurndownChart extends VBElement {
     const tmpl = this.querySelector(":scope > template");
     const samples = tmpl ? _BurndownChart.#parseTemplate(tmpl) : [];
     const scopeChanges = samples.filter((s) => s.delta !== 0);
-    const dayLabels = _BurndownChart.#enumerateDays(startDate, endDate);
+    const dayLabels = enumerateDays(startDate, endDate);
     const ideal = _BurndownChart.#idealSeries(dayLabels, total, includeWeekends);
     const actual = _BurndownChart.#actualSeries(dayLabels, samples);
     this.#render({ label, unit, dayLabels, actual, ideal, scopeChanges });
-    queueMicrotask(() => {
-      this.dispatchEvent(new CustomEvent("burndown-chart:ready", {
-        bubbles: true,
-        detail: { dayCount: dayLabels.length, total, scopeChanges: scopeChanges.length }
-      }));
-    });
+    this.#lastRender = { dayCount: dayLabels.length, total, scopeChanges: scopeChanges.length };
     return true;
   }
   #render({ label, unit, dayLabels, actual, ideal, scopeChanges }) {
-    [...this.children].forEach((c) => {
-      if (c.tagName !== "TEMPLATE") c.remove();
-    });
+    this.#clearRendered();
     if (label) {
       const h = document.createElement("header");
       h.className = "bdc-label";
@@ -4316,7 +4459,12 @@ var BurndownChart = class _BurndownChart extends VBElement {
       for (const change of scopeChanges) {
         const li = document.createElement("li");
         const sign = change.delta > 0 ? "+" : "";
-        li.innerHTML = `<time datetime="${change.date}">${change.date}</time>: <strong>${sign}${change.delta} ${unit}</strong>`;
+        const time = document.createElement("time");
+        time.setAttribute("datetime", change.date);
+        time.textContent = change.date;
+        const strong = document.createElement("strong");
+        strong.textContent = `${sign}${change.delta} ${unit}`;
+        li.append(time, ": ", strong);
         list.appendChild(li);
       }
       notes.appendChild(list);
@@ -4328,34 +4476,19 @@ var BurndownChart = class _BurndownChart extends VBElement {
     const trs = tmpl.content.querySelectorAll("tr");
     for (const tr of trs) {
       const cells = [...tr.children];
-      const date = cells[0]?.textContent?.trim();
+      const raw = cells[0]?.textContent?.trim();
       const remaining = parseFloat(cells[1]?.textContent ?? "");
       const delta = parseFloat(cells[2]?.textContent ?? "0") || 0;
-      if (!date || !Number.isFinite(remaining)) continue;
+      if (!raw || !Number.isFinite(remaining)) continue;
+      const parsed = /^\d{4}-\d{2}-\d{2}/.test(raw) ? parseISODate(raw) : null;
+      const date = parsed ? toISODate(parsed) : raw;
       out.push({ date, remaining, delta });
     }
     return out;
   }
-  static #parseDate(s) {
-    const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (!m) return null;
-    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  }
-  static #toISO(d) {
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${d.getFullYear()}-${m}-${day}`;
-  }
-  static #enumerateDays(start, end) {
-    const days = [];
-    for (let t = start.getTime(); t <= end.getTime(); t += MS_PER_DAY) {
-      days.push(_BurndownChart.#toISO(new Date(t)));
-    }
-    return days;
-  }
   static #idealSeries(dayLabels, total, includeWeekends) {
     const isWeekend = (label) => {
-      const d = _BurndownChart.#parseDate(label);
+      const d = parseISODate(label);
       if (!d) return false;
       const w = d.getDay();
       return w === 0 || w === 6;
@@ -4385,10 +4518,23 @@ var BurndownChart = class _BurndownChart extends VBElement {
 registerComponent("burndown-chart", BurndownChart);
 
 // src/web-components/product-roadmap/logic.js
+var DRAG_THRESHOLD = 4;
+var STATUS_LABELS = {
+  planned: "Planned",
+  "in-progress": "In progress",
+  "at-risk": "At risk",
+  shipped: "Shipped",
+  blocked: "Blocked"
+};
+function statusLabel(s) {
+  return STATUS_LABELS[s] || (s.charAt(0).toUpperCase() + s.slice(1)).replace(/-/g, " ");
+}
+var instanceCounter = 0;
 var Roadmap = class _Roadmap extends VBElement {
   static get observedAttributes() {
     return ["start", "end", "view", "editable", "today-marker"];
   }
+  #uid = `rm-${++instanceCounter}`;
   setup() {
     if (!this.#readConfig()) return false;
     const lanes = [...this.querySelectorAll(":scope > section[data-lane]")];
@@ -4397,8 +4543,17 @@ var Roadmap = class _Roadmap extends VBElement {
       return false;
     }
     this.#sourceLanes = lanes;
+    this.listen(this, "click", this.#onClick);
+    this.listen(this, "keydown", this.#onKeyDown);
+    this.listen(this, "pointerdown", this.#onPointerDown);
+    this.listen(this, "pointermove", this.#onPointerMove);
+    this.listen(this, "pointerup", this.#onPointerUp);
+    this.listen(this, "pointercancel", this.#onPointerCancel);
     this.#render();
     return true;
+  }
+  teardown() {
+    this.#dragInfo = null;
   }
   /** Parse start/end/view/editable from attributes. Returns false when invalid. */
   #readConfig() {
@@ -4410,35 +4565,44 @@ var Roadmap = class _Roadmap extends VBElement {
     }
     const start = _Roadmap.#parseDate(startAttr, "start");
     const end = _Roadmap.#parseDate(endAttr, "end");
-    if (!start || !end || end <= start) {
+    if (!start || !end || end < start) {
       console.warn("product-roadmap: invalid start/end", startAttr, endAttr);
       return false;
     }
     this.#start = start;
-    this.#end = end;
-    this.#totalMs = end.getTime() - start.getTime();
+    this.#endExcl = addDays(end, 1);
+    this.#totalDays = daysBetween(start, this.#endExcl);
     this.#view = this.getAttribute("view") === "month" ? "month" : "quarter";
     this.#editable = this.hasAttribute("editable");
     return true;
   }
   attributeChangedCallback(_name, oldValue, newValue) {
     if (oldValue === newValue) return;
-    if (!this.isConnected || !this.#sourceLanes.length) return;
+    if (!this.isConnected || !this.hasAttribute("data-upgraded")) return;
     if (this.#readConfig()) this.#render();
   }
+  get #periodMonths() {
+    return this.#view === "month" ? 1 : 3;
+  }
   #render() {
+    const focused = (
+      /** @type {HTMLElement | null} */
+      this.querySelector(".rm-bar:focus")
+    );
+    const refocus = focused ? this.#initiativeFor.get(focused) : null;
     [...this.children].forEach((c) => {
       if (!this.#sourceLanes.includes(c)) c.remove();
     });
     this.#sourceLanes.forEach((lane) => {
       lane.hidden = true;
     });
+    this.#initiativeFor = /* @__PURE__ */ new WeakMap();
     const wrapper = document.createElement("div");
     wrapper.className = "rm-wrapper";
-    const axis = this.#buildAxis();
-    wrapper.appendChild(axis);
+    wrapper.appendChild(this.#buildAxis());
     const lanesEl = document.createElement("div");
     lanesEl.className = "rm-lanes";
+    let refocusBar = null;
     for (const sourceLane of this.#sourceLanes) {
       const laneName = sourceLane.getAttribute("data-lane") || "";
       const laneEl = document.createElement("section");
@@ -4454,34 +4618,45 @@ var Roadmap = class _Roadmap extends VBElement {
       const initiatives = [...sourceLane.querySelectorAll(":scope > article[data-start][data-end]")];
       for (const init of initiatives) {
         const bar = this.#buildBar(init, laneName);
-        if (bar) track.appendChild(bar);
-      }
-      if (this.#editable) {
-        track.addEventListener("dragover", this.#onTrackDragOver);
-        track.addEventListener("drop", this.#onTrackDrop);
+        if (!bar) continue;
+        track.appendChild(bar);
+        if (init === refocus) refocusBar = bar;
       }
       laneEl.appendChild(track);
       lanesEl.appendChild(laneEl);
     }
     wrapper.appendChild(lanesEl);
-    if (this.hasAttribute("today-marker") && this.#start && this.#end) {
-      const today = /* @__PURE__ */ new Date();
-      if (today >= this.#start && today <= this.#end) {
+    if (this.hasAttribute("today-marker") && this.#start && this.#endExcl) {
+      const today = parseISODate(/* @__PURE__ */ new Date());
+      if (today >= this.#start && today < this.#endExcl) {
         const marker = document.createElement("div");
         marker.className = "rm-today";
         marker.style.setProperty("--rm-x", this.#fractionFor(today).toFixed(4));
-        marker.title = `Today: ${_Roadmap.#toISO(today)}`;
+        marker.title = `Today: ${toISODate(today)}`;
         lanesEl.appendChild(marker);
       }
     }
+    if (this.#editable) {
+      const help = document.createElement("p");
+      help.id = `${this.#uid}-help`;
+      help.className = "rm-sr-only";
+      const unit = this.#view === "month" ? "month" : "quarter";
+      help.textContent = `Arrow keys move by one ${unit}. Shift plus arrow keys change the end date. Alt plus up or down arrow moves to another lane.`;
+      wrapper.appendChild(help);
+    }
+    const live = document.createElement("div");
+    live.className = "rm-sr-only";
+    live.setAttribute("role", "status");
+    live.setAttribute("aria-live", "polite");
+    wrapper.appendChild(live);
+    this.#liveRegion = live;
     this.appendChild(wrapper);
-    this.#wrapper = wrapper;
+    if (refocusBar) refocusBar.focus();
   }
   #buildAxis() {
     const axis = document.createElement("header");
     axis.className = "rm-axis";
-    const ticks = this.#enumerateTicks();
-    for (const tick of ticks) {
+    for (const tick of this.#enumerateTicks()) {
       const cell = document.createElement("div");
       cell.className = "rm-tick";
       cell.style.setProperty("--rm-x", tick.startFraction.toFixed(4));
@@ -4491,12 +4666,17 @@ var Roadmap = class _Roadmap extends VBElement {
     }
     return axis;
   }
+  /**
+   * @param {Element} initiative
+   * @param {string} laneName
+   */
   #buildBar(initiative, laneName) {
     const start = _Roadmap.#parseDate(initiative.getAttribute("data-start"), "start");
     const end = _Roadmap.#parseDate(initiative.getAttribute("data-end"), "end");
-    if (!start || !end || !this.#start || !this.#end) return null;
+    if (!start || !end || end < start || !this.#start || !this.#endExcl) return null;
+    const endExcl = addDays(end, 1);
     const clipStart = start < this.#start ? this.#start : start;
-    const clipEnd = end > this.#end ? this.#end : end;
+    const clipEnd = endExcl > this.#endExcl ? this.#endExcl : endExcl;
     if (clipStart >= clipEnd) return null;
     const x = this.#fractionFor(clipStart);
     const w = this.#fractionFor(clipEnd) - x;
@@ -4505,244 +4685,339 @@ var Roadmap = class _Roadmap extends VBElement {
     bar.style.setProperty("--rm-x", x.toFixed(4));
     bar.style.setProperty("--rm-w", w.toFixed(4));
     bar.dataset.lane = laneName;
-    bar.dataset.start = _Roadmap.#toISO(start);
-    bar.dataset.end = _Roadmap.#toISO(end);
-    if (initiative.dataset.status) bar.dataset.status = initiative.dataset.status;
+    bar.dataset.start = toISODate(start);
+    bar.dataset.end = toISODate(end);
+    const status = (
+      /** @type {HTMLElement} */
+      initiative.dataset.status || ""
+    );
+    if (status) bar.dataset.status = status;
     if (initiative.id) bar.dataset.sourceId = initiative.id;
-    if (this.#editable) bar.setAttribute("draggable", "true");
+    bar.tabIndex = 0;
+    bar.setAttribute("role", "button");
+    this.#initiativeFor.set(bar, initiative);
     const title = initiative.querySelector("h1, h2, h3, h4, h5, h6");
     const heading = document.createElement("span");
     heading.className = "rm-bar-title";
     heading.textContent = title ? title.textContent.trim() : (initiative.textContent || "").trim().split("\n")[0];
     bar.appendChild(heading);
-    bar.setAttribute("aria-label", `${heading.textContent} \u2014 ${bar.dataset.start} to ${bar.dataset.end} in ${laneName}`);
-    bar.addEventListener("click", (e) => {
-      if (this.#dragInfo) return;
-      this.dispatchEvent(new CustomEvent("product-roadmap:select", {
-        bubbles: true,
-        detail: {
-          initiative,
-          lane: laneName,
-          start: bar.dataset.start,
-          end: bar.dataset.end,
-          status: bar.dataset.status || null
-        }
-      }));
-    });
+    if (status) {
+      const badge = document.createElement("span");
+      badge.className = "rm-bar-status";
+      badge.textContent = statusLabel(status);
+      bar.appendChild(badge);
+    }
+    bar.setAttribute(
+      "aria-label",
+      `${heading.textContent} \u2014 ${formatDate(start)} to ${formatDate(end)} in ${laneName}` + (status ? `, status: ${statusLabel(status).toLowerCase()}` : "")
+    );
     if (this.#editable) {
+      bar.setAttribute("aria-describedby", `${this.#uid}-help`);
       const handle = document.createElement("span");
       handle.className = "rm-bar-handle";
-      handle.setAttribute("aria-label", "Resize end date");
+      handle.setAttribute("aria-hidden", "true");
+      handle.title = "Drag to change the end date";
       bar.appendChild(handle);
-      handle.addEventListener("pointerdown", (e) => this.#startResize(e, bar, initiative));
-      bar.addEventListener("pointerdown", (e) => {
-        if (e.target === handle) return;
-        this.#startMove(e, bar, initiative);
-      });
-      bar.addEventListener("dragstart", (e) => {
-        if (e.dataTransfer) {
-          e.dataTransfer.effectAllowed = "move";
-          e.dataTransfer.setData("text/plain", initiative.id || bar.dataset.sourceId || "");
-        }
-        this.#draggingInitiative = initiative;
-        this.#draggingFromLane = laneName;
-      });
-      bar.addEventListener("dragend", () => {
-        this.#draggingInitiative = null;
-        this.#draggingFromLane = null;
-      });
     }
     return bar;
   }
-  /* --- pointer drag (move along time axis) --- */
-  #startMove(e, bar, initiative) {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    const trackRect = bar.parentElement.getBoundingClientRect();
-    const startX = e.clientX;
-    const startFraction = parseFloat(bar.style.getPropertyValue("--rm-x")) || 0;
-    const widthFraction = parseFloat(bar.style.getPropertyValue("--rm-w")) || 0;
-    this.#dragInfo = { kind: "move", bar, initiative, trackRect, startX, startFraction, widthFraction };
-    bar.setPointerCapture(e.pointerId);
-    bar.addEventListener("pointermove", this.#onPointerMove);
-    bar.addEventListener("pointerup", this.#onPointerUp);
-    bar.addEventListener("pointercancel", this.#onPointerUp);
-  }
-  #startResize(e, bar, initiative) {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const trackRect = bar.parentElement.getBoundingClientRect();
-    const startX = e.clientX;
-    const startFraction = parseFloat(bar.style.getPropertyValue("--rm-x")) || 0;
-    const widthFraction = parseFloat(bar.style.getPropertyValue("--rm-w")) || 0;
-    this.#dragInfo = { kind: "resize", bar, initiative, trackRect, startX, startFraction, widthFraction };
-    bar.setPointerCapture(e.pointerId);
-    bar.addEventListener("pointermove", this.#onPointerMove);
-    bar.addEventListener("pointerup", this.#onPointerUp);
-    bar.addEventListener("pointercancel", this.#onPointerUp);
-  }
-  #onPointerMove = (e) => {
-    if (!this.#dragInfo) return;
-    const { kind, bar, trackRect, startX, startFraction, widthFraction } = this.#dragInfo;
-    const dxFraction = (e.clientX - startX) / trackRect.width;
-    if (kind === "move") {
-      const newStart = Math.max(0, Math.min(1 - widthFraction, startFraction + dxFraction));
-      bar.style.setProperty("--rm-x", newStart.toFixed(4));
-    } else if (kind === "resize") {
-      const newWidth = Math.max(0.02, Math.min(1 - startFraction, widthFraction + dxFraction));
-      bar.style.setProperty("--rm-w", newWidth.toFixed(4));
-    }
-  };
-  #onPointerUp = (e) => {
-    if (!this.#dragInfo) return;
-    const { kind, bar, initiative } = this.#dragInfo;
-    bar.releasePointerCapture(e.pointerId);
-    bar.removeEventListener("pointermove", this.#onPointerMove);
-    bar.removeEventListener("pointerup", this.#onPointerUp);
-    bar.removeEventListener("pointercancel", this.#onPointerUp);
-    const xFrac = parseFloat(bar.style.getPropertyValue("--rm-x")) || 0;
-    const wFrac = parseFloat(bar.style.getPropertyValue("--rm-w")) || 0;
-    const snappedStart = this.#snapDate(this.#dateForFraction(xFrac));
-    const snappedEnd = this.#snapDate(this.#dateForFraction(xFrac + wFrac));
-    bar.dataset.start = _Roadmap.#toISO(snappedStart);
-    bar.dataset.end = _Roadmap.#toISO(snappedEnd);
-    const snappedX = this.#fractionFor(snappedStart);
-    const snappedW = this.#fractionFor(snappedEnd) - snappedX;
-    bar.style.setProperty("--rm-x", snappedX.toFixed(4));
-    bar.style.setProperty("--rm-w", snappedW.toFixed(4));
-    if (initiative) {
-      initiative.setAttribute("data-start", bar.dataset.start ?? "");
-      initiative.setAttribute("data-end", bar.dataset.end ?? "");
-    }
-    this.dispatchEvent(new CustomEvent(kind === "move" ? "product-roadmap:reschedule" : "product-roadmap:resize", {
+  /* --- selection --- */
+  /** @param {HTMLElement} bar */
+  #select(bar) {
+    const initiative = this.#initiativeFor.get(bar);
+    if (!initiative) return;
+    this.dispatchEvent(new CustomEvent("product-roadmap:select", {
       bubbles: true,
       detail: {
         initiative,
         lane: bar.dataset.lane,
         start: bar.dataset.start,
-        end: bar.dataset.end
+        end: bar.dataset.end,
+        status: bar.dataset.status || null
       }
     }));
+  }
+  /** @param {Event} e */
+  #barFromEvent(e) {
+    const t = (
+      /** @type {Element} */
+      e.target
+    );
+    const bar = (
+      /** @type {HTMLElement | null} */
+      t?.closest?.(".rm-bar")
+    );
+    return bar && this.contains(bar) ? bar : null;
+  }
+  #onClick = (e) => {
+    const bar = this.#barFromEvent(e);
+    if (!bar) return;
+    if (this.#suppressClick) return;
+    this.#select(bar);
+  };
+  #onKeyDown = (e) => {
+    const ke = (
+      /** @type {KeyboardEvent} */
+      e
+    );
+    const bar = this.#barFromEvent(ke);
+    if (!bar || ke.target !== bar) return;
+    if (ke.key === "Enter" || ke.key === " ") {
+      ke.preventDefault();
+      this.#select(bar);
+      return;
+    }
+    if (!this.#editable) return;
+    const initiative = this.#initiativeFor.get(bar);
+    if (!initiative) return;
+    const p = this.#periodMonths;
+    if (ke.altKey && (ke.key === "ArrowUp" || ke.key === "ArrowDown")) {
+      ke.preventDefault();
+      const names = this.#sourceLanes.map((l) => l.getAttribute("data-lane") || "");
+      const idx = names.indexOf(bar.dataset.lane || "");
+      const next = names[idx + (ke.key === "ArrowUp" ? -1 : 1)];
+      if (idx === -1 || next === void 0) return;
+      this.#commit(initiative, bar.dataset.lane || "", next, null, null, "move");
+      return;
+    }
+    if (ke.key !== "ArrowLeft" && ke.key !== "ArrowRight") return;
+    ke.preventDefault();
+    const dir = ke.key === "ArrowLeft" ? -1 : 1;
+    const start = parseISODate(bar.dataset.start);
+    const endExcl = addDays(parseISODate(bar.dataset.end), 1);
+    if (ke.shiftKey) {
+      if (dir > 0 && endExcl >= this.#endExcl) return;
+      const nextEndExcl = addMonths(endExcl, dir * p);
+      if (nextEndExcl <= start) return;
+      this.#commit(initiative, bar.dataset.lane || "", null, start, addDays(nextEndExcl, -1), "resize");
+    } else {
+      if (dir < 0 && start <= this.#start) return;
+      if (dir > 0 && endExcl >= this.#endExcl) return;
+      const nextStart = addMonths(start, dir * p);
+      const nextEndExcl = addMonths(endExcl, dir * p);
+      this.#commit(initiative, bar.dataset.lane || "", null, nextStart, addDays(nextEndExcl, -1), "reschedule");
+    }
+  };
+  /* --- pointer drag (time axis + cross-lane) --- */
+  #onPointerDown = (e) => {
+    const pe = (
+      /** @type {PointerEvent} */
+      e
+    );
+    if (!this.#editable || pe.button !== 0) return;
+    const bar = this.#barFromEvent(pe);
+    if (!bar) return;
+    const track = bar.parentElement;
+    if (!track) return;
+    const isHandle = (
+      /** @type {Element} */
+      pe.target.classList?.contains("rm-bar-handle")
+    );
+    this.#dragInfo = {
+      kind: isHandle ? "resize" : "move",
+      pointerId: pe.pointerId,
+      bar,
+      trackRect: track.getBoundingClientRect(),
+      startX: pe.clientX,
+      startY: pe.clientY,
+      startFraction: parseFloat(bar.style.getPropertyValue("--rm-x")) || 0,
+      widthFraction: parseFloat(bar.style.getPropertyValue("--rm-w")) || 0,
+      moved: false,
+      targetLane: bar.dataset.lane || ""
+    };
+  };
+  #onPointerMove = (e) => {
+    const pe = (
+      /** @type {PointerEvent} */
+      e
+    );
+    const info = this.#dragInfo;
+    if (!info || pe.pointerId !== info.pointerId) return;
+    const dx = pe.clientX - info.startX;
+    const dy = pe.clientY - info.startY;
+    if (!info.moved) {
+      if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+      info.moved = true;
+      info.bar.setAttribute("data-dragging", "");
+      try {
+        info.bar.setPointerCapture(pe.pointerId);
+      } catch {
+      }
+    }
+    const dxFraction = dx / info.trackRect.width;
+    if (info.kind === "move") {
+      const newStart = Math.max(0, Math.min(1 - info.widthFraction, info.startFraction + dxFraction));
+      info.bar.style.setProperty("--rm-x", newStart.toFixed(4));
+      let target = info.bar.dataset.lane || "";
+      for (
+        const track of
+        /** @type {NodeListOf<HTMLElement>} */
+        this.querySelectorAll(".rm-track")
+      ) {
+        const r = track.getBoundingClientRect();
+        if (pe.clientY >= r.top && pe.clientY <= r.bottom) {
+          target = track.dataset.lane || "";
+        }
+        track.toggleAttribute("data-drop-target", false);
+      }
+      info.targetLane = target;
+      if (target !== info.bar.dataset.lane) {
+        this.querySelector(`.rm-track[data-lane="${CSS.escape(target)}"]`)?.setAttribute("data-drop-target", "");
+      }
+    } else {
+      const newWidth = Math.max(0.01, Math.min(1 - info.startFraction, info.widthFraction + dxFraction));
+      info.bar.style.setProperty("--rm-w", newWidth.toFixed(4));
+    }
+  };
+  #onPointerUp = (e) => {
+    const pe = (
+      /** @type {PointerEvent} */
+      e
+    );
+    const info = this.#dragInfo;
+    if (!info || pe.pointerId !== info.pointerId) return;
+    this.#dragInfo = null;
+    if (!info.moved) return;
+    this.#suppressClick = true;
     setTimeout(() => {
-      this.#dragInfo = null;
+      this.#suppressClick = false;
     }, 0);
+    const initiative = this.#initiativeFor.get(info.bar);
+    if (!initiative) return;
+    const xFrac = parseFloat(info.bar.style.getPropertyValue("--rm-x")) || 0;
+    const wFrac = parseFloat(info.bar.style.getPropertyValue("--rm-w")) || 0;
+    let start = parseISODate(info.bar.dataset.start);
+    let endExcl = addDays(parseISODate(info.bar.dataset.end), 1);
+    if (info.kind === "move") {
+      start = this.#snapToBoundary(this.#dateForFraction(xFrac));
+      endExcl = this.#snapToBoundary(this.#dateForFraction(xFrac + wFrac));
+    } else {
+      endExcl = this.#snapToBoundary(this.#dateForFraction(xFrac + wFrac));
+    }
+    if (endExcl <= start) endExcl = addMonths(start, this.#periodMonths);
+    const fromLane = info.bar.dataset.lane || "";
+    const toLane = info.kind === "move" && info.targetLane !== fromLane ? info.targetLane : null;
+    this.#commit(initiative, fromLane, toLane, start, addDays(endExcl, -1), info.kind === "move" ? "reschedule" : "resize");
   };
-  #onTrackDragOver = (e) => {
-    if (!this.#draggingInitiative) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-  #onTrackDrop = (e) => {
-    if (!this.#draggingInitiative) return;
-    e.preventDefault();
-    const targetLane = e.currentTarget.dataset.lane;
-    const initiative = this.#draggingInitiative;
-    const fromLane = this.#draggingFromLane;
-    if (targetLane === fromLane) return;
-    const newSourceLane = this.#sourceLanes.find((l) => l.getAttribute("data-lane") === targetLane);
-    if (newSourceLane) newSourceLane.appendChild(initiative);
-    this.dispatchEvent(new CustomEvent("product-roadmap:move", {
-      bubbles: true,
-      detail: {
-        initiative,
-        fromLane,
-        toLane: targetLane,
-        start: initiative.getAttribute("data-start"),
-        end: initiative.getAttribute("data-end")
-      }
-    }));
+  #onPointerCancel = (e) => {
+    const pe = (
+      /** @type {PointerEvent} */
+      e
+    );
+    if (!this.#dragInfo || pe.pointerId !== this.#dragInfo.pointerId) return;
+    this.#dragInfo = null;
     this.#render();
   };
-  /* --- date math --- */
-  #fractionFor(date) {
-    if (!this.#start) return 0;
-    const ms = date.getTime() - this.#start.getTime();
-    return Math.max(0, Math.min(1, ms / this.#totalMs));
-  }
-  #dateForFraction(frac) {
-    const start = this.#start ?? /* @__PURE__ */ new Date();
-    return new Date(start.getTime() + frac * this.#totalMs);
-  }
-  #snapDate(date) {
-    if (this.#view === "month") {
-      return new Date(date.getFullYear(), date.getMonth(), 1);
+  /**
+   * Apply a date and/or lane change to the source <article>, fire the
+   * matching events, and re-render. Unchanged values fire nothing.
+   * @param {Element} initiative
+   * @param {string} fromLane
+   * @param {string | null} toLane - new lane, or null to stay
+   * @param {Date | null} start - new start, or null to keep
+   * @param {Date | null} end - new inclusive end, or null to keep
+   * @param {'reschedule' | 'resize' | 'move'} dateEvent - event to fire if the dates changed
+   */
+  #commit(initiative, fromLane, toLane, start, end, dateEvent) {
+    const oldStart = toISODate(_Roadmap.#parseDate(initiative.getAttribute("data-start"), "start"));
+    const oldEnd = toISODate(_Roadmap.#parseDate(initiative.getAttribute("data-end"), "end"));
+    const newStart = start ? toISODate(start) : oldStart;
+    const newEnd = end ? toISODate(end) : oldEnd;
+    const datesChanged = newStart !== oldStart || newEnd !== oldEnd;
+    const targetLane = toLane !== null && toLane !== fromLane ? this.#sourceLanes.find((l) => l.getAttribute("data-lane") === toLane) : null;
+    const laneChanged = !!targetLane;
+    if (datesChanged) {
+      initiative.setAttribute("data-start", newStart);
+      initiative.setAttribute("data-end", newEnd);
     }
-    const month = date.getMonth();
-    const qStartMonth = Math.floor(month / 3) * 3;
-    return new Date(date.getFullYear(), qStartMonth, 1);
+    if (targetLane) targetLane.appendChild(initiative);
+    this.#render();
+    if (!datesChanged && !laneChanged) return;
+    const lane = laneChanged ? toLane : fromLane;
+    const title = initiative.querySelector("h1, h2, h3, h4, h5, h6")?.textContent?.trim() || "Initiative";
+    this.#announce(`${title}: ${formatDate(parseISODate(newStart))} to ${formatDate(parseISODate(newEnd))} in ${lane}`);
+    if (datesChanged && dateEvent !== "move") {
+      this.dispatchEvent(new CustomEvent(`product-roadmap:${dateEvent}`, {
+        bubbles: true,
+        detail: { initiative, lane, start: newStart, end: newEnd }
+      }));
+    }
+    if (laneChanged) {
+      this.dispatchEvent(new CustomEvent("product-roadmap:move", {
+        bubbles: true,
+        detail: { initiative, fromLane, toLane, start: newStart, end: newEnd }
+      }));
+    }
+  }
+  /** @param {string} msg */
+  #announce(msg) {
+    if (this.#liveRegion) this.#liveRegion.textContent = msg;
+  }
+  /* --- date math (calendar days, DST-safe) --- */
+  /** @param {Date} date */
+  #fractionFor(date) {
+    if (!this.#start || !this.#totalDays) return 0;
+    return Math.max(0, Math.min(1, daysBetween(this.#start, date) / this.#totalDays));
+  }
+  /** @param {number} frac */
+  #dateForFraction(frac) {
+    return addDays(this.#start ?? /* @__PURE__ */ new Date(), Math.round(frac * this.#totalDays));
+  }
+  /** @param {Date} date */
+  #periodStart(date) {
+    return this.#view === "month" ? startOfMonth(date) : startOfQuarter(date);
+  }
+  /** Round to the nearest period boundary (quarter or month start). @param {Date} date */
+  #snapToBoundary(date) {
+    const a = this.#periodStart(date);
+    const b = addMonths(a, this.#periodMonths);
+    return daysBetween(a, date) <= daysBetween(date, b) ? a : b;
   }
   #enumerateTicks() {
     const ticks = [];
     const start = this.#start;
-    const end = this.#end;
+    const end = this.#endExcl;
     if (!start || !end) return ticks;
-    if (this.#view === "quarter") {
-      let cursor = this.#snapDate(start);
-      while (cursor < end) {
-        const next = new Date(cursor.getFullYear(), cursor.getMonth() + 3, 1);
-        const startFraction = this.#fractionFor(cursor < start ? start : cursor);
-        const endFraction = this.#fractionFor(next > end ? end : next);
-        const q = Math.floor(cursor.getMonth() / 3) + 1;
-        ticks.push({ startFraction, endFraction, label: `Q${q} ${cursor.getFullYear()}` });
-        cursor = next;
-      }
-    } else {
-      let cursor = new Date(start.getFullYear(), start.getMonth(), 1);
-      while (cursor < end) {
-        const next = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-        const startFraction = this.#fractionFor(cursor < start ? start : cursor);
-        const endFraction = this.#fractionFor(next > end ? end : next);
-        const m = cursor.toLocaleString(void 0, { month: "short" });
-        ticks.push({ startFraction, endFraction, label: `${m} ${cursor.getFullYear()}` });
-        cursor = next;
-      }
+    const p = this.#periodMonths;
+    for (let cursor = this.#periodStart(start); cursor < end; cursor = addMonths(cursor, p)) {
+      const next = addMonths(cursor, p);
+      const startFraction = this.#fractionFor(cursor < start ? start : cursor);
+      const endFraction = this.#fractionFor(next > end ? end : next);
+      const label = this.#view === "quarter" ? `Q${Math.floor(cursor.getMonth() / 3) + 1} ${cursor.getFullYear()}` : `${cursor.toLocaleString(void 0, { month: "short" })} ${cursor.getFullYear()}`;
+      ticks.push({ startFraction, endFraction, label });
     }
     return ticks;
   }
-  /** Parse "2026-Q3", "2026-Q3-end", or ISO date. `kind` decides how
-      "YYYY-Qn" without explicit position resolves: 'start' → first day
-      of the quarter; 'end' → last day. */
+  /** Parse "2026-Q3" or an ISO date. `kind` decides how "YYYY-Qn"
+      resolves: 'start' → first day of the quarter; 'end' → last day.
+      @param {string | null} value @param {'start' | 'end'} kind */
   static #parseDate(value, kind) {
     if (!value) return null;
-    const q = String(value).match(/^(\d{4})-Q([1-4])$/i);
+    const q = String(value).trim().match(/^(\d{4})-Q([1-4])$/i);
     if (q) {
       const year = Number(q[1]);
-      const quarter = Number(q[2]);
-      const monthStart = (quarter - 1) * 3;
-      if (kind === "end") {
-        return new Date(year, monthStart + 3, 0);
-      }
-      return new Date(year, monthStart, 1);
+      const monthStart = (Number(q[2]) - 1) * 3;
+      return kind === "end" ? new Date(year, monthStart + 3, 0) : new Date(year, monthStart, 1);
     }
-    const iso = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
-    const d = new Date(value);
-    return isNaN(d.getTime()) ? null : d;
-  }
-  static #toISO(d) {
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${d.getFullYear()}-${m}-${day}`;
+    return parseISODate(value);
   }
   /** @type {Date | null} */
   #start = null;
-  /** @type {Date | null} */
-  #end = null;
-  #totalMs = 0;
+  /** @type {Date | null} first day AFTER the visible range */
+  #endExcl = null;
+  #totalDays = 0;
   /** @type {"quarter" | "month"} */
   #view = "quarter";
   #editable = false;
+  #suppressClick = false;
   /** @type {Element[]} */
   #sourceLanes = [];
+  /** @type {WeakMap<HTMLElement, Element>} rendered bar → source <article> */
+  #initiativeFor = /* @__PURE__ */ new WeakMap();
   /** @type {HTMLElement | null} */
-  #wrapper = null;
-  /** @type {{ kind: string, bar: HTMLElement, initiative?: Element, trackRect: DOMRect, startX: number, startFraction: number, widthFraction: number } | null} */
+  #liveRegion = null;
+  /** @type {{ kind: 'move' | 'resize', pointerId: number, bar: HTMLElement, trackRect: DOMRect, startX: number, startY: number, startFraction: number, widthFraction: number, moved: boolean, targetLane: string } | null} */
   #dragInfo = null;
-  /** @type {Element | null} */
-  #draggingInitiative = null;
-  /** @type {Element | null} */
-  #draggingFromLane = null;
 };
 registerComponent("product-roadmap", Roadmap);
 
@@ -6399,7 +6674,9 @@ var VBStore = {
 
 // src/utils/copy-init.js
 var COPIED_DURATION = 1500;
-var ANNOUNCE_DURATION = 1e3;
+var ANNOUNCE_DURATION = 5e3;
+var COPY_EVENT = "vb:copy";
+var PASTE_EVENT = "vb:paste";
 var SELECTOR = "[data-copy], [data-copy-target], [data-paste-target]";
 var DEFAULT_ANNOUNCE = "Copied to clipboard";
 var DEFAULT_PASTE_ANNOUNCE = "Pasted from clipboard";
@@ -6415,7 +6692,7 @@ async function copyText(text, options = {}) {
   applyFeedback({ button, duration, announceMessage, eventDetail: { text } });
   return true;
 }
-function applyFeedback({ button, duration, announceMessage, eventDetail, state = "copied", eventName = "copy" }) {
+function applyFeedback({ button, duration, announceMessage, eventDetail, state = "copied", eventName = COPY_EVENT }) {
   if (button) {
     button.dataset.state = state;
     const prior = resetTimers.get(button);
@@ -6429,7 +6706,7 @@ function applyFeedback({ button, duration, announceMessage, eventDetail, state =
       detail: eventDetail
     }));
   }
-  announce(announceMessage, button ?? document.body);
+  announce(announceMessage);
 }
 async function pasteFromClipboard(target, options = {}) {
   const { button, announceMessage = DEFAULT_PASTE_ANNOUNCE, duration = COPIED_DURATION } = options;
@@ -6453,7 +6730,7 @@ async function pasteFromClipboard(target, options = {}) {
     announceMessage,
     eventDetail: { text },
     state: "pasted",
-    eventName: "paste"
+    eventName: PASTE_EVENT
   });
   return text;
 }
@@ -6486,14 +6763,33 @@ function getText(button) {
   }
   return "";
 }
-function announce(message, context) {
-  const el = document.createElement("div");
+var clearTimer;
+function liveRegion() {
+  let el = (
+    /** @type {HTMLElement | null} */
+    document.querySelector("body > [data-vb-clipboard-status]")
+  );
+  if (el) return el;
+  el = document.createElement("div");
+  el.setAttribute("data-vb-clipboard-status", "");
   el.setAttribute("role", "status");
   el.setAttribute("aria-live", "polite");
-  el.className = "visually-hidden";
-  el.textContent = message;
-  context.appendChild(el);
-  setTimeout(() => el.remove(), ANNOUNCE_DURATION);
+  el.setAttribute("aria-atomic", "true");
+  el.style.cssText = "position:absolute;inline-size:1px;block-size:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;";
+  document.body.appendChild(el);
+  return el;
+}
+function announce(message) {
+  if (!document.body) return;
+  const region = liveRegion();
+  region.textContent = "";
+  requestAnimationFrame(() => {
+    region.textContent = message;
+    clearTimeout(clearTimer);
+    clearTimer = setTimeout(() => {
+      if (region.textContent === message) region.textContent = "";
+    }, ANNOUNCE_DURATION);
+  });
 }
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => initCopyButtons());
@@ -6534,11 +6830,19 @@ var MemoryAdapter = class {
     this.#pins.set(pin.id, pin);
     return pin;
   }
-  async update(id, changes) {
-    const pin = this.#pins.get(id);
-    if (!pin) throw new Error(`Pin ${id} not found`);
-    Object.assign(pin, changes);
-    return pin;
+  /**
+   * Merge `changes` into the stored pin. Upserts: a pin this adapter has
+   * never seen (loaded via `src` or `.pins`) is stored from `pin` (or just
+   * its id) plus the changes, so resolving / replying always works.
+   * @param {string} id
+   * @param {object} changes
+   * @param {object} [pin] the component's full copy of the pin
+   */
+  async update(id, changes, pin) {
+    const stored = this.#pins.get(id) ?? { ...pin ?? {}, id };
+    Object.assign(stored, changes);
+    this.#pins.set(id, stored);
+    return stored;
   }
   async remove(id) {
     this.#pins.delete(id);
@@ -6566,10 +6870,16 @@ var LocalStorageAdapter = class {
     await this.#write(pins);
     return pin;
   }
-  async update(id, changes) {
+  /**
+   * Merge `changes` into the stored pin; upserts like MemoryAdapter.update.
+   * @param {string} id
+   * @param {object} changes
+   * @param {object} [pin]
+   */
+  async update(id, changes, pin) {
     const pins = await this.#read();
-    const idx = pins.findIndex((p) => p.id === id);
-    if (idx === -1) throw new Error(`Pin ${id} not found`);
+    let idx = pins.findIndex((p) => p.id === id);
+    if (idx === -1) idx = pins.push({ ...pin ?? {}, id }) - 1;
     Object.assign(pins[idx], changes);
     await this.#write(pins);
     return pins[idx];
@@ -6616,14 +6926,59 @@ var RestAdapter = class {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   }
 };
+var pct = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0;
+};
 var ReviewSurface = class extends HTMLElement {
   static get observedAttributes() {
     return ["src", "editable", "adapter", "endpoint", "storage-key", "author", "compact", "show-resolved"];
   }
-  #slotCache = /* @__PURE__ */ new Map();
+  /** True after the first connect (adapter resolved, initial load started). */
+  #initialized = false;
+  /** True once the initial data (src / adapter / .pins) has settled. */
+  #loaded = false;
+  #readyFired = false;
+  /** Set when `.pins` is assigned; stops the first connect reloading from the adapter. */
+  #pinsAssigned = false;
+  /** Bumped by every load and every `.pins` / importPins() so stale async loads are dropped. */
+  #loadSeq = 0;
+  /** @type {HTMLElement} */
+  #overlay;
+  /** @type {HTMLElement} */
+  #popoverHost;
+  /** @type {HTMLElement} */
+  #toolbarHost;
+  /** @type {HTMLElement} */
+  #status;
+  /** @type {HTMLElement} */
+  #live;
   constructor() {
     super();
-    this.attachShadow({ mode: "open" });
+    const root = this.attachShadow({ mode: "open" });
+    root.innerHTML = `<style>${styles5}</style>
+      <div class="rs-status state-msg" hidden></div>
+      <div class="rs-container">
+        <slot></slot>
+        <div class="rs-overlay" role="group" aria-label="Review pins"></div>
+        <div class="rs-popover-host" style="display:contents"></div>
+      </div>
+      <div class="rs-toolbar-host" style="display:contents"></div>
+      <div class="rs-live" role="status" aria-live="polite" aria-atomic="true"></div>`;
+    const q = (sel) => (
+      /** @type {HTMLElement} */
+      root.querySelector(sel)
+    );
+    this.#status = q(".rs-status");
+    this.#overlay = q(".rs-overlay");
+    this.#popoverHost = q(".rs-popover-host");
+    this.#toolbarHost = q(".rs-toolbar-host");
+    this.#live = q(".rs-live");
+    root.addEventListener("click", (e) => this.#onClick(e));
+    root.addEventListener("keydown", (e) => this.#onKeydown(
+      /** @type {KeyboardEvent} */
+      e
+    ));
     this.__pins = [];
     this.__adapter = null;
     this._activePin = null;
@@ -6636,16 +6991,21 @@ var ReviewSurface = class extends HTMLElement {
   }
   /**
    * Replace the pin list and re-render. Idempotent — assigning the
-   * same array reference is a no-op. Emits review-surface:pins-changed
-   * with `source: 'property'` so reactive consumers can filter their
-   * own assignments out of the event stream.
+   * same array reference is a no-op. May be assigned before the element
+   * is connected: the first connect then keeps these pins instead of
+   * loading from the adapter. Emits review-surface:pins-changed with
+   * `source: 'property'`.
    * @param {Object[]} data
    */
   set pins(data) {
     const next = Array.isArray(data) ? data : [];
     if (this.__pins === next) return;
-    this.__pins = next;
-    if (this.isConnected) this._render();
+    this.__pins = /** @type {any} */
+    next;
+    this.#pinsAssigned = true;
+    this.#loadSeq++;
+    this.#loaded = true;
+    if (this.#initialized) this._render();
     this.dispatchEvent(new CustomEvent("review-surface:pins-changed", {
       detail: { pins: next, source: "property" },
       bubbles: true,
@@ -6656,27 +7016,31 @@ var ReviewSurface = class extends HTMLElement {
   get adapter() {
     return this.__adapter;
   }
-  /** @param {Object} adapterInstance */
+  /**
+   * Set a persistence adapter. Before connect it is simply kept (the
+   * first connect loads from it unless `.pins` was assigned); once
+   * connected, pins are reloaded from it.
+   * @param {Object} adapterInstance
+   */
   set adapter(adapterInstance) {
-    this.__adapter = adapterInstance;
-    if (this.isConnected) this._loadFromAdapter();
-  }
-  /* ── Slot caching ───────────────────────────────── */
-  #cacheSlotValues() {
-    for (const child of this.children) {
-      const slot = child.getAttribute("slot");
-      if (slot) this.#slotCache.set(slot, child.textContent.trim());
-    }
-  }
-  _resolve(attr) {
-    return this.getAttribute(attr) || this.#slotCache.get(attr) || "";
+    this.__adapter = /** @type {any} */
+    adapterInstance;
+    if (this.#initialized && this.isConnected) this._loadFromAdapter();
   }
   /* ── Lifecycle ─────────────────────────────────── */
   connectedCallback() {
-    this.#cacheSlotValues();
     this.setAttribute("data-upgraded", "");
-    this.#resolveAdapter();
-    if (this.hasAttribute("src")) {
+    if (this.#initialized) {
+      this._render();
+      return;
+    }
+    this.#initialized = true;
+    if (!this.__adapter) this.#resolveAdapter();
+    this.dispatchEvent(new CustomEvent("review-surface:upgraded", { bubbles: true, composed: true }));
+    if (this.#pinsAssigned) {
+      this.#loaded = true;
+      this._render();
+    } else if (this.hasAttribute("src")) {
       this._loadSrc(this.getAttribute("src"));
     } else {
       this._loadFromAdapter();
@@ -6685,9 +7049,10 @@ var ReviewSurface = class extends HTMLElement {
   disconnectedCallback() {
     this.removeAttribute("data-upgraded");
     this.removeAttribute("data-annotating");
+    this._annotating = false;
   }
   attributeChangedCallback(name) {
-    if (!this.isConnected) return;
+    if (!this.#initialized || !this.isConnected) return;
     if (name === "src") {
       this._loadSrc(this.getAttribute("src"));
     } else if (name === "adapter" || name === "endpoint" || name === "storage-key") {
@@ -6720,27 +7085,45 @@ var ReviewSurface = class extends HTMLElement {
   }
   /* ── Data loading ──────────────────────────────── */
   async _loadSrc(src) {
-    if (!src || !this.shadowRoot) return;
-    this.shadowRoot.innerHTML = `<style>${styles5}</style><div class="state-msg">Loading\u2026</div>`;
+    if (!src) return;
+    const seq = ++this.#loadSeq;
+    this.#showStatus("Loading\u2026");
     try {
       const res = await fetch(src);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+      if (seq !== this.#loadSeq) return;
       this.__pins = Array.isArray(data) ? data : data.pins || [];
+      this.#loaded = true;
       this._render();
     } catch (err) {
+      if (seq !== this.#loadSeq) return;
       const msg = err instanceof Error ? err.message : String(err);
-      this.shadowRoot.innerHTML = `<style>${styles5}</style><div class="state-msg state-msg--error">Could not load pins: ${esc(msg)}</div>`;
+      this.#showStatus(`Could not load pins: ${msg}`, true);
     }
   }
   async _loadFromAdapter() {
     if (!this.__adapter) return;
+    const seq = ++this.#loadSeq;
+    let pins;
     try {
-      this.__pins = await this.__adapter.load();
+      pins = await this.__adapter.load();
     } catch {
-      this.__pins = [];
+      pins = [];
     }
+    if (seq !== this.#loadSeq) return;
+    this.__pins = Array.isArray(pins) ? pins : [];
+    this.#loaded = true;
     this._render();
+  }
+  /**
+   * @param {string} message
+   * @param {boolean} [error]
+   */
+  #showStatus(message, error = false) {
+    this.#status.textContent = message;
+    this.#status.classList.toggle("state-msg--error", error);
+    this.#status.hidden = false;
   }
   /* ── Public API ────────────────────────────────── */
   /**
@@ -6751,8 +7134,8 @@ var ReviewSurface = class extends HTMLElement {
   async addPin(pinData) {
     const pin = {
       id: crypto.randomUUID(),
-      x: Math.max(0, Math.min(100, pinData.x)),
-      y: Math.max(0, Math.min(100, pinData.y)),
+      x: pct(pinData.x),
+      y: pct(pinData.y),
       text: pinData.text || "",
       author: pinData.author || this.getAttribute("author") || "Anonymous",
       createdAt: (/* @__PURE__ */ new Date()).toISOString(),
@@ -6807,7 +7190,7 @@ var ReviewSurface = class extends HTMLElement {
       resolvedAt: (/* @__PURE__ */ new Date()).toISOString()
     };
     if (this.__adapter) {
-      await this.__adapter.update(id, changes);
+      await this.__adapter.update(id, changes, pin);
     }
     Object.assign(pin, changes);
     this._render();
@@ -6827,7 +7210,7 @@ var ReviewSurface = class extends HTMLElement {
     if (!pin) return;
     const changes = { resolved: false, resolvedBy: null, resolvedAt: null };
     if (this.__adapter) {
-      await this.__adapter.update(id, changes);
+      await this.__adapter.update(id, changes, pin);
     }
     Object.assign(pin, changes);
     this._render();
@@ -6851,6 +7234,8 @@ var ReviewSurface = class extends HTMLElement {
    */
   importPins(data) {
     this.__pins = Array.isArray(data) ? structuredClone(data) : [];
+    this.#loadSeq++;
+    this.#loaded = true;
     this._activePin = null;
     this._render();
   }
@@ -6860,36 +7245,100 @@ var ReviewSurface = class extends HTMLElement {
     return this.__pins.filter((p) => showResolved || !p.resolved).sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime());
   }
   _render() {
-    if (!this.shadowRoot) return;
     const editable = this.hasAttribute("editable");
     const visible = this.#visiblePins();
     const activePin = this._activePin ? this.__pins.find((p) => p.id === this._activePin) : null;
+    if (this._activePin && !activePin) this._activePin = null;
     this.setAttribute("pin-count", String(visible.length));
-    this.shadowRoot.innerHTML = `<style>${styles5}</style>
-      <div class="rs-container">
-        <slot></slot>
-        <div class="rs-overlay" role="img" aria-label="Review annotation surface">
-          ${visible.map((pin, i) => this._renderPin(pin, i + 1)).join("")}
-        </div>
-        ${activePin ? this._renderPopover(activePin, editable) : ""}
-      </div>
-      ${editable ? this._renderToolbar(visible.length) : ""}
-      <div class="rs-live" aria-live="polite" aria-atomic="true"></div>`;
-    this._bindListeners(editable);
-    this.dispatchEvent(new CustomEvent("review-surface:ready", {
+    const focus = this.#captureFocus();
+    this.#status.hidden = true;
+    this.#overlay.innerHTML = visible.map((pin, i) => this._renderPin(pin, i + 1)).join("");
+    this.#popoverHost.innerHTML = activePin ? this._renderPopover(activePin, editable) : "";
+    this.#toolbarHost.innerHTML = editable ? this._renderToolbar(visible.length) : "";
+    this.#restoreFocus(focus);
+    if (this.#loaded && !this.#readyFired) {
+      this.#readyFired = true;
+      this.dispatchEvent(new CustomEvent("review-surface:ready", {
+        bubbles: true,
+        composed: true,
+        detail: { pinCount: visible.length }
+      }));
+    }
+  }
+  /* ── Focus preservation ────────────────────────── */
+  /**
+   * Describe the focused shadow control so the equivalent node can be
+   * re-focused after its host is re-rendered.
+   * @returns {{ selector: string, value?: string, inPopover: boolean } | null}
+   */
+  #captureFocus() {
+    const el = (
+      /** @type {HTMLElement | null} */
+      this.shadowRoot?.activeElement ?? null
+    );
+    if (!el) return null;
+    const inPopover = !!el.closest(".rs-popover");
+    let selector = "";
+    if (el.classList.contains("rs-pin")) selector = `.rs-pin[data-pin-id="${CSS.escape(el.dataset.pinId ?? "")}"]`;
+    else if (el.dataset.action) selector = `[data-action="${CSS.escape(el.dataset.action)}"]`;
+    else if (el.classList.contains("rs-input__field")) selector = ".rs-input__field";
+    else if (el.classList.contains("rs-popover")) selector = ".rs-popover";
+    const value = el instanceof HTMLTextAreaElement ? el.value : void 0;
+    return { selector, value, inPopover };
+  }
+  /** @param {{ selector: string, value?: string, inPopover: boolean } | null} focus */
+  #restoreFocus(focus) {
+    if (!focus) return;
+    const root = (
+      /** @type {ShadowRoot} */
+      this.shadowRoot
+    );
+    let target = focus.selector ? (
+      /** @type {HTMLElement | null} */
+      root.querySelector(focus.selector)
+    ) : null;
+    if (target instanceof HTMLTextAreaElement && focus.value !== void 0) target.value = focus.value;
+    if (!target && focus.inPopover) target = root.querySelector(".rs-popover");
+    if (!target) target = this.#pinButton(this._activePin) ?? root.querySelector('[data-action="toggle-mode"]');
+    target?.focus();
+  }
+  /** @param {string|null|undefined} id */
+  #pinButton(id) {
+    if (!id) return null;
+    return (
+      /** @type {HTMLElement | null} */
+      this.shadowRoot?.querySelector(`.rs-pin[data-pin-id="${CSS.escape(id)}"]`) ?? null
+    );
+  }
+  /**
+   * Open a pin's popover and move focus into it.
+   * @param {string} id
+   */
+  #openPin(id) {
+    this._activePin = id;
+    this._render();
+    (this.shadowRoot?.querySelector(".rs-popover") ?? null)?.focus();
+    this.dispatchEvent(new CustomEvent("review-surface:select", {
       bubbles: true,
       composed: true,
-      detail: { pinCount: visible.length }
+      detail: { pin: this.__pins.find((p) => p.id === id) }
     }));
+  }
+  /** Close the popover and return focus to its pin. */
+  #closePin() {
+    const id = this._activePin;
+    this._activePin = null;
+    this._render();
+    this.#pinButton(id)?.focus();
   }
   /* ── Pin marker ────────────────────────────────── */
   _renderPin(pin, number) {
-    const preview = pin.text ? pin.text.slice(0, 50) : "Empty pin";
-    return `<button class="rs-pin"
+    const preview = pin.text ? String(pin.text).slice(0, 50) : "Empty pin";
+    return `<button type="button" class="rs-pin"
       data-pin-id="${esc(pin.id)}"
       ${pin.resolved ? "data-resolved" : ""}
       ${this._activePin === pin.id ? "data-active" : ""}
-      style="left:${pin.x}%;top:${pin.y}%"
+      style="left:${pct(pin.x)}%;top:${pct(pin.y)}%"
       aria-label="Pin ${number}: ${esc(preview)}"
       aria-expanded="${this._activePin === pin.id}"
       aria-haspopup="dialog">
@@ -6899,36 +7348,37 @@ var ReviewSurface = class extends HTMLElement {
   /* ── Popover ───────────────────────────────────── */
   _renderPopover(pin, editable) {
     const number = this.#visiblePins().findIndex((p) => p.id === pin.id) + 1;
-    return `<div class="rs-popover" data-open
-      style="left:${Math.min(pin.x, 70)}%;top:${pin.y}%"
+    const label = number > 0 ? `Pin ${number}` : "Pin";
+    return `<div class="rs-popover" data-open tabindex="-1"
+      style="left:${Math.min(pct(pin.x), 70)}%;top:${pct(pin.y)}%"
       role="dialog"
       aria-labelledby="rs-popover-title-${esc(pin.id)}">
 
       <div class="rs-popover__header">
         <span class="rs-popover__title" id="rs-popover-title-${esc(pin.id)}">
-          Pin ${number}
+          ${label}
           ${pin.resolved ? `<span class="rs-resolved-badge">${lucideSvg(UX_ICONS.checkCircle)} Resolved</span>` : ""}
         </span>
         <div class="rs-popover__actions">
           ${editable && !pin.resolved ? `
-            <button class="rs-popover__btn rs-popover__btn--resolve" data-action="resolve" data-pin-id="${esc(pin.id)}"
+            <button type="button" class="rs-popover__btn rs-popover__btn--resolve" data-action="resolve" data-pin-id="${esc(pin.id)}"
               aria-label="Resolve pin" title="Resolve">${lucideSvg(UX_ICONS.checkCircle)}</button>` : ""}
           ${editable && pin.resolved ? `
-            <button class="rs-popover__btn" data-action="unresolve" data-pin-id="${esc(pin.id)}"
+            <button type="button" class="rs-popover__btn" data-action="unresolve" data-pin-id="${esc(pin.id)}"
               aria-label="Re-open pin" title="Re-open">${lucideSvg(UX_ICONS.messageCircle)}</button>` : ""}
           ${editable ? `
-            <button class="rs-popover__btn rs-popover__btn--delete" data-action="delete" data-pin-id="${esc(pin.id)}"
+            <button type="button" class="rs-popover__btn rs-popover__btn--delete" data-action="delete" data-pin-id="${esc(pin.id)}"
               aria-label="Delete pin" title="Delete">${lucideSvg(UX_ICONS.x)}</button>` : ""}
-          <button class="rs-popover__btn" data-action="close"
+          <button type="button" class="rs-popover__btn" data-action="close"
             aria-label="Close">${lucideSvg(UX_ICONS.x)}</button>
         </div>
       </div>
 
       <div class="rs-comment">
         <div class="rs-comment__meta">
-          <span class="rs-comment__avatar" style="background:${hashColor(pin.author || "Anonymous")}">${initials(pin.author || "Anonymous")}</span>
+          <span class="rs-comment__avatar" style="background:${hashColor(pin.author || "Anonymous")}">${esc(initials(pin.author || "Anonymous"))}</span>
           <span class="rs-comment__author">${esc(pin.author || "Anonymous")}</span>
-          <span class="rs-comment__time">${this.#formatTime(pin.createdAt)}</span>
+          <span class="rs-comment__time">${esc(this.#formatTime(pin.createdAt))}</span>
         </div>
         <div class="rs-comment__text">${esc(pin.text)}</div>
       </div>
@@ -6938,9 +7388,9 @@ var ReviewSurface = class extends HTMLElement {
           ${pin.replies.map((reply) => `
             <div class="rs-reply">
               <div class="rs-comment__meta">
-                <span class="rs-comment__avatar" style="background:${hashColor(reply.author || "Anonymous")}">${initials(reply.author || "Anonymous")}</span>
+                <span class="rs-comment__avatar" style="background:${hashColor(reply.author || "Anonymous")}">${esc(initials(reply.author || "Anonymous"))}</span>
                 <span class="rs-comment__author">${esc(reply.author || "Anonymous")}</span>
-                <span class="rs-comment__time">${this.#formatTime(reply.createdAt)}</span>
+                <span class="rs-comment__time">${esc(this.#formatTime(reply.createdAt))}</span>
               </div>
               <div class="rs-comment__text">${esc(reply.text)}</div>
             </div>
@@ -6950,8 +7400,8 @@ var ReviewSurface = class extends HTMLElement {
       ${editable ? `
         <div class="rs-input">
           <textarea class="rs-input__field" placeholder="Reply\u2026" rows="1"
-            aria-label="Reply to pin ${number}"></textarea>
-          <button class="rs-input__submit" data-action="reply" data-pin-id="${esc(pin.id)}"
+            aria-label="Reply to ${label.toLowerCase()}"></textarea>
+          <button type="button" class="rs-input__submit" data-action="reply" data-pin-id="${esc(pin.id)}"
             aria-label="Send reply">${lucideSvg(UX_ICONS.send)}</button>
         </div>` : ""}
 
@@ -6960,146 +7410,109 @@ var ReviewSurface = class extends HTMLElement {
   /* ── Toolbar ───────────────────────────────────── */
   _renderToolbar(count) {
     return `<div class="rs-toolbar" role="toolbar" aria-label="Review tools">
-      <button class="rs-toolbar__btn" data-action="toggle-mode"
+      <button type="button" class="rs-toolbar__btn" data-action="toggle-mode"
         aria-pressed="${this._annotating}"
         title="Toggle annotate mode">
         ${lucideSvg(UX_ICONS.mapPin)} Annotate
       </button>
-      <button class="rs-toolbar__btn" data-action="export"
+      <button type="button" class="rs-toolbar__btn" data-action="export"
         title="Export pins as JSON">
         ${lucideSvg(UX_ICONS.download)} Export
       </button>
       <output class="rs-toolbar__count">${count} pin${count !== 1 ? "s" : ""}</output>
     </div>`;
   }
-  /* ── Event binding ─────────────────────────────── */
-  _bindListeners(editable) {
-    const root = this.shadowRoot;
-    if (!root) return;
-    root.querySelectorAll(".rs-pin").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const id = (
-          /** @type {HTMLElement} */
-          btn.dataset.pinId ?? null
-        );
-        this._activePin = this._activePin === id ? null : id;
-        this._render();
-        if (this._activePin) {
-          this.dispatchEvent(new CustomEvent("review-surface:select", {
-            bubbles: true,
-            composed: true,
-            detail: { pin: this.__pins.find((p) => p.id === id) }
-          }));
-        }
-      });
-    });
-    const overlay = root.querySelector(".rs-overlay");
-    if (overlay && editable) {
-      overlay.addEventListener("click", (e) => {
-        if (!this._annotating) return;
-        const me = (
-          /** @type {MouseEvent} */
-          e
-        );
-        const target = (
-          /** @type {Element | null} */
-          me.target
-        );
-        if (target?.closest(".rs-pin")) return;
-        const rect = overlay.getBoundingClientRect();
-        const x = (me.clientX - rect.left) / rect.width * 100;
-        const y = (me.clientY - rect.top) / rect.height * 100;
-        this.#promptNewPin(x, y);
-      });
+  /* ── Event handling (delegated on the shadow root) ── */
+  /** @param {Event} e */
+  #onClick(e) {
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+    const pinBtn = (
+      /** @type {HTMLElement | null} */
+      target.closest(".rs-pin")
+    );
+    if (pinBtn) {
+      e.stopPropagation();
+      const id = pinBtn.dataset.pinId ?? null;
+      if (this._activePin === id) this.#closePin();
+      else if (id) this.#openPin(id);
+      return;
     }
-    root.querySelectorAll("[data-action]").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const action = (
-          /** @type {HTMLElement} */
-          btn.dataset.action
-        );
-        const pinId = (
-          /** @type {HTMLElement} */
-          btn.dataset.pinId
-        );
-        switch (action) {
-          case "close":
-            this._activePin = null;
-            this._render();
-            break;
-          case "resolve":
-            if (pinId) this.resolvePin(pinId);
-            break;
-          case "unresolve":
-            if (pinId) this.unresolvePin(pinId);
-            break;
-          case "delete":
-            if (pinId) this.removePin(pinId);
-            break;
-          case "toggle-mode":
-            this._annotating = !this._annotating;
-            if (this._annotating) {
-              this.setAttribute("data-annotating", "");
-            } else {
-              this.removeAttribute("data-annotating");
-            }
-            this._render();
-            this.dispatchEvent(new CustomEvent("review-surface:mode", {
-              bubbles: true,
-              composed: true,
-              detail: { mode: this._annotating ? "annotate" : "view" }
-            }));
-            break;
-          case "export":
-            this.#exportToClipboard();
-            break;
-          case "reply":
-            this.#submitReply(pinId);
-            break;
-        }
-      });
-    });
-    const replyField = root.querySelector(".rs-input__field");
-    if (replyField) {
-      replyField.addEventListener("keydown", (e) => {
-        const ke = (
-          /** @type {KeyboardEvent} */
-          e
-        );
-        if (ke.key === "Enter" && !ke.shiftKey) {
-          ke.preventDefault();
-          const replyBtn = (
-            /** @type {HTMLElement | null} */
-            root.querySelector('[data-action="reply"]')
-          );
-          const pinId = replyBtn?.dataset.pinId;
+    const actionBtn = (
+      /** @type {HTMLElement | null} */
+      target.closest("[data-action]")
+    );
+    if (actionBtn) {
+      e.stopPropagation();
+      const pinId = actionBtn.dataset.pinId;
+      switch (actionBtn.dataset.action) {
+        case "close":
+          this.#closePin();
+          break;
+        case "resolve":
+          if (pinId) this.resolvePin(pinId);
+          break;
+        case "unresolve":
+          if (pinId) this.unresolvePin(pinId);
+          break;
+        case "delete":
+          if (pinId) this.removePin(pinId);
+          break;
+        case "toggle-mode":
+          this.#setAnnotating(!this._annotating);
+          break;
+        case "export":
+          this.#exportToClipboard();
+          break;
+        case "reply":
           if (pinId) this.#submitReply(pinId);
-        }
-      });
+          break;
+      }
+      return;
     }
-    root.addEventListener("keydown", (e) => {
-      const ke = (
-        /** @type {KeyboardEvent} */
+    if (target === this.#overlay && this._annotating && this.hasAttribute("editable")) {
+      const me = (
+        /** @type {MouseEvent} */
         e
       );
-      if (ke.key === "Escape") {
-        if (this._activePin) {
-          this._activePin = null;
-          this._render();
-        } else if (this._annotating) {
-          this._annotating = false;
-          this.removeAttribute("data-annotating");
-          this._render();
-          this.dispatchEvent(new CustomEvent("review-surface:mode", {
-            bubbles: true,
-            composed: true,
-            detail: { mode: "view" }
-          }));
-        }
+      const rect = this.#overlay.getBoundingClientRect();
+      const x = (me.clientX - rect.left) / rect.width * 100;
+      const y = (me.clientY - rect.top) / rect.height * 100;
+      this.#promptNewPin(x, y);
+    }
+  }
+  /** @param {KeyboardEvent} e */
+  #onKeydown(e) {
+    const target = e.target;
+    if (e.key === "Enter" && !e.shiftKey && target instanceof Element && target.matches(".rs-input__field")) {
+      e.preventDefault();
+      const pinId = (
+        /** @type {HTMLElement | null} */
+        (this.shadowRoot?.querySelector('[data-action="reply"]') ?? null)?.dataset.pinId
+      );
+      if (pinId) this.#submitReply(pinId);
+      return;
+    }
+    if (e.key === "Escape") {
+      if (this._activePin) {
+        e.stopPropagation();
+        this.#closePin();
+      } else if (this._annotating) {
+        e.stopPropagation();
+        this.#setAnnotating(false);
       }
-    });
+    }
+  }
+  /** @param {boolean} on */
+  #setAnnotating(on) {
+    this._annotating = on;
+    this.toggleAttribute("data-annotating", on);
+    this._render();
+    this.dispatchEvent(new CustomEvent("review-surface:mode", {
+      bubbles: true,
+      composed: true,
+      detail: { mode: on ? "annotate" : "view" }
+    }));
   }
   /* ── Internal helpers ──────────────────────────── */
   async #promptNewPin(x, y) {
@@ -7107,13 +7520,7 @@ var ReviewSurface = class extends HTMLElement {
     const pin = await this.addPin({ x, y, text: "", author });
     this._activePin = pin.id;
     this._render();
-    requestAnimationFrame(() => {
-      const field = (
-        /** @type {HTMLTextAreaElement | null} */
-        this.shadowRoot?.querySelector(".rs-input__field") ?? null
-      );
-      field?.focus();
-    });
+    (this.shadowRoot?.querySelector(".rs-input__field") ?? null)?.focus();
   }
   async #submitReply(pinId) {
     const field = (
@@ -7131,31 +7538,20 @@ var ReviewSurface = class extends HTMLElement {
       author: this.getAttribute("author") || "Anonymous",
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
     };
-    if (!pin.replies) pin.replies = [];
-    if (!pin.text) {
-      pin.text = text;
-      if (this.__adapter) {
-        await this.__adapter.update(pinId, { text });
-      }
-    } else {
-      pin.replies.push(reply);
-      if (this.__adapter) {
-        await this.__adapter.update(pinId, { replies: pin.replies });
-      }
+    const changes = pin.text ? { replies: [...pin.replies ?? [], reply] } : { text };
+    if (this.__adapter) {
+      await this.__adapter.update(pinId, changes, pin);
     }
+    Object.assign(pin, changes);
+    if (!pin.replies) pin.replies = [];
+    field.value = "";
     this._render();
     this.#announce("Reply added");
-    requestAnimationFrame(() => {
-      const newField = (
-        /** @type {HTMLTextAreaElement | null} */
-        this.shadowRoot?.querySelector(".rs-input__field") ?? null
-      );
-      newField?.focus();
-    });
+    (this.shadowRoot?.querySelector(".rs-input__field") ?? null)?.focus();
     this.dispatchEvent(new CustomEvent("review-surface:update", {
       bubbles: true,
       composed: true,
-      detail: { pin, changes: { replies: pin.replies } }
+      detail: { pin, changes }
     }));
   }
   async #exportToClipboard() {
@@ -7175,6 +7571,7 @@ var ReviewSurface = class extends HTMLElement {
     if (!isoString) return "";
     try {
       const date = new Date(isoString);
+      if (Number.isNaN(date.getTime())) return "";
       const now = /* @__PURE__ */ new Date();
       const diffMs = now.getTime() - date.getTime();
       const diffMins = Math.floor(diffMs / 6e4);
@@ -7189,205 +7586,177 @@ var ReviewSurface = class extends HTMLElement {
       return "";
     }
   }
+  /**
+   * Write to the persistent live region (never re-rendered, so the
+   * message survives the render that follows every change).
+   * @param {string} message
+   */
   #announce(message) {
-    const live = this.shadowRoot?.querySelector(".rs-live");
-    if (live) live.textContent = message;
+    this.#live.textContent = message;
   }
 };
 registerComponent("review-surface", ReviewSurface);
 
 // src/web-components/gantt-chart/logic.js
-var DAY = 864e5;
-var WEEK = DAY * 7;
-var MONTH = DAY * 30;
-var QUARTER = DAY * 91;
-var YEAR = DAY * 365;
-function toTimestamp(value) {
-  if (typeof value === "number") return value;
-  const d = new Date(value);
-  return d.getTime();
+function pickFormatter(rangeDays) {
+  if (rangeDays <= 90) {
+    return (d) => formatDate(d, { month: "short", day: "numeric" });
+  }
+  if (rangeDays <= 365) {
+    return (d) => formatDate(d, { month: "short", year: "2-digit" });
+  }
+  return (d) => formatDate(d, { year: "numeric" });
 }
-function pickFormatter(rangeMs) {
-  if (rangeMs <= WEEK * 3) {
-    return (d) => d.toLocaleDateString(void 0, { month: "short", day: "numeric" });
-  }
-  if (rangeMs <= MONTH * 3) {
-    return (d) => d.toLocaleDateString(void 0, { month: "short", day: "numeric" });
-  }
-  if (rangeMs <= YEAR) {
-    return (d) => d.toLocaleDateString(void 0, { month: "short", year: "2-digit" });
-  }
-  return (d) => d.toLocaleDateString(void 0, { year: "numeric" });
-}
-function resolveView(rangeMs) {
-  if (rangeMs <= WEEK * 3) return "day";
-  if (rangeMs <= MONTH * 3) return "week";
-  if (rangeMs <= YEAR) return "month";
+function resolveView(rangeDays) {
+  if (rangeDays <= 21) return "day";
+  if (rangeDays <= 90) return "week";
+  if (rangeDays <= 365) return "month";
   return "quarter";
 }
-function esc2(s) {
-  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+var STEP_DAYS = { day: 1, week: 7, month: 30, quarter: 91 };
+function longDate(ts) {
+  return formatDate(new Date(ts), { year: "numeric", month: "short", day: "numeric" });
 }
-var GanttChart = class _GanttChart extends VBElement {
+var STATUS_LABELS2 = {
+  "not-started": "Not started",
+  "in-progress": "In progress",
+  done: "Done",
+  blocked: "Blocked"
+};
+function statusLabel2(s) {
+  return STATUS_LABELS2[s] || (s.charAt(0).toUpperCase() + s.slice(1)).replace(/-/g, " ");
+}
+function idList(v) {
+  if (Array.isArray(v)) return v.map(String);
+  if (v == null || v === "") return [];
+  return String(v).split(",").map((s) => s.trim()).filter(Boolean);
+}
+function normalizeProgress(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.min(1, n > 1 ? n / 100 : n);
+}
+function normalizeTasks(list) {
+  const out = [];
+  (list || []).forEach((t, i) => {
+    const start = parseISODate(t?.start);
+    if (!start) return;
+    const end = parseISODate(t.end) ?? start;
+    out.push({
+      id: t.id != null && t.id !== "" ? String(t.id) : `gc-task-${i}`,
+      name: t.name ?? `Task ${i + 1}`,
+      start: start.getTime(),
+      end: Math.max(end.getTime(), start.getTime()),
+      progress: normalizeProgress(t.progress),
+      group: t.group || null,
+      depends: idList(t.depends),
+      status: t.status || null,
+      assignee: t.assignee || null,
+      milestone: !!t.milestone,
+      color: t.color || null,
+      storyIds: idList(t.storyIds),
+      itemIds: idList(t.itemIds)
+    });
+  });
+  return out;
+}
+var instanceCounter2 = 0;
+var GanttChart = class extends VBElement {
   static get observedAttributes() {
     return ["src", "title", "view", "show-today", "show-progress", "show-dependencies", "compact"];
   }
+  #uid = `gc-${++instanceCounter2}`;
   /** @type {HTMLDivElement|null} */
   #container = null;
   /** @type {HTMLDivElement|null} */
   #liveRegion = null;
   /** @type {HTMLElement|null} */
   #titleEl = null;
-  /** @type {Array<Object>} */
+  /** @type {Array<any>} */
   #tasks = [];
-  /** @type {number} */
-  #rangeStart = 0;
-  /** @type {number} */
-  #rangeEnd = 0;
-  /** @type {number} */
-  #rangeTotal = 0;
+  /**
+   * Where #tasks came from. 'table' re-parses the author's <table> on each
+   * connect; 'property' and 'src' keep #tasks and generate the SR table.
+   * @type {'table' | 'property' | 'src'}
+   */
+  #source = "table";
+  /** URL whose data is loaded (or loading) — guards against refetching. */
+  #srcLoaded = (
+    /** @type {string|null} */
+    null
+  );
+  #srcToken = 0;
+  #internalAttr = false;
+  /** Local-midnight Date of the first day in range. */
+  #rangeStart = /* @__PURE__ */ new Date(0);
+  /** Calendar days spanned by the range (≥ 1). */
+  #rangeDays = 1;
+  constructor() {
+    super();
+    if (Object.prototype.hasOwnProperty.call(this, "tasks")) {
+      const value = (
+        /** @type {any} */
+        this.tasks
+      );
+      delete /** @type {any} */
+      this.tasks;
+      this.tasks = value;
+    }
+  }
   setup() {
-    const table = this.querySelector(":scope > table");
-    if (!table) return false;
-    this.#tasks = this.#parseTasks(table);
-    if (this.#tasks.length === 0) return false;
-    this.#rangeStart = Math.min(...this.#tasks.map((t) => t.start));
-    this.#rangeEnd = Math.max(...this.#tasks.map((t) => t.end));
-    this.#rangeTotal = this.#rangeEnd - this.#rangeStart;
-    if (this.#rangeTotal <= 0) this.#rangeTotal = DAY;
-    this.#build(table);
-    this.dispatchEvent(new CustomEvent("gantt-chart:ready", {
-      bubbles: true,
-      detail: {
-        taskCount: this.#tasks.length,
-        dateRange: {
-          start: new Date(this.#rangeStart).toISOString(),
-          end: new Date(this.#rangeEnd).toISOString()
-        }
-      }
-    }));
+    this.listen(this, "click", this.#onClick);
+    this.listen(this, "keydown", this.#onKeyDown);
+    if (this.#source === "table") {
+      const table = this.querySelector(":scope > table");
+      this.#tasks = table ? this.#parseTasks(table) : [];
+    }
+    this.#render();
+    if (this.#tasks.length) this.#dispatchReady();
+    const src = this.getAttribute("src");
+    if (src && src !== this.#srcLoaded) this.#loadSrc(src);
     return true;
   }
   teardown() {
-    if (this.#titleEl) {
-      this.#titleEl.remove();
-      this.#titleEl = null;
-    }
-    if (this.#container) {
-      this.#container.remove();
-      this.#container = null;
-    }
-    if (this.#liveRegion) {
-      this.#liveRegion.remove();
-      this.#liveRegion = null;
-    }
-    const table = this.querySelector("table.gc-sr-only");
-    if (table) table.classList.remove("gc-sr-only");
-    this.#tasks = [];
+    this.#removeChrome();
+    const table = this.querySelector(":scope > table.gc-sr-only");
+    if (table && !table.hasAttribute("data-gc-generated")) table.classList.remove("gc-sr-only");
   }
-  /** @type {number} */
-  static #vtCounter = 0;
   attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue === newValue || !this.isConnected) return;
+    if (oldValue === newValue || this.#internalAttr) return;
+    if (!this.isConnected || !this.hasAttribute("data-upgraded")) return;
     if (name === "src") {
-      this._loadSrc(newValue);
-    } else if (this.hasAttribute("data-upgraded")) {
-      this.#refresh();
+      if (newValue) this.#loadSrc(newValue);
+      return;
     }
-  }
-  /**
-   * Tear down and re-setup, wrapped in a View Transition so the swap
-   * crossfades instead of flashing. Same pattern as diagram-wc and
-   * site-map.
-   */
-  #refresh() {
-    const swap = () => {
-      this.teardown();
-      this.removeAttribute("data-upgraded");
-      this.setup();
-    };
-    if (this.hasAttribute("data-upgraded") && "startViewTransition" in document && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      const name = `gc-vt-${++_GanttChart.#vtCounter}`;
-      this.style.viewTransitionName = name;
-      const tx = document.startViewTransition(swap);
-      tx.finished.finally(() => {
-        this.style.viewTransitionName = "";
-      });
-    } else {
-      swap();
-    }
+    viewTransitionSwap(this, () => this.#render(), "gc-vt");
   }
   // ── Data API (HTML-first / JS-first dual contract) ──────────────
   /**
-   * The current task list. After upgrade this reflects the parsed
-   * <table> rows; after assignment, it reflects whatever was passed in.
-   * Each entry: { id, name, start, end, progress?, group?, depends?,
-   * status?, assignee?, milestone?, color?, storyIds?, itemIds? }.
+   * The current task list (normalized). start/end are local-midnight
+   * timestamps; progress is a 0–1 fraction.
    */
   get tasks() {
     return this.#tasks;
   }
   /**
-   * Replace the task set and re-render. Accepts plain task objects with
-   * start/end as ISO strings or timestamps; both are normalized.
-   *
-   * Note: v1 is record-shaped (full rebuild on assignment). Per-bar
-   * preservation across diffs is on the roadmap for when drag-resize
-   * state preservation becomes a felt need.
+   * Replace the task set and re-render. start/end accept YYYY-MM-DD
+   * strings, Dates or timestamps; progress accepts 0–1 or 0–100 (> 1).
+   * The visually hidden table is regenerated from the new tasks.
    */
   set tasks(value) {
-    const next = (value || []).map((t, i) => ({
-      id: t.id ?? `gc-task-${i}`,
-      name: t.name ?? `Task ${i + 1}`,
-      start: typeof t.start === "number" ? t.start : toTimestamp(t.start),
-      end: typeof t.end === "number" ? t.end : t.end != null ? toTimestamp(t.end) : typeof t.start === "number" ? t.start : toTimestamp(t.start),
-      progress: t.progress ?? 0,
-      group: t.group ?? null,
-      depends: Array.isArray(t.depends) ? t.depends : t.depends ? String(t.depends).split(",").map((s) => s.trim()) : [],
-      status: t.status ?? null,
-      assignee: t.assignee ?? null,
-      milestone: !!t.milestone,
-      color: t.color ?? null,
-      storyIds: t.storyIds ?? [],
-      itemIds: t.itemIds ?? []
-    }));
-    if (this.#container || this.#titleEl || this.#liveRegion) {
-      if (this.#titleEl) {
-        this.#titleEl.remove();
-        this.#titleEl = null;
-      }
-      if (this.#container) {
-        this.#container.remove();
-        this.#container = null;
-      }
-      if (this.#liveRegion) {
-        this.#liveRegion.remove();
-        this.#liveRegion = null;
-      }
-    }
-    this.#tasks = next;
-    if (next.length > 0) {
-      this.#rangeStart = Math.min(...next.map((t) => t.start));
-      this.#rangeEnd = Math.max(...next.map((t) => t.end));
-      this.#rangeTotal = this.#rangeEnd - this.#rangeStart;
-      if (this.#rangeTotal <= 0) this.#rangeTotal = DAY;
-      let table = this.querySelector(":scope > table");
-      if (!table) {
-        table = document.createElement("table");
-        table.classList.add("gc-sr-only");
-        this.appendChild(table);
-      }
-      this.#build(table);
-    }
+    this.#tasks = normalizeTasks(value);
+    this.#source = "property";
+    if (this.hasAttribute("data-upgraded")) this.#render();
     this.dispatchEvent(new CustomEvent("gantt-chart:tasks-changed", {
-      detail: { tasks: next, source: "property" },
+      detail: { tasks: this.#tasks, source: "property" },
       bubbles: true
     }));
   }
   /* ── Table parsing ─────────────────────────────── */
+  /** @param {Element} table */
   #parseTasks(table) {
     const rows = table.querySelectorAll("tbody tr");
-    const tasks = [];
+    const raw = [];
     for (let i = 0; i < rows.length; i++) {
       const row = (
         /** @type {HTMLTableRowElement} */
@@ -7395,56 +7764,104 @@ var GanttChart = class _GanttChart extends VBElement {
       );
       const times = row.querySelectorAll("time[datetime]");
       if (times.length < 2 && !row.hasAttribute("data-milestone")) continue;
-      const startStr = times[0]?.getAttribute("datetime");
-      const endStr = times.length > 1 ? times[1].getAttribute("datetime") : startStr;
-      if (!startStr) continue;
+      const start = times[0]?.getAttribute("datetime");
+      if (!start) continue;
       const progressEl = row.querySelector("progress");
-      const progressValue = progressEl ? progressEl.value / (progressEl.max || 100) : 0;
-      const name = row.cells[0]?.textContent?.trim() || `Task ${i + 1}`;
-      tasks.push({
+      raw.push({
         id: row.dataset.taskId || `gc-task-${i}`,
-        name,
-        start: toTimestamp(startStr),
-        end: toTimestamp(endStr),
-        progress: progressValue,
-        group: row.dataset.group || null,
-        depends: row.dataset.depends ? row.dataset.depends.split(",").map((s) => s.trim()) : [],
-        status: row.dataset.status || null,
-        assignee: row.dataset.assignee || null,
+        name: row.cells[0]?.textContent?.trim() || `Task ${i + 1}`,
+        start,
+        end: times.length > 1 ? times[1].getAttribute("datetime") : start,
+        // <progress> is explicit about its scale, so convert to a fraction here.
+        progress: progressEl ? progressEl.value / (progressEl.max || 1) : 0,
+        group: row.dataset.group,
+        depends: row.dataset.depends,
+        status: row.dataset.status,
+        assignee: row.dataset.assignee,
         milestone: row.hasAttribute("data-milestone"),
-        color: row.dataset.color || null,
-        storyIds: row.dataset.storyIds ? row.dataset.storyIds.split(",").map((s) => s.trim()) : [],
-        itemIds: row.dataset.itemIds ? row.dataset.itemIds.split(",").map((s) => s.trim()) : []
+        color: row.dataset.color,
+        storyIds: row.dataset.storyIds,
+        itemIds: row.dataset.itemIds
       });
     }
-    return tasks;
+    return normalizeTasks(raw);
   }
-  /* ── Build enhanced DOM ────────────────────────── */
+  /* ── Render ────────────────────────────────────── */
+  #removeChrome() {
+    this.#titleEl?.remove();
+    this.#titleEl = null;
+    this.#container?.remove();
+    this.#container = null;
+    this.#liveRegion?.remove();
+    this.#liveRegion = null;
+  }
+  /** The SR table: the author's for 'table', otherwise generated from #tasks. */
+  #syncTable() {
+    if (this.#source === "table") {
+      return (
+        /** @type {HTMLTableElement|null} */
+        this.querySelector(":scope > table")
+      );
+    }
+    this.querySelectorAll(":scope > table").forEach((t) => t.remove());
+    if (!this.#tasks.length) return null;
+    const table = this.#buildTable();
+    this.appendChild(table);
+    return table;
+  }
+  #render() {
+    this.#removeChrome();
+    const table = this.#syncTable();
+    if (!this.#tasks.length) return;
+    const starts = this.#tasks.map((t) => t.start);
+    const ends = this.#tasks.map((t) => t.end);
+    this.#rangeStart = new Date(Math.min(...starts));
+    this.#rangeDays = Math.max(1, daysBetween(this.#rangeStart, new Date(Math.max(...ends))));
+    this.#build(table);
+  }
+  /** @param {number | Date} ts @returns {number} 0–100 */
+  #pct(ts) {
+    const d = typeof ts === "number" ? new Date(ts) : ts;
+    return daysBetween(this.#rangeStart, d) / this.#rangeDays * 100;
+  }
+  #dispatchReady() {
+    this.dispatchEvent(new CustomEvent("gantt-chart:ready", {
+      bubbles: true,
+      detail: {
+        taskCount: this.#tasks.length,
+        dateRange: {
+          start: toISODate(this.#rangeStart),
+          end: toISODate(addDays(this.#rangeStart, this.#rangeDays))
+        }
+      }
+    }));
+  }
+  /** @param {HTMLTableElement | null} table */
   #build(table) {
     const title = this.getAttribute("title");
     const showToday = this.hasAttribute("show-today");
     const showProgress = this.hasAttribute("show-progress");
     const showDeps = this.hasAttribute("show-dependencies");
+    const anchor = table && table.parentNode === this ? table : null;
     if (title) {
       this.#titleEl = document.createElement("h2");
       this.#titleEl.className = "gc-title";
       this.#titleEl.textContent = title;
-      this.insertBefore(this.#titleEl, table);
+      this.insertBefore(this.#titleEl, anchor);
     }
     this.#container = document.createElement("div");
     this.#container.className = "gc-container";
     this.#container.setAttribute("role", "region");
     this.#container.setAttribute("aria-label", `Gantt chart${title ? ": " + title : ""}`);
-    const header = this.#buildTimelineHeader();
-    this.#container.appendChild(header);
+    const labels = this.#generateDateLabels();
+    this.#container.appendChild(this.#buildTimelineHeader(labels));
     const body = document.createElement("div");
     body.className = "gc-body";
     const taskList = document.createElement("div");
     taskList.className = "gc-task-list";
     const barsPanel = document.createElement("div");
     barsPanel.className = "gc-bars";
-    const gridLines = this.#buildGridLines();
-    barsPanel.appendChild(gridLines);
+    barsPanel.appendChild(this.#buildGridLines(labels));
     const grouped = this.#groupTasks();
     for (const [groupName, groupTasks] of grouped) {
       if (grouped.size > 1 && groupName) {
@@ -7467,18 +7884,22 @@ var GanttChart = class _GanttChart extends VBElement {
         taskName.className = "gc-task-name";
         taskName.textContent = task.name;
         taskRow.appendChild(taskName);
+        if (task.status) {
+          const status = document.createElement("span");
+          status.className = "gc-task-status";
+          status.setAttribute("data-status", task.status);
+          status.textContent = statusLabel2(task.status);
+          taskRow.appendChild(status);
+        }
         const taskDates = document.createElement("span");
         taskDates.className = "gc-task-dates";
-        taskDates.textContent = `${new Date(task.start).toLocaleDateString()} to ${new Date(task.end).toLocaleDateString()}`;
+        taskDates.textContent = task.milestone ? longDate(task.start) : `${longDate(task.start)} to ${longDate(task.end)}`;
         taskRow.appendChild(taskDates);
         taskList.appendChild(taskRow);
         const barRow = document.createElement("div");
         barRow.className = "gc-bar-row";
-        if (task.milestone) {
-          barRow.appendChild(this.#buildMilestone(task));
-        } else {
-          barRow.appendChild(this.#buildBar(task, showProgress));
-        }
+        barRow.setAttribute("data-task-id", task.id);
+        barRow.appendChild(task.milestone ? this.#buildMilestone(task) : this.#buildBar(task, showProgress));
         barsPanel.appendChild(barRow);
       }
     }
@@ -7486,59 +7907,73 @@ var GanttChart = class _GanttChart extends VBElement {
       const todayLine = this.#buildTodayLine();
       if (todayLine) barsPanel.appendChild(todayLine);
     }
-    if (showDeps) {
-      requestAnimationFrame(() => {
-        const svg = this.#buildDependencyArrows(barsPanel);
-        if (svg) barsPanel.appendChild(svg);
-      });
-    }
     body.appendChild(taskList);
     body.appendChild(barsPanel);
     this.#container.appendChild(body);
-    this.insertBefore(this.#container, table);
-    table.classList.add("gc-sr-only");
+    this.insertBefore(this.#container, anchor);
+    if (table) table.classList.add("gc-sr-only");
     this.#liveRegion = document.createElement("div");
     this.#liveRegion.className = "gc-sr-only";
     this.#liveRegion.setAttribute("role", "status");
     this.#liveRegion.setAttribute("aria-live", "polite");
     this.#liveRegion.setAttribute("aria-atomic", "true");
     this.appendChild(this.#liveRegion);
-    this.listen(this.#container, "click", (e) => {
-      const bar = (
-        /** @type {HTMLElement | null} */
-        /** @type {HTMLElement} */
-        e.target.closest(".gc-bar, .gc-milestone")
-      );
-      if (!bar) return;
-      const taskId = bar.dataset.taskId;
-      const task = this.#tasks.find((t) => t.id === taskId);
-      if (!task) return;
-      this.#announce(`Selected: ${task.name}`);
-      this.dispatchEvent(new CustomEvent("gantt-chart:task-click", {
-        bubbles: true,
-        detail: { task }
-      }));
-    });
-    this.listen(this.#container, "keydown", (e) => {
-      const ke = (
-        /** @type {KeyboardEvent} */
-        e
-      );
-      if (ke.key === "Enter" || ke.key === " ") {
-        const bar = (
-          /** @type {HTMLElement | null} */
-          /** @type {HTMLElement} */
-          ke.target.closest(".gc-bar, .gc-milestone")
-        );
-        if (bar) {
-          ke.preventDefault();
-          bar.click();
-        }
+    if (showDeps) {
+      requestAnimationFrame(() => {
+        if (!barsPanel.isConnected) return;
+        const svg = this.#buildDependencyArrows(barsPanel);
+        if (svg) barsPanel.appendChild(svg);
+      });
+    }
+  }
+  /* ── Generated SR table (property / src data) ──── */
+  #buildTable() {
+    const table = document.createElement("table");
+    table.setAttribute("data-gc-generated", "");
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+    for (const label of ["Task", "Start", "End", "Progress", "Status"]) {
+      const th = document.createElement("th");
+      th.scope = "col";
+      th.textContent = label;
+      headerRow.appendChild(th);
+    }
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    const tbody = document.createElement("tbody");
+    for (const task of this.#tasks) {
+      const tr = document.createElement("tr");
+      tr.dataset.taskId = task.id;
+      const tdName = document.createElement("td");
+      tdName.textContent = task.name;
+      tr.appendChild(tdName);
+      for (const ts of [task.start, task.end]) {
+        const td = document.createElement("td");
+        const time = document.createElement("time");
+        time.setAttribute("datetime", toISODate(new Date(ts)));
+        time.textContent = longDate(ts);
+        td.appendChild(time);
+        tr.appendChild(td);
       }
-    });
+      const tdProgress = document.createElement("td");
+      const progress = document.createElement("progress");
+      const pct2 = Math.round(task.progress * 100);
+      progress.max = 100;
+      progress.value = pct2;
+      progress.textContent = `${pct2}%`;
+      tdProgress.appendChild(progress);
+      tr.appendChild(tdProgress);
+      const tdStatus = document.createElement("td");
+      tdStatus.textContent = task.status ? statusLabel2(task.status) : "";
+      tr.appendChild(tdStatus);
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    return table;
   }
   /* ── Timeline header ───────────────────────────── */
-  #buildTimelineHeader() {
+  /** @param {Array<{position: number, text: string}>} labels */
+  #buildTimelineHeader(labels) {
     const header = document.createElement("div");
     header.className = "gc-timeline-header";
     const spacer = document.createElement("div");
@@ -7546,7 +7981,6 @@ var GanttChart = class _GanttChart extends VBElement {
     header.appendChild(spacer);
     const dates = document.createElement("div");
     dates.className = "gc-timeline-dates";
-    const labels = this.#generateDateLabels();
     for (const { position, text } of labels) {
       const label = document.createElement("span");
       label.className = "gc-date-label";
@@ -7560,77 +7994,43 @@ var GanttChart = class _GanttChart extends VBElement {
   /* ── Date labels ───────────────────────────────── */
   #generateDateLabels() {
     const viewAttr = this.getAttribute("view") || "auto";
-    const view = viewAttr === "auto" ? resolveView(this.#rangeTotal) : viewAttr;
-    const formatter = pickFormatter(this.#rangeTotal);
+    const view = STEP_DAYS[viewAttr] ? viewAttr : resolveView(this.#rangeDays);
+    const formatter = pickFormatter(this.#rangeDays);
+    const rangeStart = this.#rangeStart;
+    const rangeEnd = addDays(rangeStart, this.#rangeDays);
     const labels = [];
-    let stepMs;
-    switch (view) {
-      case "day":
-        stepMs = DAY;
-        break;
-      case "week":
-        stepMs = WEEK;
-        break;
-      case "month":
-        stepMs = MONTH;
-        break;
-      case "quarter":
-        stepMs = QUARTER;
-        break;
-      default:
-        stepMs = MONTH;
-    }
-    let cursor = new Date(this.#rangeStart);
+    let step;
+    let cursor;
     if (view === "week") {
-      const dayOfWeek = cursor.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
-      cursor.setDate(cursor.getDate() + daysToMonday);
+      const dow = rangeStart.getDay();
+      cursor = addDays(rangeStart, (8 - dow) % 7);
+      step = (d) => addDays(d, 7);
     } else if (view === "month") {
-      cursor.setDate(1);
-      if (cursor.getTime() < this.#rangeStart) {
-        cursor.setMonth(cursor.getMonth() + 1);
-      }
+      cursor = startOfMonth(rangeStart);
+      if (cursor < rangeStart) cursor = addMonths(cursor, 1);
+      step = (d) => addMonths(d, 1);
     } else if (view === "quarter") {
-      const month = cursor.getMonth();
-      const nextQuarterMonth = Math.ceil((month + 1) / 3) * 3;
-      cursor.setMonth(nextQuarterMonth);
-      cursor.setDate(1);
+      cursor = startOfQuarter(rangeStart);
+      if (cursor < rangeStart) cursor = addMonths(cursor, 3);
+      step = (d) => addMonths(d, 3);
+    } else {
+      cursor = startOfDay(rangeStart);
+      step = (d) => addDays(d, 1);
     }
-    const cursorTs = cursor.getTime();
-    if (cursorTs > this.#rangeStart + stepMs * 0.5) {
-      labels.push({
-        position: 0,
-        text: formatter(new Date(this.#rangeStart))
-      });
+    if (daysBetween(rangeStart, cursor) > STEP_DAYS[view] * 0.5) {
+      labels.push({ position: 0, text: formatter(rangeStart) });
     }
-    let current = cursorTs;
-    while (current <= this.#rangeEnd) {
-      const pct = (current - this.#rangeStart) / this.#rangeTotal * 100;
-      if (pct >= 0 && pct <= 100) {
-        labels.push({
-          position: pct,
-          text: formatter(new Date(current))
-        });
-      }
-      if (view === "month") {
-        const d = new Date(current);
-        d.setMonth(d.getMonth() + 1);
-        current = d.getTime();
-      } else if (view === "quarter") {
-        const d = new Date(current);
-        d.setMonth(d.getMonth() + 3);
-        current = d.getTime();
-      } else {
-        current += stepMs;
-      }
+    for (let d = cursor; d <= rangeEnd; d = step(d)) {
+      const pct2 = this.#pct(d);
+      if (pct2 >= 0 && pct2 <= 100) labels.push({ position: pct2, text: formatter(d) });
     }
     return labels;
   }
   /* ── Grid lines ────────────────────────────────── */
-  #buildGridLines() {
+  /** @param {Array<{position: number}>} labels */
+  #buildGridLines(labels) {
     const container = document.createElement("div");
     container.className = "gc-grid-lines";
-    const labels = this.#generateDateLabels();
     for (const { position } of labels) {
       if (position <= 0) continue;
       const line = document.createElement("div");
@@ -7650,19 +8050,26 @@ var GanttChart = class _GanttChart extends VBElement {
     }
     return groups;
   }
+  /* ── Accessible name ───────────────────────────── */
+  /** @param {any} task */
+  #taskLabel(task) {
+    const parts = [task.milestone ? `Milestone: ${task.name}, ${longDate(task.start)}` : `${task.name}: ${longDate(task.start)} to ${longDate(task.end)}`];
+    if (task.status) parts.push(`status: ${statusLabel2(task.status).toLowerCase()}`);
+    if (!task.milestone && task.progress > 0) parts.push(`${Math.round(task.progress * 100)}% complete`);
+    if (task.assignee) parts.push(`assigned to ${task.assignee}`);
+    return parts.join(", ");
+  }
   /* ── Build bar ─────────────────────────────────── */
+  /** @param {any} task @param {boolean} showProgress */
   #buildBar(task, showProgress) {
-    const leftPct = (task.start - this.#rangeStart) / this.#rangeTotal * 100;
-    const widthPct = (task.end - task.start) / this.#rangeTotal * 100;
+    const leftPct = this.#pct(task.start);
+    const widthPct = this.#pct(task.end) - leftPct;
     const bar = document.createElement("div");
     bar.className = "gc-bar";
     bar.setAttribute("data-task-id", task.id);
-    bar.setAttribute("role", "img");
+    bar.setAttribute("role", "button");
     bar.setAttribute("tabindex", "0");
-    bar.setAttribute(
-      "aria-label",
-      `${esc2(task.name)}: ${new Date(task.start).toLocaleDateString()} to ${new Date(task.end).toLocaleDateString()}` + (task.progress > 0 ? `, ${Math.round(task.progress * 100)}% complete` : "")
-    );
+    bar.setAttribute("aria-label", this.#taskLabel(task));
     bar.style.left = `${leftPct}%`;
     bar.style.width = `${Math.max(widthPct, 0.5)}%`;
     if (task.status) bar.setAttribute("data-status", task.status);
@@ -7676,33 +8083,35 @@ var GanttChart = class _GanttChart extends VBElement {
     if (widthPct > 8) {
       const label = document.createElement("span");
       label.className = "gc-bar-label";
+      label.setAttribute("aria-hidden", "true");
       label.textContent = task.name;
       bar.appendChild(label);
     }
     return bar;
   }
   /* ── Build milestone ───────────────────────────── */
+  /** @param {any} task */
   #buildMilestone(task) {
-    const leftPct = (task.start - this.#rangeStart) / this.#rangeTotal * 100;
     const diamond = document.createElement("div");
     diamond.className = "gc-milestone";
     diamond.setAttribute("data-task-id", task.id);
-    diamond.setAttribute("role", "img");
+    diamond.setAttribute("role", "button");
     diamond.setAttribute("tabindex", "0");
-    diamond.setAttribute("aria-label", `Milestone: ${esc2(task.name)}, ${new Date(task.start).toLocaleDateString()}`);
-    diamond.style.left = `${leftPct}%`;
+    diamond.setAttribute("aria-label", this.#taskLabel(task));
+    diamond.style.left = `${this.#pct(task.start)}%`;
     if (task.status) diamond.setAttribute("data-status", task.status);
     if (task.color) diamond.style.setProperty("--gc-bar-color", task.color);
     return diamond;
   }
   /* ── Today line ────────────────────────────────── */
   #buildTodayLine() {
-    const now = Date.now();
-    if (now < this.#rangeStart || now > this.#rangeEnd) return null;
-    const pct = (now - this.#rangeStart) / this.#rangeTotal * 100;
+    const now = /* @__PURE__ */ new Date();
+    const dayFraction = (now.getTime() - startOfDay(now).getTime()) / 864e5;
+    const days = daysBetween(this.#rangeStart, now) + dayFraction;
+    if (days < 0 || days > this.#rangeDays) return null;
     const line = document.createElement("div");
     line.className = "gc-today-line";
-    line.style.left = `${pct}%`;
+    line.style.left = `${days / this.#rangeDays * 100}%`;
     const label = document.createElement("span");
     label.className = "gc-today-label";
     label.textContent = "Today";
@@ -7710,21 +8119,30 @@ var GanttChart = class _GanttChart extends VBElement {
     return line;
   }
   /* ── Dependency arrows ─────────────────────────── */
+  /** @param {HTMLElement} barsPanel */
   #buildDependencyArrows(barsPanel) {
-    const depsExist = this.#tasks.some((t) => t.depends.length > 0);
-    if (!depsExist) return null;
+    if (!this.#tasks.some((t) => t.depends.length > 0)) return null;
+    const centreY = /* @__PURE__ */ new Map();
+    for (
+      const row of
+      /** @type {NodeListOf<HTMLElement>} */
+      barsPanel.querySelectorAll(":scope > .gc-bar-row")
+    ) {
+      centreY.set(row.dataset.taskId || "", row.offsetTop + row.offsetHeight / 2);
+    }
+    const height = Math.max(1, Math.round(barsPanel.scrollHeight));
     const ns = "http://www.w3.org/2000/svg";
-    const rowHeight = 36;
-    const rowCount = barsPanel.querySelectorAll(".gc-bar-row").length;
     const svg = document.createElementNS(ns, "svg");
     svg.setAttribute("class", "gc-deps");
-    svg.setAttribute("viewBox", `0 0 100 ${rowCount * rowHeight}`);
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("viewBox", `0 0 100 ${height}`);
     svg.setAttribute("preserveAspectRatio", "none");
     svg.style.width = "100%";
-    svg.style.height = "100%";
+    svg.style.height = `${height}px`;
+    const markerId = `${this.#uid}-arrowhead`;
     const defs = document.createElementNS(ns, "defs");
     const marker = document.createElementNS(ns, "marker");
-    marker.setAttribute("id", "gc-arrowhead");
+    marker.setAttribute("id", markerId);
     marker.setAttribute("markerWidth", "8");
     marker.setAttribute("markerHeight", "6");
     marker.setAttribute("refX", "8");
@@ -7740,94 +8158,91 @@ var GanttChart = class _GanttChart extends VBElement {
       for (const depId of task.depends) {
         const source = this.#tasks.find((t) => t.id === depId);
         if (!source) continue;
-        const sourceRight = (source.end - this.#rangeStart) / this.#rangeTotal * 100;
-        const targetLeft = (task.start - this.#rangeStart) / this.#rangeTotal * 100;
-        const sourceIdx = this.#getVisualRowIndex(source.id, barsPanel);
-        const targetIdx = this.#getVisualRowIndex(task.id, barsPanel);
-        if (sourceIdx === -1 || targetIdx === -1) continue;
-        const sourceY = sourceIdx * rowHeight + rowHeight / 2;
-        const targetY = targetIdx * rowHeight + rowHeight / 2;
-        const path = document.createElementNS(ns, "path");
+        const sourceY = centreY.get(source.id);
+        const targetY = centreY.get(task.id);
+        if (sourceY === void 0 || targetY === void 0) continue;
+        const sourceRight = this.#pct(source.end);
+        const targetLeft = this.#pct(task.start);
         const midX = sourceRight + (targetLeft - sourceRight) / 2;
+        const path = document.createElementNS(ns, "path");
         path.setAttribute("d", `M ${sourceRight} ${sourceY} C ${midX} ${sourceY}, ${midX} ${targetY}, ${targetLeft} ${targetY}`);
         path.setAttribute("class", "gc-dep-line");
+        path.setAttribute("data-from", source.id);
+        path.setAttribute("data-to", task.id);
+        path.setAttribute("marker-end", `url(#${markerId})`);
         path.setAttribute("vector-effect", "non-scaling-stroke");
         svg.appendChild(path);
       }
     }
     return svg;
   }
-  #getVisualRowIndex(taskId, barsPanel) {
-    const rows = barsPanel.querySelectorAll(".gc-bar-row");
-    for (let i = 0; i < rows.length; i++) {
-      const bar = rows[i].querySelector("[data-task-id]");
-      if (bar && bar.dataset.taskId === taskId) return i;
-    }
-    return -1;
+  /* ── Interaction (delegated once in setup) ─────── */
+  /** @param {Event} e */
+  #barFromEvent(e) {
+    const t = (
+      /** @type {Element} */
+      e.target
+    );
+    const bar = (
+      /** @type {HTMLElement | null} */
+      t?.closest?.(".gc-bar, .gc-milestone")
+    );
+    return bar && this.#container?.contains(bar) ? bar : null;
   }
+  #onClick = (e) => {
+    const bar = this.#barFromEvent(e);
+    if (!bar) return;
+    const task = this.#tasks.find((t) => t.id === bar.dataset.taskId);
+    if (!task) return;
+    this.#announce(`Selected: ${task.name}`);
+    this.dispatchEvent(new CustomEvent("gantt-chart:task-click", {
+      bubbles: true,
+      detail: { task }
+    }));
+  };
+  #onKeyDown = (e) => {
+    const ke = (
+      /** @type {KeyboardEvent} */
+      e
+    );
+    if (ke.key !== "Enter" && ke.key !== " ") return;
+    const bar = this.#barFromEvent(ke);
+    if (!bar) return;
+    ke.preventDefault();
+    bar.click();
+  };
   /* ── JSON loading ──────────────────────────────── */
-  async _loadSrc(url) {
-    if (!url) return;
+  /** @param {string} url */
+  async #loadSrc(url) {
+    this.#srcLoaded = url;
+    const token = ++this.#srcToken;
     try {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      while (this.firstChild) this.firstChild.remove();
-      const table = document.createElement("table");
-      const thead = document.createElement("thead");
-      const headerRow = document.createElement("tr");
-      for (const label of ["Task", "Start", "End", "Progress"]) {
-        const th = document.createElement("th");
-        th.textContent = label;
-        headerRow.appendChild(th);
+      if (token !== this.#srcToken) return;
+      this.#tasks = normalizeTasks(data.tasks || []);
+      this.#source = "src";
+      if (data.title && data.title !== this.getAttribute("title")) {
+        this.#internalAttr = true;
+        this.setAttribute("title", data.title);
+        this.#internalAttr = false;
       }
-      thead.appendChild(headerRow);
-      table.appendChild(thead);
-      const tbody = document.createElement("tbody");
-      for (const task of data.tasks || []) {
-        const tr = document.createElement("tr");
-        if (task.id) tr.dataset.taskId = task.id;
-        if (task.group) tr.dataset.group = task.group;
-        if (task.depends) tr.dataset.depends = Array.isArray(task.depends) ? task.depends.join(",") : task.depends;
-        if (task.status) tr.dataset.status = task.status;
-        if (task.assignee) tr.dataset.assignee = task.assignee;
-        if (task.milestone) tr.setAttribute("data-milestone", "");
-        if (task.color) tr.dataset.color = task.color;
-        if (task.storyIds) tr.dataset.storyIds = Array.isArray(task.storyIds) ? task.storyIds.join(",") : task.storyIds;
-        if (task.itemIds) tr.dataset.itemIds = Array.isArray(task.itemIds) ? task.itemIds.join(",") : task.itemIds;
-        const tdName = document.createElement("td");
-        tdName.textContent = task.name || "";
-        tr.appendChild(tdName);
-        const tdStart = document.createElement("td");
-        const timeStart = document.createElement("time");
-        timeStart.setAttribute("datetime", task.start);
-        timeStart.textContent = new Date(task.start).toLocaleDateString(void 0, { month: "short", day: "numeric" });
-        tdStart.appendChild(timeStart);
-        tr.appendChild(tdStart);
-        const tdEnd = document.createElement("td");
-        const timeEnd = document.createElement("time");
-        timeEnd.setAttribute("datetime", task.end || task.start);
-        timeEnd.textContent = new Date(task.end || task.start).toLocaleDateString(void 0, { month: "short", day: "numeric" });
-        tdEnd.appendChild(timeEnd);
-        tr.appendChild(tdEnd);
-        const tdProgress = document.createElement("td");
-        const progress = document.createElement("progress");
-        progress.value = task.progress || 0;
-        progress.max = 100;
-        progress.textContent = `${task.progress || 0}%`;
-        tdProgress.appendChild(progress);
-        tr.appendChild(tdProgress);
-        tbody.appendChild(tr);
+      if (this.hasAttribute("data-upgraded")) {
+        this.#render();
+        this.#dispatchReady();
       }
-      table.appendChild(tbody);
-      this.appendChild(table);
-      if (data.title) this.setAttribute("title", data.title);
-      this.#refresh();
+      this.dispatchEvent(new CustomEvent("gantt-chart:tasks-changed", {
+        detail: { tasks: this.#tasks, source: "src" },
+        bubbles: true
+      }));
     } catch (err) {
+      if (token === this.#srcToken) this.#srcLoaded = null;
       console.warn(`[gantt-chart] Failed to load src="${url}":`, err);
     }
   }
   /* ── Live region ───────────────────────────────── */
+  /** @param {string} msg */
   #announce(msg) {
     if (!this.#liveRegion) return;
     this.#liveRegion.textContent = "";
