@@ -28,6 +28,8 @@ the project adheres to [Semantic Versioning](https://semver.org/).
 - `npm test` script alias for the Playwright suite.
 
 ### Changed
+- `package.json` author corrected to Thomas A. Powell (0.1.0 was published under
+  the wrong name).
 - `iron-triangle` element docs reconciled with the shipped component: the
   stale Slots, JavaScript API, CSS Tokens, Static fallback, and Accessibility
   sections (which described an earlier fieldset-form design) now document the
