@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Documentation mini-site for @profpowell/vb-project-planning (CookSSG, styled by Vanilla Breeze).",
   "scripts": {
-    "prebuild": "node scripts/copy-assets.js",
+    "prebuild": "node scripts/copy-assets.js && node scripts/sync-api-registry.js",
     "build": "npm run prebuild && MINIFY=false cook build",
     "dev": "npm run prebuild && MINIFY=false cook dev",
     "preview": "npm run build && npx http-server dist/pages -p 4321 -c-1"
