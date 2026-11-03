@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/api.schema.json",
   "element": "requirement-card",
   "type": "web-component",
-  "description": "Display-only card for ONE NFR ility row. Renders priority + rationale + optional conflict flag for status dashboards and ADR appendices. The prioritization decision itself lives in <nfr-compass>.",
+  "description": "Display-only card for ONE NFR ility row. Renders priority + rationale + optional conflict flag for status dashboards and ADR appendices. The prioritization decision itself lives in <quality-target>.",
   "htmlvalidate": {
     "flow": true,
     "permittedContent": ["@flow"]
