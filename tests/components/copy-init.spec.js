@@ -7,6 +7,8 @@
  * - The announcement goes to one persistent, visually hidden live region
  *   on <body>, not inside the button, so the button's accessible name
  *   doesn't change.
+ * - 0.3.0: while a modal <dialog> is open the rest of the page is inert,
+ *   so the announcement goes to a region inside the open modal instead.
  *
  * copy-init ships in the bundle (review-surface imports it), so any demo
  * page that loads the pack auto-enhances [data-copy] buttons.
@@ -78,5 +80,45 @@ test.describe('copy-init', () => {
       ['vb:copy', 'npm install vanilla-breeze'],
       ['vb:paste', 'npm install vanilla-breeze'],
     ]);
+  });
+  test('inside a showModal() dialog the announcement lands in a region inside the dialog', async ({ page }) => {
+    await page.goto(demoPage);
+    await page.waitForSelector('review-surface[data-upgraded]');
+
+    await page.evaluate(() => {
+      const dialog = document.createElement('dialog');
+      dialog.id = 'modal';
+      dialog.setAttribute('aria-label', 'Share');
+      const btn = document.createElement('button');
+      btn.id = 'dialog-copy';
+      btn.dataset.copy = 'https://example.test/share';
+      btn.textContent = 'Copy link';
+      dialog.append(btn);
+      document.body.append(dialog);
+      dialog.showModal();
+    });
+
+    await page.locator('#dialog-copy').click();
+    const inDialog = page.locator('#modal > [data-vb-clipboard-status]');
+    await expect(inDialog).toHaveText('Copied to clipboard');
+    await expect(inDialog).toHaveAttribute('role', 'status');
+    // Nothing went to the (inert) body region.
+    await expect(page.locator('body > [data-vb-clipboard-status]')).toHaveCount(0);
+
+    // A second copy reuses the dialog's region.
+    await page.locator('#dialog-copy').click();
+    await expect(page.locator('#modal [data-vb-clipboard-status]')).toHaveCount(1);
+
+    // Once the dialog closes, announcements fall back to <body>.
+    await page.evaluate(() => document.getElementById('modal').close());
+    await page.evaluate(() => {
+      const btn = document.createElement('button');
+      btn.id = 'page-copy';
+      btn.dataset.copy = 'page';
+      btn.textContent = 'Copy page';
+      document.body.append(btn);
+    });
+    await page.locator('#page-copy').click();
+    await expect(page.locator('body > [data-vb-clipboard-status]')).toHaveText('Copied to clipboard');
   });
 });
