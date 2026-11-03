@@ -8,6 +8,7 @@
     "permittedContent": ["@flow"]
   },
   "attributes": [
+    { "name": "heading-level", "kind": "host-api", "purpose": "config", "type": "number", "description": "Level (1–6) of the Acceptance Criteria / Tasks / Notes headings. Default: one below the nearest preceding heading on the page (the slotted title is only shown in minimal mode, which has no sections)." },
     { "name": "persona-id", "kind": "host-api", "purpose": "config", "type": "string",  "description": "Links to a user-persona element by id. Without a persona slot, the \"As a…\" text uses that persona's job-title (live-updating; a legacy non-ARIA role attribute is also read)." },
     { "name": "priority",   "kind": "host-api", "purpose": "config", "type": "enum", "values": ["critical", "high", "medium", "low"], "default": "medium", "description": "Story priority level" },
     { "name": "status",     "kind": "host-api", "purpose": "config", "type": "enum", "values": ["backlog", "to-do", "in-progress", "review", "done"], "default": "backlog", "description": "Workflow status" },

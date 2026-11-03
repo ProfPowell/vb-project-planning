@@ -227,3 +227,5 @@ function slotted(tag, slot, text) {
 
 // SrcLoader lives in its own module; re-exported here for existing imports.
 export { SrcLoader } from './src-loader.js';
+
+export { boardHeadingLevels, retagHeading, contextHeadingLevel } from './headings.js';

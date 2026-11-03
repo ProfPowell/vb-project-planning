@@ -35,7 +35,7 @@ burndown-chart {
     font-size: var(--font-size-sm, 0.875rem);
   }
 
-  .bdc-scope-changes h4 {
+  .bdc-scope-changes .bdc-scope-heading {
     margin: 0 0 var(--size-2xs, 0.25rem);
     font-size: var(--font-size-xs, 0.75rem);
     text-transform: uppercase;

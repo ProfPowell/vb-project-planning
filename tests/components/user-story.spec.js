@@ -605,7 +605,8 @@ test.describe('user-story — src, lifecycle and regressions', () => {
         hidden: sr.querySelector('.points-badge .visually-hidden')?.textContent,
       };
     });
-    expect(state.headings).toEqual(['H3:Acceptance Criteria', 'H3:Tasks', 'H3:Notes']);
+    // Section headings follow the page outline: one below the demo's <h1>.
+    expect(state.headings).toEqual(['H2:Acceptance Criteria', 'H2:Tasks', 'H2:Notes']);
     expect(state.hidden).toBe(' story points');
   });
 });

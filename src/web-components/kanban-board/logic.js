@@ -42,7 +42,7 @@ import { VBElement } from '../../lib/vb-element.js';
 import { VBCollection } from '../../lib/vb-collection.js';
 import { viewTransitionSwap } from '../../lib/vb-view-transition.js';
 import {
-  SrcLoader, announce, createLiveRegion, createStoryCard, isStoryRecord, itemLabel, syncPlaceholder, titleCase, watchSurfaceSemantics,
+  SrcLoader, announce, createLiveRegion, createStoryCard, isStoryRecord, itemLabel, syncPlaceholder, titleCase, watchSurfaceSemantics, boardHeadingLevels, retagHeading,
 } from '../../lib/board-surface.js';
 
 class KanbanBoard extends VBCollection(VBElement) {
@@ -155,7 +155,7 @@ class KanbanBoard extends VBCollection(VBElement) {
         this.#titleEl.className = 'kb-title';
         this.prepend(this.#titleEl);
       } else {
-        this.#titleEl = KanbanBoard.#retag(this.#titleEl, levels.title);
+        this.#titleEl = retagHeading(this.#titleEl, levels.title);
       }
       this.#titleEl.textContent = title;
     } else if (this.#titleEl) {
@@ -163,51 +163,14 @@ class KanbanBoard extends VBCollection(VBElement) {
       this.#titleEl = null;
     }
     for (const h of this.#columnsEl?.querySelectorAll(':scope > .kb-column > .kb-column-header > .kb-column-heading') ?? []) {
-      KanbanBoard.#retag(h, levels.column);
+      retagHeading(h, levels.column);
     }
     this.#nameRegion();
   }
 
-  /**
-   * Heading levels for the title and the column headings. `heading-level`
-   * sets the top one; otherwise it is one below the nearest heading that
-   * precedes the board (ignoring other boards' own headings), so the
-   * columns never skip a level (axe heading-order).
-   * @returns {{ title: number, column: number }}
-   */
+  /** @returns {{ title: number, column: number }} */
   #headingLevels() {
-    const attr = parseInt(this.getAttribute('heading-level') ?? '', 10);
-    const top = attr >= 1 && attr <= 6 ? attr : this.#contextLevel();
-    return { title: top, column: Math.min(6, this.getAttribute('title') ? top + 1 : top) };
-  }
-
-  /** One below the nearest preceding heading in document order; 2 if none. */
-  #contextLevel() {
-    const self = /** @type {Element} */ (/** @type {unknown} */ (this));
-    if (!self.isConnected) return 2;
-    let level = 1;
-    for (const h of document.querySelectorAll('h1, h2, h3, h4, h5, h6, [role="heading"][aria-level]')) {
-      if (h.closest('kanban-board')) continue;
-      if (!(h.compareDocumentPosition(self) & Node.DOCUMENT_POSITION_FOLLOWING)) break;
-      level = Number(h.getAttribute('aria-level')) || Number(h.localName.slice(1)) || level;
-    }
-    return Math.min(6, level + 1);
-  }
-
-  /**
-   * Swap a heading element for one of another level, keeping its children
-   * and attributes.
-   * @param {Element} el
-   * @param {number} level
-   * @returns {HTMLElement}
-   */
-  static #retag(el, level) {
-    if (el.localName === `h${level}`) return /** @type {HTMLElement} */ (el);
-    const next = document.createElement(`h${level}`);
-    for (const { name, value } of [...el.attributes]) next.setAttribute(name, value);
-    next.append(...el.childNodes);
-    el.replaceWith(next);
-    return next;
+    return boardHeadingLevels(/** @type {HTMLElement} */ (/** @type {unknown} */ (this)), 'kanban-board');
   }
 
   /**

@@ -35,10 +35,11 @@
 import { registerComponent } from '../../lib/bundle-registry.js';
 import { VBElement } from '../../lib/vb-element.js';
 import { parseISODate, toISODate, enumerateDays } from '../../lib/dates.js';
+import { headingLevelFor } from '../../lib/headings.js';
 
 class BurndownChart extends VBElement {
   static get observedAttributes() {
-    return ['start', 'end', 'total', 'unit', 'label', 'weekends'];
+    return ['start', 'end', 'total', 'unit', 'label', 'weekends', 'heading-level'];
   }
 
   /** True between connectedCallback and disconnectedCallback. */
@@ -154,7 +155,8 @@ class BurndownChart extends VBElement {
     if (scopeChanges.length) {
       const notes = document.createElement('aside');
       notes.className = 'bdc-scope-changes';
-      const heading = document.createElement('h4');
+      const heading = document.createElement(`h${headingLevelFor(this, 'burndown-chart')}`);
+      heading.className = 'bdc-scope-heading';
       heading.textContent = 'Scope changes';
       notes.appendChild(heading);
       const list = document.createElement('ul');

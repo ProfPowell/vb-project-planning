@@ -60,6 +60,7 @@ import {
   esc, lucideSvg, UX_ICONS, UXShadowElement, PRIORITIES, STATUSES, lookup,
   fillSlot, slottedChild, detailLevel, markEmptySections, personaJobTitle,
 } from '../_ux-base.js';
+import { headingLevelFor } from '../../lib/headings.js';
 
 let dialogSeq = 0;
 
@@ -70,7 +71,7 @@ class UserStory extends UXShadowElement {
   static get observedAttributes() {
     return [
       'persona-id', 'priority', 'points',
-      'status', 'epic', 'story-id', 'compact', 'detail', 'src'
+      'status', 'epic', 'story-id', 'compact', 'detail', 'src', 'heading-level'
     ];
   }
 
@@ -415,10 +416,22 @@ class UserStory extends UXShadowElement {
 
   // ── Private ──────────────────────────────────────────────────────
 
+  /**
+   * Level for the Acceptance Criteria / Tasks / Notes headings: `heading-level`
+   * if set, else one below the nearest heading before the story. The slotted
+   * title is ignored (along with other stories' headings): it is only
+   * rendered in minimal mode, which has no sections.
+   * @returns {number}
+   */
+  #sectionHeadingLevel() {
+    return headingLevelFor(this, 'user-story');
+  }
+
   _render() {
     const priorityInfo = lookup(PRIORITIES, this.priority, 'medium');
     const statusInfo = lookup(STATUSES, this.status, 'backlog');
     const level = this._detailLevel;
+    const sectionLevel = this.#sectionHeadingLevel();
     const ariaLabel = this.storyId
       ? `User story: ${esc(this.storyId)}`
       : 'User story';
@@ -483,7 +496,7 @@ class UserStory extends UXShadowElement {
                 <div class="section-icon acceptance">
                   <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                 </div>
-                <h3 class="section-title">Acceptance Criteria</h3>
+                <h${sectionLevel} class="section-title">Acceptance Criteria</h${sectionLevel}>
               </div>
               <div class="section-content">
                 <slot name="acceptance-criteria">
@@ -497,7 +510,7 @@ class UserStory extends UXShadowElement {
                 <div class="section-icon tasks">
                   <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
                 </div>
-                <h3 class="section-title">Tasks</h3>
+                <h${sectionLevel} class="section-title">Tasks</h${sectionLevel}>
               </div>
               <div class="section-content">
                 <slot name="tasks">
@@ -511,7 +524,7 @@ class UserStory extends UXShadowElement {
                 <div class="section-icon notes">
                   <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                 </div>
-                <h3 class="section-title">Notes</h3>
+                <h${sectionLevel} class="section-title">Notes</h${sectionLevel}>
               </div>
               <div class="section-content">
                 <slot name="notes">

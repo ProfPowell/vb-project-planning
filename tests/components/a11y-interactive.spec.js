@@ -34,27 +34,16 @@ const summarize = (violations) => violations.map((v) =>
   `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
 
 /**
- * Run the audit on `tag`. color-contrast runs as a separate pass that
- * excludes <user-story> and <work-item>: their priority / status badge
- * colours are being fixed in the record components (0.3.0, owned by the
- * records work in _ux-base PRIORITIES / STATUSES); drop the two excludes
- * once that lands. Every other rule still audits those cards.
+ * Run the full audit (every rule, including color-contrast) on `tag`.
  * @param {import('@playwright/test').Page} page
  * @param {string} tag
  */
 async function audit(page, tag) {
-  const main = await new AxeBuilder({ page })
+  const results = await new AxeBuilder({ page })
     .include(tag)
     .withTags(TAGS)
-    .disableRules(['color-contrast'])
     .analyze();
-  const contrast = await new AxeBuilder({ page })
-    .include(tag)
-    .exclude('user-story')
-    .exclude('work-item')
-    .withRules(['color-contrast'])
-    .analyze();
-  return [...main.violations, ...contrast.violations];
+  return results.violations;
 }
 
 /** Wait for the component to upgrade and finish its first render. */
@@ -183,12 +172,15 @@ test.describe('kanban-board headings and regions', () => {
     await page.evaluate(() => {
       const second = document.createElement('kanban-board');
       second.innerHTML = '<section data-column="x" data-column-label="X"><div draggable="true" data-id="x1">One</div></section>';
-      document.body.append(second);
+      // Append beside the demo's board (demo content lives in <main>), so
+      // :nth-of-type below counts all three as siblings.
+      const parent = document.querySelector('kanban-board').parentElement;
+      parent.append(second);
       const third = document.createElement('kanban-board');
       third.setAttribute('heading-level', '3');
       third.setAttribute('title', 'Explicit');
       third.innerHTML = '<section data-column="y" data-column-label="Y"><div draggable="true" data-id="y1">Two</div></section>';
-      document.body.append(third);
+      parent.append(third);
     });
     await ready(page, 'kanban-board:nth-of-type(3)');
     const boards = await page.evaluate(() => [...document.querySelectorAll('kanban-board')].map((b) => ({

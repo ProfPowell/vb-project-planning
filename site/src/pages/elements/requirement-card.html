@@ -80,7 +80,7 @@ crumbLabel: Web Components
   <table class="props-table">
     <thead><tr><th>State</th><th>When</th></tr></thead>
     <tbody>
-      <tr><td><code>:state(priority-critical)</code>, <code>-important</code>, <code>-acceptable</code>, <code>-not-relevant</code></td><td>Matches <code>data-priority</code>. Drives the border and default pill colours; Not relevant also dims the card and strikes through the pill.</td></tr>
+      <tr><td><code>:state(priority-critical)</code>, <code>-important</code>, <code>-acceptable</code>, <code>-not-relevant</code></td><td>Matches <code>data-priority</code>. Drives the border and default pill colours; Not relevant gives the card a dashed border, a muted name and a struck-through pill (no opacity, so text keeps AA contrast).</td></tr>
       <tr><td><code>:state(has-badge)</code>, <code>has-priority-pill</code>, <code>has-rationale</code>, <code>has-conflicts</code></td><td>That slot has real content (whitespace doesn't count). <code>has-priority-pill</code> hides the default pill.</td></tr>
       <tr><td><code>:state(interactive)</code></td><td>The card has a <code>tabindex</code> or sits inside an <code>&lt;a href&gt;</code> / <code>&lt;button&gt;</code>. Adds the pointer cursor and hover tint.</td></tr>
     </tbody>
