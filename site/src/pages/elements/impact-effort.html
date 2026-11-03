@@ -221,6 +221,7 @@ matrix.items = [
       <li>Axis labels ("Impact" and "Effort") use <code>aria-hidden="true"</code> since the quadrant labels already convey the meaning</li>
       <li>A hidden live region with <code>aria-live="polite"</code> announces item moves between quadrants using the item's text and the quadrant name</li>
       <li>Keyboard transfer is provided by the underlying <code>&lt;drag-surface&gt;</code> components</li>
+      <li>Each <code>&lt;drag-surface&gt;</code> is exposed as a list of its cards (<code>role="list"</code> / <code>"listitem"</code>, kept in step as cards are added and moved). If any card is an element that may not be a list item, such as <code>&lt;article&gt;</code>, that surface is exposed as a labelled <code>role="group"</code> instead and the cards keep their own role. The drag-surface's own move announcements are moved to a hidden status region just after the list, since a list may only contain list items.</li>
       <li>Respects <code>prefers-reduced-motion: reduce</code> by disabling all transitions</li>
       <li>Uses <code>container-type: inline-size</code> and stacks to a single column at narrow viewports (&lt;30rem)</li>
       <li>Print styles remove minimum heights, set static cursors, and add visible borders</li>

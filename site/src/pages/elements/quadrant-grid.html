@@ -131,6 +131,7 @@ crumbLabel: Web Components
     <li>When coordinate pins overlap, each pin in the cluster becomes focusable (<code>tabindex="0"</code>, <code>role="group"</code> unless it already has a role) so keyboard users can fan the cluster out.</li>
     <li>Axis and scale labels are <code>aria-hidden</code>; the region label carries the axis names.</li>
     <li>With <code>draggable</code>, a polite live region announces moves using the item's text and the quadrant label (e.g. "Moved Add 2FA to Big Bets").</li>
+    <li>Each <code>&lt;drag-surface&gt;</code> is exposed as a list of its cards (<code>role="list"</code> / <code>"listitem"</code>, kept in step as cards are added and moved). If any card is an element that may not be a list item, such as <code>&lt;article&gt;</code>, that surface is exposed as a labelled <code>role="group"</code> instead and the cards keep their own role. The drag-surface's own move announcements are moved to a hidden status region just after the list, since a list may only contain list items.</li>
   </ul>
 </section>
 

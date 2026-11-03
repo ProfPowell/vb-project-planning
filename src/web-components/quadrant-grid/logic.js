@@ -52,12 +52,16 @@
 
 import { registerComponent } from '../../lib/bundle-registry.js';
 import { VBElement } from '../../lib/vb-element.js';
+import { watchSurfaceSemantics } from '../../lib/board-surface.js';
 
 class QuadrantGrid extends VBElement {
   static #instanceCount = 0;
 
   /** Quadrant indices in visual reading order: TL (Q2), TR (Q1), BL (Q3), BR (Q4). */
   static VISUAL_ORDER = [1, 0, 2, 3];
+
+  /** Stops the drag-surface semantics observer (see board-surface.js). */
+  #stopSemantics = () => {};
 
   setup() {
     if (!this.#groupId) this.#groupId = `qg-${++QuadrantGrid.#instanceCount}`;
@@ -223,6 +227,7 @@ class QuadrantGrid extends VBElement {
     this.#wired = true;
     if (this.#draggable) {
       this.listen(this, 'drag-surface:transfer', this.#onTransfer);
+      this.#stopSemantics = watchSurfaceSemantics(this);
     }
 
     /* Measure pinned tokens so CSS can clamp their center position by
@@ -340,6 +345,7 @@ class QuadrantGrid extends VBElement {
     // Listeners are removed by VBElement; the built grid and its children
     // stay in place so a moved grid keeps its content.
     this.#wired = false;
+    this.#stopSemantics();
     this.#pinObserver?.disconnect();
     this.#pinObserver = null;
     if (this.#clusterRaf) cancelAnimationFrame(this.#clusterRaf);
