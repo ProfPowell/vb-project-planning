@@ -118,7 +118,7 @@ test.describe('product-roadmap — interaction', () => {
     expect(bars[1].w).toBe(1);
   });
 
-  test('bars are focusable buttons with status in the name; Enter and Space select', async ({ page }) => {
+  test('bars are focusable buttons whose name starts with the visible title and status; Enter and Space select', async ({ page }) => {
     await page.goto(basicDemo);
     await page.waitForSelector('product-roadmap[data-upgraded]');
     await recordEvents(page);
@@ -126,7 +126,7 @@ test.describe('product-roadmap — interaction', () => {
     const bar = page.locator('product-roadmap .rm-lane[data-lane="Mobile"] .rm-bar').first();
     await expect(bar).toHaveAttribute('role', 'button');
     await expect(bar).toHaveAttribute('tabindex', '0');
-    await expect(bar).toHaveAccessibleName(/iOS rewrite.*status: at risk/);
+    await expect(bar).toHaveAccessibleName(/^iOS rewrite, At risk — /);
     await expect(bar.locator('.rm-bar-status')).toHaveText('At risk');
 
     await bar.focus();

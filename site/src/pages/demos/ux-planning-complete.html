@@ -75,12 +75,18 @@
       border-radius: var(--radius-full);
       margin-inline-end: var(--size-xs);
     }
-    .phase-research { color: #8b5cf6; background: rgba(139, 92, 246, 0.1); }
-    .phase-define   { color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
-    .phase-plan     { color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
-    .phase-execute  { color: #22c55e; background: rgba(34, 197, 94, 0.1); }
-    .phase-review   { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
-    scroll-behavior: smooth;
+    /* Phase hues pulled toward the text colour so the small labels clear
+       4.5:1 in light and dark mode (raw #f59e0b/#22c55e on white do not). */
+    .phase-label {
+      color: color-mix(in oklab, var(--phase) 50%, var(--color-text));
+      background: color-mix(in srgb, var(--phase) 12%, transparent);
+    }
+    .phase-research { --phase: #8b5cf6; }
+    .phase-define   { --phase: #3b82f6; }
+    .phase-plan     { --phase: #f59e0b; }
+    .phase-execute  { --phase: #22c55e; }
+    .phase-review   { --phase: #ef4444; }
+    html { scroll-behavior: smooth; }
   </style>
 </head>
 <body>
@@ -117,7 +123,7 @@
       <div class="card-row">
         <user-persona
           id="persona-sarah"
-          role="Product Manager"
+          job-title="Product Manager"
           age="34"
           location="San Francisco, CA"
           compact>
@@ -139,7 +145,7 @@
 
         <user-persona
           id="persona-dev"
-          role="Senior Engineer"
+          job-title="Senior Engineer"
           age="29"
           location="Austin, TX"
           compact>

@@ -202,7 +202,7 @@ class AdrWc extends UXShadowElement {
           <div class="adr-body">
             <div class="adr-meta">
               ${this.adrId ? `<span class="adr-id">${esc(this.adrId)}</span>` : ''}
-              <span class="adr-status" style="color:${statusInfo.color};background:${statusInfo.bg}">${esc(statusInfo.label)}</span>
+              <span class="adr-status" style="--_hue:${statusInfo.color}">${esc(statusInfo.label)}</span>
             </div>
             <div class="adr-title-wrap">
               <slot name="title"><span class="adr-title-fallback">${esc(this._minimalLabel)}</span></slot>
@@ -221,7 +221,7 @@ class AdrWc extends UXShadowElement {
             ${hasDate ? `<span class="adr-date-wrap">${lucideSvg(ICONS.calendar)} <slot name="date"></slot></span>` : ''}
           </div>
           <div class="adr-badges">
-            <span class="adr-status" style="color:${statusInfo.color};background:${statusInfo.bg}">${esc(statusInfo.label)}</span>
+            <span class="adr-status" style="--_hue:${statusInfo.color}">${esc(statusInfo.label)}</span>
           </div>
         </header>
 

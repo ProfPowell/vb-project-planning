@@ -4,20 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Burndown Chart — Basic Demo</title>
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
-  <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js?v=mw0yti0u"></script>
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
+  <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js?v=mw125meb"></script>
   <!-- burndown-chart composes <chart-wc> — load the opt-in charts add-on (JS + CSS). -->
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze-charts.css?v=mw0yti0u">
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze-charts.js?v=mw0yti0u"></script>
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze-charts.css?v=mw125meb">
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze-charts.js?v=mw125meb"></script>
 <style>
     body { padding: var(--size-l); background: var(--color-surface); max-inline-size: 60rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--size-xl); }
     h1 { font-size: var(--font-size-l); margin: 0; }
     p  { color: var(--color-text-muted); margin: 0; }
     section { display: flex; flex-direction: column; gap: var(--size-s); }
+    main { display: flex; flex-direction: column; gap: var(--size-xl); }
   </style>
 </head>
 <body>
+<main>
   <header>
     <h1>Sprint burndown</h1>
     <p>Author supplies daily remaining counts (and optional ±delta scope changes); the component computes the ideal trend line and renders both as a <code>&lt;chart-wc&gt;</code> line chart.</p>
@@ -58,7 +60,7 @@
       </template>
     </burndown-chart>
   </section>
-
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
+</main>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
 </body>
 </html>

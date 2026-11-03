@@ -93,7 +93,9 @@ test.describe('burndown-chart — data API', () => {
         mon: ideal['2026-05-11'],
         first: ideal['2026-05-04'],
         last: ideal['2026-05-15'],
-        notesHeading: notes?.querySelector('h4')?.textContent,
+        notesHeading: notes?.querySelector('.bdc-scope-heading')?.textContent,
+        // Outline-relative level (src/lib/headings.js), not a fixed <h4>.
+        notesHeadingIsHeading: /^h[1-6]$/.test(notes?.querySelector('.bdc-scope-heading')?.localName ?? ''),
         noteItems: [...(notes?.querySelectorAll('li') ?? [])].map((li) => ({
           date: li.querySelector('time')?.getAttribute('datetime'),
           text: li.querySelector('strong')?.textContent,
@@ -113,6 +115,7 @@ test.describe('burndown-chart — data API', () => {
     expect(state.mon).toBeCloseTo(30 - (30 / 9) * 5, 10);
 
     expect(state.notesHeading).toBe('Scope changes');
+    expect(state.notesHeadingIsHeading).toBe(true);
     expect(state.noteItems).toEqual([
       { date: '2026-05-07', text: '+5 points' },
       { date: '2026-05-13', text: '-2 points' },

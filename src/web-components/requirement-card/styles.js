@@ -71,11 +71,17 @@ export const styles = `
   :host(:state(priority-critical))     { border-color: var(--_critical-fg); }
   :host(:state(priority-important))    { border-color: var(--_important-fg); }
   :host(:state(priority-acceptable))   { border-color: var(--_acceptable-fg); }
-  :host(:state(priority-not-relevant)) { opacity: 0.6; }
+  /* Not relevant reads as de-emphasised without opacity, which would pull
+     every bit of text below WCAG AA contrast. */
+  :host(:state(priority-not-relevant)) { border-style: dashed; }
+  :host(:state(priority-not-relevant)) .name { color: var(--_muted); }
 
-  :host(:state(priority-critical))     .priority-default { background: var(--_critical-bg);    color: var(--_critical-fg); }
-  :host(:state(priority-important))    .priority-default { background: var(--_important-bg);   color: var(--_important-fg); }
-  :host(:state(priority-acceptable))   .priority-default { background: var(--_acceptable-bg);  color: var(--_acceptable-fg); }
+  /* Pill text mixes the status hue toward the text colour so it keeps
+     4.5:1 on the tinted pill in light and dark themes; the border keeps the
+     pure hue. */
+  :host(:state(priority-critical))     .priority-default { background: var(--_critical-bg);    color: color-mix(in oklab, var(--_critical-fg) 55%, var(--_text)); }
+  :host(:state(priority-important))    .priority-default { background: var(--_important-bg);   color: color-mix(in oklab, var(--_important-fg) 55%, var(--_text)); }
+  :host(:state(priority-acceptable))   .priority-default { background: var(--_acceptable-bg);  color: color-mix(in oklab, var(--_acceptable-fg) 55%, var(--_text)); }
   :host(:state(priority-not-relevant)) .priority-default { background: var(--_skipped-bg);     color: var(--_skipped-fg); text-decoration: line-through; }
 
   /* Hide the default pill when the author supplied one via slot */
@@ -88,7 +94,9 @@ export const styles = `
   }
 
   .conflicts ::slotted([slot="conflicts"]) {
-    color: var(--_conflict);
+    /* Mixed toward the text colour: the raw error hue fails AA as text on
+       dark surfaces. The border and ring keep the pure hue. */
+    color: color-mix(in oklab, var(--_conflict) 55%, var(--_text));
     font-size: var(--font-size-sm, 0.875rem);
     font-weight: var(--font-weight-semibold, 600);
   }

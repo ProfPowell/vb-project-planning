@@ -9,7 +9,11 @@
  * attributes are used when no slot child is present (a slot always wins).
  *
  * @attr {string}  name     - Persona name when there is no slot="name" child
- * @attr {string}  role     - Job title or role
+ * @attr {string}  job-title - Job title (e.g. "Product Manager")
+ * @attr {string}  role     - Deprecated: a non-ARIA value (e.g. "Designer") is
+ *                            moved to job-title on upgrade and the role
+ *                            attribute removed, with a one-time console warning.
+ *                            A valid ARIA role (e.g. "region") is left alone.
  * @attr {string}  age      - Age display
  * @attr {string}  location - Location display
  * @attr {string}  avatar   - Optional avatar image URL
@@ -18,12 +22,14 @@
  * @attr {string}  src      - URL to a JSON persona record (fetched once)
  * @attr {boolean} data-list-stories - List <user-story persona-id> matching this id
  *
- * @fires persona-ready             - Once, after the first render (after the src data renders when src is set), detail: { name, role }
+ * @fires user-persona:ready        - Once, after the first render (after the src data renders when src is set),
+ *                                    detail: { name, jobTitle, role } (role is a deprecated copy of jobTitle).
+ *                                    Deprecated alias: persona-ready (same detail, 0.3.x only)
  * @fires user-persona:upgraded     - Once, after first connect
  * @fires user-persona:data-changed - After .data assignment, detail: { data, source: 'property' }
  *
  * @example
- * <user-persona name="Sarah Chen" role="Product Manager" age="34"
+ * <user-persona name="Sarah Chen" job-title="Product Manager" age="34"
  *   location="San Francisco, CA"
  *   quote="I need tools that help me stay organized.">
  *   <p slot="bio">Sarah has 8 years of PM experience.</p>
@@ -35,7 +41,9 @@
 import { styles } from './styles.js';
 import { registerComponent } from '../../lib/bundle-registry.js';
 import { cssUrl } from '../../lib/escape.js';
-import { esc, initials, hashColor, UXShadowElement, fillSlot, readSlot, slottedChild } from '../_ux-base.js';
+import {
+  esc, initials, hashColor, UXShadowElement, fillSlot, readSlot, slottedChild, isAriaRole,
+} from '../_ux-base.js';
 import { portraitUrl } from '../../lib/portrait-url.js';
 import { stringHash as hash } from '../../lib/hash.js';
 
@@ -85,14 +93,19 @@ const MOCK_BEHAVIORS = [
   'Bookmarks frequently used reports', 'Uses dark mode exclusively',
 ];
 
+/** One deprecation warning per page for the legacy `role` attribute. */
+let warnedLegacyRole = false;
+
 /** Text sections that `.data` / `src` turn into slotted children. */
 const SECTION_SLOTS = ['bio', 'goals', 'frustrations', 'behaviors'];
 
 class UserPersona extends UXShadowElement {
-  static readyEvent = 'persona-ready';
+  static readyEvent = 'user-persona:ready';
+  static legacyReadyEvent = 'persona-ready';
 
   static get observedAttributes() {
-    return ['name', 'role', 'age', 'location', 'avatar', 'quote', 'compact', 'src', 'data-list-stories', 'id'];
+    // `role` is observed only to migrate legacy job-title values (see #migrateLegacyRole).
+    return ['name', 'job-title', 'role', 'age', 'location', 'avatar', 'quote', 'compact', 'src', 'data-list-stories', 'id'];
   }
 
   /** @type {MutationObserver | null} */
@@ -120,7 +133,7 @@ class UserPersona extends UXShadowElement {
   get data() {
     return {
       name: this.personaName,
-      role: this.personaRole || undefined,
+      jobTitle: this.jobTitle || undefined,
       age: this.age || undefined,
       location: this.location || undefined,
       avatar: this.avatar || undefined,
@@ -149,7 +162,10 @@ class UserPersona extends UXShadowElement {
    * @param {Record<string, unknown>} data
    */
   _applyData(data) {
-    for (const key of ['role', 'age', 'location', 'avatar']) {
+    // `role` is the 0.2.x name for jobTitle; still accepted from JSON / .data.
+    const jobTitle = data.jobTitle ?? data.role;
+    if (jobTitle != null && jobTitle !== '') this.setAttribute('job-title', String(jobTitle));
+    for (const key of ['age', 'location', 'avatar']) {
       if (data[key] != null && data[key] !== '') this.setAttribute(key, String(data[key]));
     }
     fillSlot(this, 'name', data.name, { tag: 'h2', replace: true });
@@ -162,7 +178,25 @@ class UserPersona extends UXShadowElement {
   /* ── Lifecycle (see UXShadowElement) ──────────── */
 
   _setup() {
+    this.#migrateLegacyRole();
     if (this.hasAttribute('data-mock')) this.#applyMock();
+  }
+
+  /**
+   * 0.2.x used `role` for the job title, which gave the host an invalid ARIA
+   * role. A `role` value that is not a valid ARIA role is moved to
+   * `job-title` (unless one is already set) and the `role` attribute is
+   * removed. A real ARIA role (e.g. "region") is left alone.
+   */
+  #migrateLegacyRole() {
+    const legacy = this.getAttribute('role');
+    if (legacy == null || isAriaRole(legacy)) return;
+    if (!warnedLegacyRole) {
+      warnedLegacyRole = true;
+      console.warn('[user-persona] The role attribute is deprecated for the job title (it sets the element\'s ARIA role). Use job-title instead; role="' + legacy + '" was moved to job-title.');
+    }
+    if (legacy.trim() && !this.getAttribute('job-title')) this.setAttribute('job-title', legacy.trim());
+    this.removeAttribute('role');
   }
 
   _connect() {
@@ -178,12 +212,14 @@ class UserPersona extends UXShadowElement {
 
   /** @param {string} name */
   _attributeEffects(name) {
+    if (name === 'role') this.#migrateLegacyRole();
     // Also runs after a .data / src record sets one of these.
     if (name === 'data-list-stories' || name === 'id') this.#syncStoryObserver();
   }
 
   _readyDetail() {
-    return { name: this.personaName, role: this.personaRole };
+    const jobTitle = this.jobTitle;
+    return { name: this.personaName, jobTitle, role: jobTitle };
   }
 
   /**
@@ -260,8 +296,19 @@ class UserPersona extends UXShadowElement {
     return this._slotText('name') || this.getAttribute('name')?.trim() || 'Unnamed Persona';
   }
 
+  /** Job title, reflected to the `job-title` attribute ('' when unset). */
+  get jobTitle() {
+    return this.getAttribute('job-title') || '';
+  }
+
+  set jobTitle(value) {
+    if (value == null || value === '') this.removeAttribute('job-title');
+    else this.setAttribute('job-title', String(value));
+  }
+
+  /** @deprecated Use jobTitle. */
   get personaRole() {
-    return this.getAttribute('role') || '';
+    return this.jobTitle;
   }
 
   get age() {
@@ -305,7 +352,7 @@ class UserPersona extends UXShadowElement {
       h2.textContent = pick(MOCK_NAMES);
       this.appendChild(h2);
     }
-    if (!this.getAttribute('role'))     this.setAttribute('role', pick(MOCK_ROLES));
+    if (!this.getAttribute('job-title')) this.setAttribute('job-title', pick(MOCK_ROLES));
     if (!this.getAttribute('age'))      this.setAttribute('age', String(25 + ((hash(seed) % 30) + 30) % 30));
     if (!this.getAttribute('location')) this.setAttribute('location', pick(MOCK_LOCATIONS));
     if (!this.getAttribute('avatar')) {
@@ -340,7 +387,7 @@ class UserPersona extends UXShadowElement {
 
   _render() {
     const name = this.personaName;
-    const role = this.personaRole;
+    const jobTitle = this.jobTitle;
     const age = this.age;
     const loc = this.location;
     const avatarUrl = this.avatar;
@@ -366,7 +413,7 @@ class UserPersona extends UXShadowElement {
             <div class="persona-name-wrap" part="name">
               <slot name="name"><h2 class="persona-name-fallback">${esc(name)}</h2></slot>
             </div>
-            ${role ? `<p class="persona-role" part="role">${esc(role)}</p>` : ''}
+            ${jobTitle ? `<p class="persona-role" part="job-title role">${esc(jobTitle)}</p>` : ''}
             <div class="persona-meta" part="meta">
               ${age ? `
                 <span class="meta-item">

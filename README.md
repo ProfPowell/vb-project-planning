@@ -59,7 +59,7 @@ import '@profpowell/vb-project-planning/kanban-board';
 
 ```html
 <kanban-board>…</kanban-board>
-<user-persona name="Fred" role="Engineer">…</user-persona>
+<user-persona name="Fred" job-title="Engineer">…</user-persona>
 ```
 
 ## Runtime peers from Vanilla Breeze

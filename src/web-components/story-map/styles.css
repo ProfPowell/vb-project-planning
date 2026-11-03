@@ -51,7 +51,7 @@ story-map:not(:defined) {
   border-block-end: 2px solid var(--color-border, #e0e0e0);
 }
 
-.sm-activity-header h3 {
+.sm-activity-header .sm-activity-heading {
   margin: 0;
   font-size: 0.875rem;
   font-weight: 700;
@@ -120,7 +120,7 @@ story-map[compact] .sm-activity-header {
   padding: var(--size-xs, 8px) var(--size-s, 12px);
 }
 
-story-map[compact] .sm-activity-header h3 {
+story-map[compact] .sm-activity-header .sm-activity-heading {
   font-size: 0.75rem;
 }
 

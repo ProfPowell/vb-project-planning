@@ -30,7 +30,8 @@
     .wip-alert[data-visible] { display: block; }
   </style>
 </head>
-<body data-layout="stack" data-layout-gap="l">
+<body>
+<main data-layout="stack" data-layout-gap="l">
   <h1>Kanban Board — WIP Limits</h1>
   <header>
     <h2>WIP Limits Demo</h2>
@@ -60,7 +61,7 @@
       <article draggable="true" data-id="task-8">Set up CI pipeline</article>
     </section>
   </kanban-board>
-
+</main>
   <script type="module" src="/assets/pack/vb-project-planning.js"></script>
 <script type="module">
     const alert = document.getElementById('wip-alert');

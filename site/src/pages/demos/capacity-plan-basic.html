@@ -13,7 +13,8 @@
     section { margin-block: var(--size-l); }
   </style>
 </head>
-<body data-layout="stack" data-layout-gap="l">
+<body>
+<main data-layout="stack" data-layout-gap="l">
   <header>
     <h1>Capacity Plan</h1>
     <p>The ledger ties the planning chain together: capacity (from <code>&lt;iron-triangle&gt;</code>) &minus; quality spend (from <code>&lt;quality-target&gt;</code>'s critical sum) &minus; feature spend (slotted <code>&lt;work-item data-capacity-cost&gt;</code>) = slack. Edit any input above and watch the bars rebalance.</p>
@@ -29,7 +30,7 @@
       <work-item data-capacity-cost="2" detail="compact"><h2 slot="title">API webhooks</h2></work-item>
     </capacity-plan>
   </section>
-
+</main>
   <script type="module" src="/assets/pack/vb-project-planning.js"></script>
 </body>
 </html>

@@ -31,7 +31,8 @@
  * Title and summary are content: `<h2 slot="title">`, `<p slot="summary">`
  * (or the `title` / `summary` JSON fields, which create those children).
  *
- * @fires journey-ready               - Once, after the first render (after the src data renders when src is set), detail: { title, persona, phaseCount }
+ * @fires user-journey:ready          - Once, after the first render (after the src data renders when src is set), detail: { title, persona, phaseCount }.
+ *                                      Deprecated alias: journey-ready (same detail, 0.3.x only)
  * @fires user-journey:upgraded       - Once, after first connect
  * @fires user-journey:data-changed   - After .data assignment, detail: { data, source: 'property' }
  * @fires user-journey:phases-changed - After .phases assignment, detail: { phases, source: 'property' }
@@ -53,7 +54,8 @@ const ROWS = [
 ];
 
 class UserJourney extends UXShadowElement {
-  static readyEvent = 'journey-ready';
+  static readyEvent = 'user-journey:ready';
+  static legacyReadyEvent = 'journey-ready';
 
   static get observedAttributes() {
     return ['src', 'persona', 'persona-id', 'story-ids', 'compact'];

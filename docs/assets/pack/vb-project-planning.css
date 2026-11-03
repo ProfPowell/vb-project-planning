@@ -274,7 +274,8 @@ quadrant-grid {
     max-inline-size: calc(100% - var(--size-xs, 0.5rem));
     padding: var(--size-3xs, 0.125rem) var(--size-xs, 0.5rem);
     background: var(--color-accent, oklch(45% 0.18 260));
-    color: var(--color-text-on-primary, #fff);
+    background: oklch(from var(--color-accent, oklch(45% 0.18 260)) min(l, 0.45) c h);
+    color: oklch(100% 0 0);
     border-radius: var(--radius-s, 0.25rem);
     font-size: var(--font-size-xs, 0.75rem);
     inset-inline-start: clamp(var(--qg-pin-half-w, 1.5rem), calc(var(--qg-local-x, 0.5) * 100%), calc(100% - var(--qg-pin-half-w, 1.5rem)));
@@ -473,7 +474,7 @@ burndown-chart {
     border-radius: var(--radius-s, 0.25rem);
     font-size: var(--font-size-sm, 0.875rem);
   }
-  .bdc-scope-changes h4 {
+  .bdc-scope-changes .bdc-scope-heading {
     margin: 0 0 var(--size-2xs, 0.25rem);
     font-size: var(--font-size-xs, 0.75rem);
     text-transform: uppercase;
@@ -574,8 +575,10 @@ product-roadmap > section[data-lane] {
     inset-block: var(--size-2xs, 0.25rem);
     inset-inline-start: calc(var(--rm-x) * 100%);
     inline-size: calc(var(--rm-w) * 100%);
-    background: var(--color-accent, oklch(45% 0.18 260));
-    color: var(--color-text-on-primary, #fff);
+    --rm-bar-bg: var(--color-accent, oklch(45% 0.18 260));
+    background: var(--rm-bar-bg);
+    background: oklch(from var(--rm-bar-bg) min(l, 0.45) c h);
+    color: oklch(100% 0 0);
     border-radius: var(--radius-s, 0.25rem);
     padding: var(--size-2xs, 0.25rem) var(--size-s, 0.75rem);
     font-size: var(--font-size-sm, 0.875rem);
@@ -640,20 +643,21 @@ product-roadmap > section[data-lane] {
     border: 0;
   }
   .rm-bar[data-status=planned] {
-    background: var(--color-info, oklch(60% 0.12 240));
+    --rm-bar-bg: var(--color-info, oklch(60% 0.12 240));
   }
   .rm-bar[data-status=in-progress] {
-    background: var(--color-accent, oklch(50% 0.16 260));
-  }
-  .rm-bar[data-status=at-risk] {
-    background: var(--color-warning, oklch(65% 0.16 60));
-    color: var(--color-text, #1a1a1a);
+    --rm-bar-bg: var(--color-accent, oklch(50% 0.16 260));
   }
   .rm-bar[data-status=shipped] {
-    background: var(--color-success, oklch(55% 0.14 145));
+    --rm-bar-bg: var(--color-success, oklch(55% 0.14 145));
   }
   .rm-bar[data-status=blocked] {
-    background: var(--color-danger, oklch(55% 0.18 25));
+    --rm-bar-bg: var(--color-danger, oklch(55% 0.18 25));
+  }
+  .rm-bar[data-status=at-risk] {
+    --rm-bar-bg: var(--color-warning, oklch(65% 0.16 60));
+    background: oklch(from var(--rm-bar-bg) max(l, 0.8) c h);
+    color: oklch(20% 0 0);
   }
   .rm-today {
     position: absolute;
@@ -716,7 +720,7 @@ kanban-board:not(:defined) {
   background: var(--color-surface-raised, #f8f9fa);
   border-block-end: 2px solid var(--color-border, #e0e0e0);
 }
-.kb-column-header h3 {
+.kb-column-heading {
   margin: 0;
   font-size: 0.875rem;
   font-weight: 700;
@@ -808,7 +812,7 @@ kanban-board[compact] .kb-column {
 kanban-board[compact] .kb-column-header {
   padding: var(--size-xs, 8px) var(--size-s, 12px);
 }
-kanban-board[compact] .kb-column-header h3 {
+kanban-board[compact] .kb-column-heading {
   font-size: 0.75rem;
 }
 kanban-board[compact] drag-surface {
@@ -891,7 +895,7 @@ story-map:not(:defined) {
   background: var(--color-surface-raised, #f8f9fa);
   border-block-end: 2px solid var(--color-border, #e0e0e0);
 }
-.sm-activity-header h3 {
+.sm-activity-header .sm-activity-heading {
   margin: 0;
   font-size: 0.875rem;
   font-weight: 700;
@@ -941,7 +945,7 @@ story-map[compact] .sm-column {
 story-map[compact] .sm-activity-header {
   padding: var(--size-xs, 8px) var(--size-s, 12px);
 }
-story-map[compact] .sm-activity-header h3 {
+story-map[compact] .sm-activity-header .sm-activity-heading {
   font-size: 0.75rem;
 }
 story-map[compact] drag-surface {

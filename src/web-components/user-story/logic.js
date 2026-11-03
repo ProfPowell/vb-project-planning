@@ -16,7 +16,7 @@
  * State/config attributes:
  * @attr {string}  persona-id - Links to a user-persona element by id. When no
  *                              slot="persona" is given, the "As a…" text falls
- *                              back to that persona's role (live-updating).
+ *                              back to that persona's job-title (live-updating).
  * @attr {enum}    priority   - critical | high | medium | low
  * @attr {enum}    status     - backlog | to-do | in-progress | review | done
  * @attr {string}  points     - Story point estimate
@@ -26,9 +26,10 @@
  * @attr {boolean} compact    - Alias for detail="compact"
  * @attr {string}  src        - URL to JSON data (fetched once per value)
  *
- * @fires story-ready             - Once, after the first render (after the src data renders when src is set)
- * @fires status-changed          - Fired when updateStatus() is called
- * @fires priority-changed        - Fired when updatePriority() is called
+ * @fires user-story:ready            - Once, after the first render (after the src data renders when src is set).
+ *                                     Deprecated alias: story-ready (same detail, 0.3.x only)
+ * @fires user-story:status-changed   - Fired when updateStatus() is called. Deprecated alias: status-changed
+ * @fires user-story:priority-changed - Fired when updatePriority() is called. Deprecated alias: priority-changed
  * @fires user-story:upgraded     - Once, after first connect
  * @fires user-story:data-changed - After .data assignment, detail: { data, source: 'property' }
  *
@@ -57,18 +58,20 @@ import { styles } from './styles.js';
 import { registerComponent } from '../../lib/bundle-registry.js';
 import {
   esc, lucideSvg, UX_ICONS, UXShadowElement, PRIORITIES, STATUSES, lookup,
-  fillSlot, slottedChild, detailLevel, markEmptySections,
+  fillSlot, slottedChild, detailLevel, markEmptySections, personaJobTitle,
 } from '../_ux-base.js';
+import { headingLevelFor } from '../../lib/headings.js';
 
 let dialogSeq = 0;
 
 class UserStory extends UXShadowElement {
-  static readyEvent = 'story-ready';
+  static readyEvent = 'user-story:ready';
+  static legacyReadyEvent = 'story-ready';
 
   static get observedAttributes() {
     return [
       'persona-id', 'priority', 'points',
-      'status', 'epic', 'story-id', 'compact', 'detail', 'src'
+      'status', 'epic', 'story-id', 'compact', 'detail', 'src', 'heading-level'
     ];
   }
 
@@ -178,7 +181,7 @@ class UserStory extends UXShadowElement {
   }
 
   /**
-   * Keep the "As a…" text in sync when the linked persona's role is edited.
+   * Keep the "As a…" text in sync when the linked persona's job title is edited.
    * Only observes when persona-id resolves and the author has not supplied an
    * explicit persona slot (an explicit slot always wins, so nothing to track).
    */
@@ -191,7 +194,8 @@ class UserStory extends UXShadowElement {
     const persona = scope.getElementById(this.personaId);
     if (!persona || persona.tagName !== 'USER-PERSONA') return;
     this.#personaObserver = new MutationObserver(() => this._render());
-    this.#personaObserver.observe(persona, { attributes: true, attributeFilter: ['role'] });
+    // job-title, plus the legacy role attribute (0.2.x markup, migrated on upgrade).
+    this.#personaObserver.observe(persona, { attributes: true, attributeFilter: ['job-title', 'role'] });
   }
 
   // ── Getters ────────────────────────────────────────────────────────
@@ -199,11 +203,11 @@ class UserStory extends UXShadowElement {
   /**
    * Read persona from slotted element or cache. When neither is authored but
    * persona-id links to a <user-persona> on the page, fall back to that
-   * persona's role ("As a Product Manager…") rather than the generic "user".
+   * persona's job title ("As a Product Manager…") rather than the generic "user".
    */
   get persona() {
     const explicit = this.#explicitPersona();
-    return explicit || this.#linkedPersonaRole() || 'user';
+    return explicit || this.#linkedPersonaTitle() || 'user';
   }
 
   get personaId() {
@@ -216,18 +220,19 @@ class UserStory extends UXShadowElement {
   }
 
   /**
-   * Resolve the role of the <user-persona> referenced by persona-id, if one
+   * Resolve the job title of the <user-persona> referenced by persona-id, if one
    * exists in the same tree. Used as the "As a…" fallback so a linked story
    * reads "As a Product Manager" instead of "As a user". Returns '' when there
-   * is no persona-id, no matching persona, or the persona has no role.
+   * is no persona-id, no matching persona, or the persona has no job title
+   * (`job-title`, or a legacy non-ARIA `role` on a not-yet-upgraded persona).
    */
-  #linkedPersonaRole() {
+  #linkedPersonaTitle() {
     if (!this.personaId) return '';
     const root = /** @type {Document | ShadowRoot} */ (this.getRootNode());
     const scope = root && typeof root.getElementById === 'function' ? root : document;
     const persona = scope.getElementById(this.personaId);
     if (!persona || persona.tagName !== 'USER-PERSONA') return '';
-    return persona.getAttribute('role')?.trim() || '';
+    return personaJobTitle(persona);
   }
 
   /**
@@ -295,22 +300,14 @@ class UserStory extends UXShadowElement {
   updateStatus(newStatus) {
     if (Object.hasOwn(STATUSES, newStatus)) {
       this.setAttribute('status', newStatus);
-      this.dispatchEvent(new CustomEvent('status-changed', {
-        detail: { status: newStatus, storyId: this.storyId },
-        bubbles: true,
-        composed: true
-      }));
+      this._emit('user-story:status-changed', { status: newStatus, storyId: this.storyId }, 'status-changed');
     }
   }
 
   updatePriority(newPriority) {
     if (Object.hasOwn(PRIORITIES, newPriority)) {
       this.setAttribute('priority', newPriority);
-      this.dispatchEvent(new CustomEvent('priority-changed', {
-        detail: { priority: newPriority, storyId: this.storyId },
-        bubbles: true,
-        composed: true
-      }));
+      this._emit('user-story:priority-changed', { priority: newPriority, storyId: this.storyId }, 'priority-changed');
     }
   }
 
@@ -419,10 +416,22 @@ class UserStory extends UXShadowElement {
 
   // ── Private ──────────────────────────────────────────────────────
 
+  /**
+   * Level for the Acceptance Criteria / Tasks / Notes headings: `heading-level`
+   * if set, else one below the nearest heading before the story. The slotted
+   * title is ignored (along with other stories' headings): it is only
+   * rendered in minimal mode, which has no sections.
+   * @returns {number}
+   */
+  #sectionHeadingLevel() {
+    return headingLevelFor(this, 'user-story');
+  }
+
   _render() {
     const priorityInfo = lookup(PRIORITIES, this.priority, 'medium');
     const statusInfo = lookup(STATUSES, this.status, 'backlog');
     const level = this._detailLevel;
+    const sectionLevel = this.#sectionHeadingLevel();
     const ariaLabel = this.storyId
       ? `User story: ${esc(this.storyId)}`
       : 'User story';
@@ -459,10 +468,10 @@ class UserStory extends UXShadowElement {
             </div>
             <div class="story-badges">
               <span class="priority-badge" part="priority"
-                style="color: ${priorityInfo.color}; background: ${priorityInfo.bg};"
+                style="--_hue: ${priorityInfo.color}"
               >${esc(priorityInfo.label)}</span>
               <span class="status-badge" part="status"
-                style="color: ${statusInfo.color}; background: ${statusInfo.bg};"
+                style="--_hue: ${statusInfo.color}"
               >${esc(statusInfo.label)}</span>
               ${this.points ? `<span class="points-badge" part="points">${esc(this.points)}<span class="visually-hidden"> story points</span></span>` : ''}
             </div>
@@ -472,7 +481,7 @@ class UserStory extends UXShadowElement {
             <p class="story-statement" part="statement">
               <span class="keyword">As ${this.#personaArticle()}</span>
               ${this.personaId
-                ? `<a class="persona-text persona-text--link" href="#${esc(this.personaId)}">${lucideSvg(UX_ICONS.user)} <slot name="persona"><span>${esc(this.#linkedPersonaRole() || 'user')}</span></slot></a>`
+                ? `<a class="persona-text persona-text--link" href="#${esc(this.personaId)}">${lucideSvg(UX_ICONS.user)} <slot name="persona"><span>${esc(this.#linkedPersonaTitle() || 'user')}</span></slot></a>`
                 : `<span class="persona-text"><slot name="persona"><span>user</span></slot></span>`},
               <span class="keyword">I want</span>
               <span class="action-text"><slot name="action"><span>[describe the action]</span></slot></span>${this.benefit || slottedChild(this, 'benefit') ? `
@@ -487,7 +496,7 @@ class UserStory extends UXShadowElement {
                 <div class="section-icon acceptance">
                   <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                 </div>
-                <h3 class="section-title">Acceptance Criteria</h3>
+                <h${sectionLevel} class="section-title">Acceptance Criteria</h${sectionLevel}>
               </div>
               <div class="section-content">
                 <slot name="acceptance-criteria">
@@ -501,7 +510,7 @@ class UserStory extends UXShadowElement {
                 <div class="section-icon tasks">
                   <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
                 </div>
-                <h3 class="section-title">Tasks</h3>
+                <h${sectionLevel} class="section-title">Tasks</h${sectionLevel}>
               </div>
               <div class="section-content">
                 <slot name="tasks">
@@ -515,7 +524,7 @@ class UserStory extends UXShadowElement {
                 <div class="section-icon notes">
                   <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                 </div>
-                <h3 class="section-title">Notes</h3>
+                <h${sectionLevel} class="section-title">Notes</h${sectionLevel}>
               </div>
               <div class="section-content">
                 <slot name="notes">

@@ -88,6 +88,77 @@ export function syncPlaceholder(surface, className, text) {
   }
 }
 
+/* ── drag-surface list semantics ─────────────────────────────────────
+ *
+ * VB's <drag-surface> (vendored, read-only) sets role="list" on itself,
+ * gives each draggable child role="listitem" (only when it has no role, and
+ * only once, in setup()), and prepends its own role="status" live region as
+ * a child. That breaks two ARIA rules:
+ *   - aria-required-children: a list may only own listitems, not a status.
+ *   - aria-allowed-role: listitem is not an allowed role on <article> (or
+ *     section, aside, nav, …), the natural element for an authored card.
+ * It also leaves cards added after setup (data API, src) without a role or
+ * a tabindex. syncSurfaceSemantics() repairs a surface in place:
+ *   1. The status region is moved out to be the surface's next sibling. VB
+ *      keeps a reference to it, so its announcements still land there, and
+ *      its teardown still removes it.
+ *   2. If every card may carry role="listitem", the surface stays a list
+ *      and cards missing it get role="listitem" and tabindex="0".
+ *   3. Otherwise (or when it holds no cards) the surface becomes a
+ *      labelled role="group" and no card carries role="listitem" (a
+ *      listitem outside a list is invalid too).
+ */
+
+/** Cards whose element does not allow role="listitem" (ARIA in HTML). */
+const NO_LISTITEM = 'article, aside, nav, section, main, header, footer, form, fieldset, details, '
+  + 'dialog, figure, table, ul, ol, dl, h1, h2, h3, h4, h5, h6, a[href], button, input, select, textarea';
+
+/**
+ * @param {Element} surface a <drag-surface>
+ */
+export function syncSurfaceSemantics(surface) {
+  // VB's live region is an unclassed role=status child; ours never live inside.
+  const status = surface.querySelector(':scope > [role="status"]');
+  if (status && surface.parentNode) surface.after(status);
+
+  const cards = /** @type {HTMLElement[]} */ ([...surface.querySelectorAll(':scope > [draggable="true"]')]);
+  // An empty surface (perhaps holding a "No items" note) is not a list either.
+  const asList = cards.length > 0 && cards.every((el) => {
+    const role = el.getAttribute('role');
+    return (!role || role === 'listitem') && !el.matches(NO_LISTITEM);
+  });
+  const surfaceRole = asList ? 'list' : 'group';
+  if (surface.getAttribute('role') !== surfaceRole) surface.setAttribute('role', surfaceRole);
+  for (const el of cards) {
+    if (asList && !el.hasAttribute('role')) el.setAttribute('role', 'listitem');
+    if (!asList && el.getAttribute('role') === 'listitem') el.removeAttribute('role');
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+  }
+}
+
+/**
+ * Keep every <drag-surface> inside `host` valid as cards are added, moved
+ * between surfaces, and as VB re-runs its setup on reconnect. Returns a stop
+ * function (call it from teardown).
+ * @param {Element} host
+ * @returns {() => void}
+ */
+export function watchSurfaceSemantics(host) {
+  const syncAll = () => {
+    for (const s of host.querySelectorAll('drag-surface')) syncSurfaceSemantics(s);
+  };
+  syncAll();
+  if (typeof MutationObserver === 'undefined') return () => {};
+  const observer = new MutationObserver((records) => {
+    if (records.some((r) => r.target instanceof Element
+      && (r.target.localName === 'drag-surface' || r.target.querySelector('drag-surface')))) {
+      syncAll();
+    }
+  });
+  observer.observe(host, { childList: true, subtree: true });
+  return () => observer.disconnect();
+}
+
 /**
  * Does this JSON record describe a user story (rather than a plain card)?
  * @param {Record<string, any>} record
@@ -156,3 +227,5 @@ function slotted(tag, slot, text) {
 
 // SrcLoader lives in its own module; re-exported here for existing imports.
 export { SrcLoader } from './src-loader.js';
+
+export { boardHeadingLevels, retagHeading, contextHeadingLevel } from './headings.js';

@@ -3,11 +3,12 @@
  *
  * Covers the contract documented in src/web-components/user-story/api.json:
  * badge rendering from priority / status / points / epic, story-id → id
- * auto-assignment, the `story-ready` event, the updateStatus() /
- * updatePriority() methods and their `status-changed` / `priority-changed`
+ * auto-assignment, the `user-story:ready` event, the updateStatus() /
+ * updatePriority() methods and their `user-story:status-changed` /
+ * `user-story:priority-changed` (plus deprecated un-namespaced aliases)
  * events, detail levels (full / compact / minimal), the `.data`
  * getter/setter (+ `user-story:data-changed`), persona-id → <user-persona>
- * role fallback for the "As a…" statement, and showDetail() for minimal cards.
+ * job-title fallback for the "As a…" statement, and showDetail() for minimal cards.
  *
  * The live, HTML-first `<user-story>` upgrades on this pack's demo pages.
  */
@@ -81,8 +82,10 @@ test.describe('user-story', () => {
       const el = document.querySelector('user-story');
       const sr = el.shadowRoot;
       const events = [];
-      document.addEventListener('status-changed', (e) => events.push({ type: e.type, ...e.detail }));
-      document.addEventListener('priority-changed', (e) => events.push({ type: e.type, ...e.detail }));
+      // The 0.3.x deprecated aliases (status-changed / priority-changed) still fire, right after.
+      for (const type of ['user-story:status-changed', 'status-changed', 'user-story:priority-changed', 'priority-changed']) {
+        document.addEventListener(type, (e) => events.push({ type: e.type, ...e.detail }));
+      }
 
       el.updateStatus('done');
       el.updatePriority('critical');
@@ -105,7 +108,9 @@ test.describe('user-story', () => {
     });
 
     expect(result.events).toEqual([
+      { type: 'user-story:status-changed', status: 'done', storyId: 'PROJ-142' },
       { type: 'status-changed', status: 'done', storyId: 'PROJ-142' },
+      { type: 'user-story:priority-changed', priority: 'critical', storyId: 'PROJ-142' },
       { type: 'priority-changed', priority: 'critical', storyId: 'PROJ-142' },
     ]);
     expect(result.valid).toEqual({
@@ -117,7 +122,7 @@ test.describe('user-story', () => {
     expect(result.invalid).toEqual({ statusAttr: 'done', priorityAttr: 'critical' });
   });
 
-  test('attribute changes re-render without re-firing story-ready', async ({ page }) => {
+  test('attribute changes re-render without re-firing user-story:ready', async ({ page }) => {
     await page.goto(basicDemo);
     await page.waitForSelector('user-story[data-upgraded]');
 
@@ -125,7 +130,7 @@ test.describe('user-story', () => {
       const el = document.querySelector('user-story');
       const sr = el.shadowRoot;
       const ready = [];
-      el.addEventListener('story-ready', (e) => ready.push(e.detail));
+      el.addEventListener('user-story:ready', (e) => ready.push(e.detail));
 
       el.setAttribute('points', '13');
       el.setAttribute('epic', 'Platform');
@@ -141,7 +146,7 @@ test.describe('user-story', () => {
       };
     });
 
-    // story-ready fires once, after the first render only.
+    // user-story:ready fires once, after the first render only.
     expect(result.ready).toEqual([]);
     expect(result.points).toBe('13 story points');
     expect(result.epic).toBe('Platform');
@@ -291,14 +296,14 @@ test.describe('user-story', () => {
     });
   });
 
-  test('persona-id links to <user-persona> role and tracks role edits live', async ({ page }) => {
+  test('persona-id links to <user-persona> job-title and tracks job-title edits live', async ({ page }) => {
     await page.goto(basicDemo);
     await page.waitForSelector('user-story[data-upgraded]');
 
     const initial = await page.evaluate(() => {
       const persona = document.createElement('user-persona');
       persona.id = 'p-alex';
-      persona.setAttribute('role', 'Engineering Lead');
+      persona.setAttribute('job-title', 'Engineering Lead');
       persona.innerHTML = '<h2 slot="name">Alex</h2>';
       document.body.appendChild(persona);
 
@@ -327,9 +332,9 @@ test.describe('user-story', () => {
     expect(initial.keyword).toBe('As an');
     expect(initial.dataPersonaId).toBe('p-alex');
 
-    // Editing the persona's role re-renders the story via MutationObserver
+    // Editing the persona's job-title re-renders the story via MutationObserver
     await page.evaluate(() => {
-      document.getElementById('p-alex').setAttribute('role', 'Data Scientist');
+      document.getElementById('p-alex').setAttribute('job-title', 'Data Scientist');
     });
     await page.waitForFunction(() =>
       document.getElementById('linked-story').shadowRoot
@@ -358,6 +363,34 @@ test.describe('user-story', () => {
     });
     expect(unlinked.persona).toBe('user');
     expect(unlinked.fallbackText).toBe('user');
+  });
+
+  test('a persona with legacy role="<job title>" markup still feeds the "As a…" text', async ({ page }) => {
+    // 0.2.x markup, parsed before the bundle defines either element.
+    await openUpgradePage(page, {
+      events: [],
+      body: `<user-persona id="p-old" role="Product Manager"><h2 slot="name">Sam</h2></user-persona>
+             <user-story id="s-old" persona-id="p-old"><span slot="action">read old markup</span></user-story>`,
+    });
+    await page.waitForSelector('#s-old[data-upgraded]');
+    await page.waitForSelector('#p-old[data-upgraded]');
+
+    const state = await page.evaluate(() => {
+      const persona = document.getElementById('p-old');
+      const story = document.getElementById('s-old');
+      return {
+        personaRole: persona.getAttribute('role'),
+        personaJobTitle: persona.getAttribute('job-title'),
+        storyPersona: story.persona,
+        rendered: story.shadowRoot.querySelector('.persona-text--link slot[name="persona"] span')?.textContent.trim(),
+      };
+    });
+    expect(state).toEqual({
+      personaRole: null,
+      personaJobTitle: 'Product Manager',
+      storyPersona: 'Product Manager',
+      rendered: 'Product Manager',
+    });
   });
 
   test('showDetail() on a minimal card opens a dialog with a full clone', async ({ page }) => {
@@ -420,24 +453,24 @@ test.describe('user-story', () => {
 });
 
 test.describe('user-story — src, lifecycle and regressions', () => {
-  const EVENTS = ['story-ready', 'user-story:upgraded'];
+  const EVENTS = ['user-story:ready', 'user-story:upgraded'];
   const record = {
     storyId: 'SRC-1', priority: 'high', status: 'review', points: 3,
     persona: 'Researcher', action: 'tag clips', benefit: 'I can find them later',
     acceptanceCriteria: ['Tags save', 'Tags search'],
   };
 
-  test('src fetches exactly once and story-ready fires once, after the data renders', async ({ page }) => {
+  test('src fetches exactly once and user-story:ready fires once, after the data renders', async ({ page }) => {
     const { requests } = await openUpgradePage(page, {
       events: EVENTS,
       fixtures: { 'story.json': record },
       body: '<user-story id="s1" src="story.json"></user-story>',
     });
-    await page.waitForFunction(() => window.__events.some(e => e.type === 'story-ready'));
+    await page.waitForFunction(() => window.__events.some(e => e.type === 'user-story:ready'));
     await page.waitForTimeout(100);
 
     expect(requests['story.json']).toBe(1);
-    const ready = await recordedEvents(page, 'story-ready');
+    const ready = await recordedEvents(page, 'user-story:ready');
     expect(ready).toHaveLength(1);
     expect(ready[0].detail).toMatchObject({ id: 'SRC-1', action: 'tag clips', status: 'review' });
     expect(await recordedEvents(page, 'user-story:upgraded')).toHaveLength(1);
@@ -447,18 +480,18 @@ test.describe('user-story — src, lifecycle and regressions', () => {
     expect(ac).toBe(2);
   });
 
-  test('moving the element does not refetch, re-render, or re-fire story-ready', async ({ page }) => {
+  test('moving the element does not refetch, re-render, or re-fire user-story:ready', async ({ page }) => {
     const { requests } = await openUpgradePage(page, {
       events: EVENTS,
       fixtures: { 'story.json': record },
       body: '<user-story id="s1" src="story.json"></user-story>',
     });
-    await page.waitForFunction(() => window.__events.some(e => e.type === 'story-ready'));
+    await page.waitForFunction(() => window.__events.some(e => e.type === 'user-story:ready'));
 
     const moved = await moveElement(page, '#s1');
     expect(moved).toEqual({ connected: true, sameNode: true, sameHtml: true, upgraded: true });
     expect(requests['story.json']).toBe(1);
-    expect(await recordedEvents(page, 'story-ready')).toHaveLength(1);
+    expect(await recordedEvents(page, 'user-story:ready')).toHaveLength(1);
   });
 
   test('minimal card is a named button that opens the dialog from the keyboard', async ({ page }) => {
@@ -572,7 +605,8 @@ test.describe('user-story — src, lifecycle and regressions', () => {
         hidden: sr.querySelector('.points-badge .visually-hidden')?.textContent,
       };
     });
-    expect(state.headings).toEqual(['H3:Acceptance Criteria', 'H3:Tasks', 'H3:Notes']);
+    // Section headings follow the page outline: one below the demo's <h1>.
+    expect(state.headings).toEqual(['H2:Acceptance Criteria', 'H2:Tasks', 'H2:Notes']);
     expect(state.hidden).toBe(' story points');
   });
 });

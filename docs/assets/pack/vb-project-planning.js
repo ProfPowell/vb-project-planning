@@ -426,7 +426,108 @@ function initials(name) {
 function hashColor(name) {
   const hash = stringHash(name);
   const hue = (hash % 360 + 360) % 360;
-  return `hsl(${hue}, 65%, 55%)`;
+  return `oklch(48% 0.13 ${hue})`;
+}
+var ARIA_ROLES = /* @__PURE__ */ new Set([
+  "alert",
+  "alertdialog",
+  "application",
+  "article",
+  "banner",
+  "blockquote",
+  "button",
+  "caption",
+  "cell",
+  "checkbox",
+  "code",
+  "columnheader",
+  "combobox",
+  "comment",
+  "complementary",
+  "contentinfo",
+  "definition",
+  "deletion",
+  "dialog",
+  "directory",
+  "document",
+  "emphasis",
+  "feed",
+  "figure",
+  "form",
+  "generic",
+  "grid",
+  "gridcell",
+  "group",
+  "heading",
+  "img",
+  "image",
+  "insertion",
+  "link",
+  "list",
+  "listbox",
+  "listitem",
+  "log",
+  "main",
+  "mark",
+  "marquee",
+  "math",
+  "menu",
+  "menubar",
+  "menuitem",
+  "menuitemcheckbox",
+  "menuitemradio",
+  "meter",
+  "navigation",
+  "none",
+  "note",
+  "option",
+  "paragraph",
+  "presentation",
+  "progressbar",
+  "radio",
+  "radiogroup",
+  "region",
+  "row",
+  "rowgroup",
+  "rowheader",
+  "scrollbar",
+  "search",
+  "searchbox",
+  "separator",
+  "slider",
+  "spinbutton",
+  "status",
+  "strong",
+  "subscript",
+  "suggestion",
+  "superscript",
+  "switch",
+  "tab",
+  "table",
+  "tablist",
+  "tabpanel",
+  "term",
+  "textbox",
+  "time",
+  "timer",
+  "toolbar",
+  "tooltip",
+  "tree",
+  "treegrid",
+  "treeitem",
+  "graphics-document",
+  "graphics-object",
+  "graphics-symbol"
+]);
+function isAriaRole(value) {
+  const tokens = String(value ?? "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return tokens.length > 0 && tokens.every((t) => ARIA_ROLES.has(t) || t.startsWith("doc-"));
+}
+function personaJobTitle(persona) {
+  const title = persona.getAttribute("job-title")?.trim();
+  if (title) return title;
+  const legacy = persona.getAttribute("role")?.trim() || "";
+  return legacy && !isAriaRole(legacy) ? legacy : "";
 }
 function lucideSvg(inner) {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
@@ -544,8 +645,13 @@ function markEmptySections(root, sectionSelector) {
   }
 }
 var UXShadowElement = class extends HTMLElement {
-  /** Ready event name, e.g. `story-ready`. */
+  /** Ready event name, e.g. `user-story:ready`. */
   static readyEvent = "";
+  /**
+   * Deprecated un-namespaced alias of the ready event (e.g. `story-ready`),
+   * dispatched right after it with the same detail. 0.3.x only.
+   */
+  static legacyReadyEvent = "";
   /** Fallback text for slots whose light-DOM child was removed after setup. */
   _slotCache = /* @__PURE__ */ new Map();
   #setUp = false;
@@ -709,11 +815,24 @@ var UXShadowElement = class extends HTMLElement {
     );
     if (!type) return;
     this.#readyFired = true;
-    this.dispatchEvent(new CustomEvent(type, {
-      detail: this._readyDetail(),
-      bubbles: true,
-      composed: true
-    }));
+    const legacy = (
+      /** @type {typeof UXShadowElement} */
+      this.constructor.legacyReadyEvent
+    );
+    this._emit(type, this._readyDetail(), legacy);
+  }
+  /**
+   * Dispatch a bubbling, composed CustomEvent and, when `legacyType` is
+   * given, a deprecated alias of it right after with the same detail.
+   * @param {string} type
+   * @param {unknown} detail
+   * @param {string} [legacyType]
+   */
+  _emit(type, detail, legacyType) {
+    this.dispatchEvent(new CustomEvent(type, { detail, bubbles: true, composed: true }));
+    if (legacyType) {
+      this.dispatchEvent(new CustomEvent(legacyType, { detail, bubbles: true, composed: true }));
+    }
   }
   /**
    * Fetch `url` as JSON and apply it. Each call supersedes the previous
@@ -852,11 +971,13 @@ var MOCK_BEHAVIORS = [
   "Bookmarks frequently used reports",
   "Uses dark mode exclusively"
 ];
+var warnedLegacyRole = false;
 var SECTION_SLOTS = ["bio", "goals", "frustrations", "behaviors"];
 var UserPersona = class extends UXShadowElement {
-  static readyEvent = "persona-ready";
+  static readyEvent = "user-persona:ready";
+  static legacyReadyEvent = "persona-ready";
   static get observedAttributes() {
-    return ["name", "role", "age", "location", "avatar", "quote", "compact", "src", "data-list-stories", "id"];
+    return ["name", "job-title", "role", "age", "location", "avatar", "quote", "compact", "src", "data-list-stories", "id"];
   }
   /** @type {MutationObserver | null} */
   #storyObserver = null;
@@ -887,7 +1008,7 @@ var UserPersona = class extends UXShadowElement {
   get data() {
     return {
       name: this.personaName,
-      role: this.personaRole || void 0,
+      jobTitle: this.jobTitle || void 0,
       age: this.age || void 0,
       location: this.location || void 0,
       avatar: this.avatar || void 0,
@@ -914,7 +1035,9 @@ var UserPersona = class extends UXShadowElement {
    * @param {Record<string, unknown>} data
    */
   _applyData(data) {
-    for (const key of ["role", "age", "location", "avatar"]) {
+    const jobTitle = data.jobTitle ?? data.role;
+    if (jobTitle != null && jobTitle !== "") this.setAttribute("job-title", String(jobTitle));
+    for (const key of ["age", "location", "avatar"]) {
       if (data[key] != null && data[key] !== "") this.setAttribute(key, String(data[key]));
     }
     fillSlot(this, "name", data.name, { tag: "h2", replace: true });
@@ -925,7 +1048,24 @@ var UserPersona = class extends UXShadowElement {
   }
   /* ── Lifecycle (see UXShadowElement) ──────────── */
   _setup() {
+    this.#migrateLegacyRole();
     if (this.hasAttribute("data-mock")) this.#applyMock();
+  }
+  /**
+   * 0.2.x used `role` for the job title, which gave the host an invalid ARIA
+   * role. A `role` value that is not a valid ARIA role is moved to
+   * `job-title` (unless one is already set) and the `role` attribute is
+   * removed. A real ARIA role (e.g. "region") is left alone.
+   */
+  #migrateLegacyRole() {
+    const legacy = this.getAttribute("role");
+    if (legacy == null || isAriaRole(legacy)) return;
+    if (!warnedLegacyRole) {
+      warnedLegacyRole = true;
+      console.warn(`[user-persona] The role attribute is deprecated for the job title (it sets the element's ARIA role). Use job-title instead; role="` + legacy + '" was moved to job-title.');
+    }
+    if (legacy.trim() && !this.getAttribute("job-title")) this.setAttribute("job-title", legacy.trim());
+    this.removeAttribute("role");
   }
   _connect() {
     this.#syncStoryObserver();
@@ -937,10 +1077,12 @@ var UserPersona = class extends UXShadowElement {
   }
   /** @param {string} name */
   _attributeEffects(name) {
+    if (name === "role") this.#migrateLegacyRole();
     if (name === "data-list-stories" || name === "id") this.#syncStoryObserver();
   }
   _readyDetail() {
-    return { name: this.personaName, role: this.personaRole };
+    const jobTitle = this.jobTitle;
+    return { name: this.personaName, jobTitle, role: jobTitle };
   }
   /**
    * Watch the document for added/removed/relabeled <user-story> elements
@@ -1001,8 +1143,17 @@ var UserPersona = class extends UXShadowElement {
   get personaName() {
     return this._slotText("name") || this.getAttribute("name")?.trim() || "Unnamed Persona";
   }
+  /** Job title, reflected to the `job-title` attribute ('' when unset). */
+  get jobTitle() {
+    return this.getAttribute("job-title") || "";
+  }
+  set jobTitle(value) {
+    if (value == null || value === "") this.removeAttribute("job-title");
+    else this.setAttribute("job-title", String(value));
+  }
+  /** @deprecated Use jobTitle. */
   get personaRole() {
-    return this.getAttribute("role") || "";
+    return this.jobTitle;
   }
   get age() {
     return this.getAttribute("age") || "";
@@ -1037,7 +1188,7 @@ var UserPersona = class extends UXShadowElement {
       h2.textContent = pick(MOCK_NAMES);
       this.appendChild(h2);
     }
-    if (!this.getAttribute("role")) this.setAttribute("role", pick(MOCK_ROLES));
+    if (!this.getAttribute("job-title")) this.setAttribute("job-title", pick(MOCK_ROLES));
     if (!this.getAttribute("age")) this.setAttribute("age", String(25 + (stringHash(seed) % 30 + 30) % 30));
     if (!this.getAttribute("location")) this.setAttribute("location", pick(MOCK_LOCATIONS));
     if (!this.getAttribute("avatar")) {
@@ -1068,7 +1219,7 @@ var UserPersona = class extends UXShadowElement {
   // ── Render ─────────────────────────────────────────────────────────
   _render() {
     const name = this.personaName;
-    const role = this.personaRole;
+    const jobTitle = this.jobTitle;
     const age = this.age;
     const loc = this.location;
     const avatarUrl = this.avatar;
@@ -1090,7 +1241,7 @@ var UserPersona = class extends UXShadowElement {
             <div class="persona-name-wrap" part="name">
               <slot name="name"><h2 class="persona-name-fallback">${esc(name)}</h2></slot>
             </div>
-            ${role ? `<p class="persona-role" part="role">${esc(role)}</p>` : ""}
+            ${jobTitle ? `<p class="persona-role" part="job-title role">${esc(jobTitle)}</p>` : ""}
             <div class="persona-meta" part="meta">
               ${age ? `
                 <span class="meta-item">
@@ -1258,8 +1409,13 @@ var styles2 = `
   gap: var(--_space-xs);
 }
 
+/* --_hue is the badge colour, set inline per priority / status. The text is
+   that hue pulled toward the theme text colour, over a 12% tint of it, so it
+   stays >= 4.5:1 in light and dark themes while keeping its hue family. */
 .priority-badge,
 .status-badge {
+  color: color-mix(in oklab, var(--_hue, var(--_muted)) 55%, var(--_text));
+  background: color-mix(in oklab, var(--_hue, var(--_muted)) 12%, transparent);
   font-size: 11px;
   padding: 4px 10px;
   border-radius: var(--_radius-full);
@@ -1528,10 +1684,43 @@ button.story-card--minimal {
 }
 `;
 
+// src/lib/headings.js
+function boardHeadingLevels(host, hostTag) {
+  const attr = parseInt(host.getAttribute("heading-level") ?? "", 10);
+  const top = attr >= 1 && attr <= 6 ? attr : contextHeadingLevel(host, hostTag);
+  return { title: top, column: Math.min(6, host.getAttribute("title") ? top + 1 : top) };
+}
+function contextHeadingLevel(host, hostTag = "") {
+  if (!host.isConnected) return 2;
+  let level = 1;
+  for (const h of document.querySelectorAll('h1, h2, h3, h4, h5, h6, [role="heading"][aria-level]')) {
+    if (hostTag && h.closest(hostTag)) continue;
+    if (!(h.compareDocumentPosition(host) & Node.DOCUMENT_POSITION_FOLLOWING)) break;
+    level = Number(h.getAttribute("aria-level")) || Number(h.localName.slice(1)) || level;
+  }
+  return Math.min(6, level + 1);
+}
+function retagHeading(el, level) {
+  if (el.localName === `h${level}`) return (
+    /** @type {HTMLElement} */
+    el
+  );
+  const next = document.createElement(`h${level}`);
+  for (const { name, value } of [...el.attributes]) next.setAttribute(name, value);
+  next.append(...el.childNodes);
+  el.replaceWith(next);
+  return next;
+}
+function headingLevelFor(host, hostTag) {
+  const attr = parseInt(host.getAttribute("heading-level") ?? "", 10);
+  return attr >= 1 && attr <= 6 ? attr : contextHeadingLevel(host, hostTag);
+}
+
 // src/web-components/user-story/logic.js
 var dialogSeq = 0;
 var UserStory = class extends UXShadowElement {
-  static readyEvent = "story-ready";
+  static readyEvent = "user-story:ready";
+  static legacyReadyEvent = "story-ready";
   static get observedAttributes() {
     return [
       "persona-id",
@@ -1542,7 +1731,8 @@ var UserStory = class extends UXShadowElement {
       "story-id",
       "compact",
       "detail",
-      "src"
+      "src",
+      "heading-level"
     ];
   }
   static PRIORITIES = PRIORITIES;
@@ -1639,7 +1829,7 @@ var UserStory = class extends UXShadowElement {
     };
   }
   /**
-   * Keep the "As a…" text in sync when the linked persona's role is edited.
+   * Keep the "As a…" text in sync when the linked persona's job title is edited.
    * Only observes when persona-id resolves and the author has not supplied an
    * explicit persona slot (an explicit slot always wins, so nothing to track).
    */
@@ -1655,17 +1845,17 @@ var UserStory = class extends UXShadowElement {
     const persona = scope.getElementById(this.personaId);
     if (!persona || persona.tagName !== "USER-PERSONA") return;
     this.#personaObserver = new MutationObserver(() => this._render());
-    this.#personaObserver.observe(persona, { attributes: true, attributeFilter: ["role"] });
+    this.#personaObserver.observe(persona, { attributes: true, attributeFilter: ["job-title", "role"] });
   }
   // ── Getters ────────────────────────────────────────────────────────
   /**
    * Read persona from slotted element or cache. When neither is authored but
    * persona-id links to a <user-persona> on the page, fall back to that
-   * persona's role ("As a Product Manager…") rather than the generic "user".
+   * persona's job title ("As a Product Manager…") rather than the generic "user".
    */
   get persona() {
     const explicit = this.#explicitPersona();
-    return explicit || this.#linkedPersonaRole() || "user";
+    return explicit || this.#linkedPersonaTitle() || "user";
   }
   get personaId() {
     return this.getAttribute("persona-id") || "";
@@ -1675,12 +1865,13 @@ var UserStory = class extends UXShadowElement {
     return this._slotText("persona");
   }
   /**
-   * Resolve the role of the <user-persona> referenced by persona-id, if one
+   * Resolve the job title of the <user-persona> referenced by persona-id, if one
    * exists in the same tree. Used as the "As a…" fallback so a linked story
    * reads "As a Product Manager" instead of "As a user". Returns '' when there
-   * is no persona-id, no matching persona, or the persona has no role.
+   * is no persona-id, no matching persona, or the persona has no job title
+   * (`job-title`, or a legacy non-ARIA `role` on a not-yet-upgraded persona).
    */
-  #linkedPersonaRole() {
+  #linkedPersonaTitle() {
     if (!this.personaId) return "";
     const root = (
       /** @type {Document | ShadowRoot} */
@@ -1689,7 +1880,7 @@ var UserStory = class extends UXShadowElement {
     const scope = root && typeof root.getElementById === "function" ? root : document;
     const persona = scope.getElementById(this.personaId);
     if (!persona || persona.tagName !== "USER-PERSONA") return "";
-    return persona.getAttribute("role")?.trim() || "";
+    return personaJobTitle(persona);
   }
   /**
    * Indefinite article ("a" / "an") for the persona role so the statement
@@ -1743,21 +1934,13 @@ var UserStory = class extends UXShadowElement {
   updateStatus(newStatus) {
     if (Object.hasOwn(STATUSES, newStatus)) {
       this.setAttribute("status", newStatus);
-      this.dispatchEvent(new CustomEvent("status-changed", {
-        detail: { status: newStatus, storyId: this.storyId },
-        bubbles: true,
-        composed: true
-      }));
+      this._emit("user-story:status-changed", { status: newStatus, storyId: this.storyId }, "status-changed");
     }
   }
   updatePriority(newPriority) {
     if (Object.hasOwn(PRIORITIES, newPriority)) {
       this.setAttribute("priority", newPriority);
-      this.dispatchEvent(new CustomEvent("priority-changed", {
-        detail: { priority: newPriority, storyId: this.storyId },
-        bubbles: true,
-        composed: true
-      }));
+      this._emit("user-story:priority-changed", { priority: newPriority, storyId: this.storyId }, "priority-changed");
     }
   }
   /**
@@ -1857,10 +2040,21 @@ var UserStory = class extends UXShadowElement {
     this.showDetail();
   };
   // ── Private ──────────────────────────────────────────────────────
+  /**
+   * Level for the Acceptance Criteria / Tasks / Notes headings: `heading-level`
+   * if set, else one below the nearest heading before the story. The slotted
+   * title is ignored (along with other stories' headings): it is only
+   * rendered in minimal mode, which has no sections.
+   * @returns {number}
+   */
+  #sectionHeadingLevel() {
+    return headingLevelFor(this, "user-story");
+  }
   _render() {
     const priorityInfo = lookup(PRIORITIES, this.priority, "medium");
     const statusInfo = lookup(STATUSES, this.status, "backlog");
     const level = this._detailLevel;
+    const sectionLevel = this.#sectionHeadingLevel();
     const ariaLabel = this.storyId ? `User story: ${esc(this.storyId)}` : "User story";
     if (!this.shadowRoot) return;
     if (level === "minimal") {
@@ -1892,10 +2086,10 @@ var UserStory = class extends UXShadowElement {
             </div>
             <div class="story-badges">
               <span class="priority-badge" part="priority"
-                style="color: ${priorityInfo.color}; background: ${priorityInfo.bg};"
+                style="--_hue: ${priorityInfo.color}"
               >${esc(priorityInfo.label)}</span>
               <span class="status-badge" part="status"
-                style="color: ${statusInfo.color}; background: ${statusInfo.bg};"
+                style="--_hue: ${statusInfo.color}"
               >${esc(statusInfo.label)}</span>
               ${this.points ? `<span class="points-badge" part="points">${esc(this.points)}<span class="visually-hidden"> story points</span></span>` : ""}
             </div>
@@ -1904,7 +2098,7 @@ var UserStory = class extends UXShadowElement {
           <div class="story-body" part="body">
             <p class="story-statement" part="statement">
               <span class="keyword">As ${this.#personaArticle()}</span>
-              ${this.personaId ? `<a class="persona-text persona-text--link" href="#${esc(this.personaId)}">${lucideSvg(UX_ICONS.user)} <slot name="persona"><span>${esc(this.#linkedPersonaRole() || "user")}</span></slot></a>` : `<span class="persona-text"><slot name="persona"><span>user</span></slot></span>`},
+              ${this.personaId ? `<a class="persona-text persona-text--link" href="#${esc(this.personaId)}">${lucideSvg(UX_ICONS.user)} <slot name="persona"><span>${esc(this.#linkedPersonaTitle() || "user")}</span></slot></a>` : `<span class="persona-text"><slot name="persona"><span>user</span></slot></span>`},
               <span class="keyword">I want</span>
               <span class="action-text"><slot name="action"><span>[describe the action]</span></slot></span>${this.benefit || slottedChild(this, "benefit") ? `
               <span class="keyword">so that</span>
@@ -1918,7 +2112,7 @@ var UserStory = class extends UXShadowElement {
                 <div class="section-icon acceptance">
                   <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                 </div>
-                <h3 class="section-title">Acceptance Criteria</h3>
+                <h${sectionLevel} class="section-title">Acceptance Criteria</h${sectionLevel}>
               </div>
               <div class="section-content">
                 <slot name="acceptance-criteria">
@@ -1932,7 +2126,7 @@ var UserStory = class extends UXShadowElement {
                 <div class="section-icon tasks">
                   <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
                 </div>
-                <h3 class="section-title">Tasks</h3>
+                <h${sectionLevel} class="section-title">Tasks</h${sectionLevel}>
               </div>
               <div class="section-content">
                 <slot name="tasks">
@@ -1946,7 +2140,7 @@ var UserStory = class extends UXShadowElement {
                 <div class="section-icon notes">
                   <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                 </div>
-                <h3 class="section-title">Notes</h3>
+                <h${sectionLevel} class="section-title">Notes</h${sectionLevel}>
               </div>
               <div class="section-content">
                 <slot name="notes">
@@ -2004,10 +2198,12 @@ var styles3 = `
     --_tint-row-pain: color-mix(in oklch, var(--color-error,   #ef4444) 8%,  var(--_card));
     --_tint-row-opp:  color-mix(in oklch, var(--color-success, #22c55e) 8%,  var(--_card));
     --_chip-type-bg:  color-mix(in oklch, var(--_accent)  18%, var(--_card));
-    --_chip-type-fg:  var(--color-accent-text, var(--_accent));
+    /* Chip text = the hue pulled toward the theme text colour, so it stays
+       >= 4.5:1 on its tint in light and dark themes (the raw accent does not). */
+    --_chip-type-fg:  color-mix(in oklab, var(--_accent) 55%, var(--_text));
     --_chip-story-bg: color-mix(in oklch, var(--_link)    18%, var(--_card));
     --_chip-story-bg-hover: color-mix(in oklch, var(--_link) 28%, var(--_card));
-    --_chip-story-fg: var(--_link);
+    --_chip-story-fg: color-mix(in oklab, var(--_link) 50%, var(--_text));
     --_grid-head-bg:  color-mix(in oklch, var(--_primary) 85%, var(--color-text, #000));
   }
 
@@ -2169,7 +2365,6 @@ var styles3 = `
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    opacity: 0.55;
     text-align: left;
     white-space: nowrap;
     min-width: 100px;
@@ -2294,7 +2489,8 @@ var ROWS = [
   { key: "opportunities", label: "Opportunities" }
 ];
 var UserJourney = class extends UXShadowElement {
-  static readyEvent = "journey-ready";
+  static readyEvent = "user-journey:ready";
+  static legacyReadyEvent = "journey-ready";
   static get observedAttributes() {
     return ["src", "persona", "persona-id", "story-ids", "compact"];
   }
@@ -2545,7 +2741,9 @@ var styles4 = `
     --_does-bg:   color-mix(in oklch, var(--_does)   16%, var(--_card));
     --_feels-bg:  color-mix(in oklch, var(--_feels)  16%, var(--_card));
     --_chip-type-bg: color-mix(in oklch, var(--_accent-bar) 18%, var(--_card));
-    --_chip-type-fg: var(--_accent-bar);
+    /* Chip text = the accent pulled toward the theme text colour, so it stays
+       >= 4.5:1 on its tint in light and dark themes (the raw accent does not). */
+    --_chip-type-fg: color-mix(in oklab, var(--_accent-bar) 55%, var(--_text));
     --_font-sans:    var(--empathy-map-font, var(--font-sans, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif));
     --_font-xs:      var(--empathy-map-font-xs, var(--font-size-xs, 0.75rem));
     --_font-sm:      var(--empathy-map-font-sm, var(--font-size-sm, 0.875rem));
@@ -3597,6 +3795,41 @@ function syncPlaceholder(surface, className, text) {
     placeholder.remove();
   }
 }
+var NO_LISTITEM = "article, aside, nav, section, main, header, footer, form, fieldset, details, dialog, figure, table, ul, ol, dl, h1, h2, h3, h4, h5, h6, a[href], button, input, select, textarea";
+function syncSurfaceSemantics(surface) {
+  const status = surface.querySelector(':scope > [role="status"]');
+  if (status && surface.parentNode) surface.after(status);
+  const cards = (
+    /** @type {HTMLElement[]} */
+    [...surface.querySelectorAll(':scope > [draggable="true"]')]
+  );
+  const asList2 = cards.length > 0 && cards.every((el) => {
+    const role = el.getAttribute("role");
+    return (!role || role === "listitem") && !el.matches(NO_LISTITEM);
+  });
+  const surfaceRole = asList2 ? "list" : "group";
+  if (surface.getAttribute("role") !== surfaceRole) surface.setAttribute("role", surfaceRole);
+  for (const el of cards) {
+    if (asList2 && !el.hasAttribute("role")) el.setAttribute("role", "listitem");
+    if (!asList2 && el.getAttribute("role") === "listitem") el.removeAttribute("role");
+    if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex", "0");
+  }
+}
+function watchSurfaceSemantics(host) {
+  const syncAll = () => {
+    for (const s of host.querySelectorAll("drag-surface")) syncSurfaceSemantics(s);
+  };
+  syncAll();
+  if (typeof MutationObserver === "undefined") return () => {
+  };
+  const observer2 = new MutationObserver((records) => {
+    if (records.some((r) => r.target instanceof Element && (r.target.localName === "drag-surface" || r.target.querySelector("drag-surface")))) {
+      syncAll();
+    }
+  });
+  observer2.observe(host, { childList: true, subtree: true });
+  return () => observer2.disconnect();
+}
 function isStoryRecord(record) {
   return !!(record && (record.persona || record.action || record.benefit || record.storyId));
 }
@@ -3686,6 +3919,9 @@ var ImpactEffort = class _ImpactEffort extends VBElement {
   /** key → last record assigned via `.items` or `src`. */
   /** @type {Map<unknown, any>} */
   #records = /* @__PURE__ */ new Map();
+  /** Stops the drag-surface semantics observer (see board-surface.js). */
+  #stopSemantics = () => {
+  };
   setup() {
     if (!this.#groupId) this.#groupId = `ie-${++_ImpactEffort.#instanceCount}`;
     if (!this.#built) {
@@ -3700,6 +3936,7 @@ var ImpactEffort = class _ImpactEffort extends VBElement {
     if (!this.#wired) {
       this.#wired = true;
       this.listen(this, "drag-surface:transfer", this.#onTransfer);
+      this.#stopSemantics = watchSurfaceSemantics(this);
     }
     const src = this.getAttribute("src");
     if (src) {
@@ -3710,6 +3947,7 @@ var ImpactEffort = class _ImpactEffort extends VBElement {
   }
   teardown() {
     this.#wired = false;
+    this.#stopSemantics();
   }
   /** First build: wrapper, quadrants, live region; authored cards moved in. */
   #build() {
@@ -3997,6 +4235,9 @@ var QuadrantGrid = class _QuadrantGrid extends VBElement {
   static #instanceCount = 0;
   /** Quadrant indices in visual reading order: TL (Q2), TR (Q1), BL (Q3), BR (Q4). */
   static VISUAL_ORDER = [1, 0, 2, 3];
+  /** Stops the drag-surface semantics observer (see board-surface.js). */
+  #stopSemantics = () => {
+  };
   setup() {
     if (!this.#groupId) this.#groupId = `qg-${++_QuadrantGrid.#instanceCount}`;
     if (this.#built) {
@@ -4123,6 +4364,7 @@ var QuadrantGrid = class _QuadrantGrid extends VBElement {
     this.#wired = true;
     if (this.#draggable) {
       this.listen(this, "drag-surface:transfer", this.#onTransfer);
+      this.#stopSemantics = watchSurfaceSemantics(this);
     }
     this.#observePins();
   }
@@ -4230,6 +4472,7 @@ var QuadrantGrid = class _QuadrantGrid extends VBElement {
   }
   teardown() {
     this.#wired = false;
+    this.#stopSemantics();
     this.#pinObserver?.disconnect();
     this.#pinObserver = null;
     if (this.#clusterRaf) cancelAnimationFrame(this.#clusterRaf);
@@ -4609,6 +4852,22 @@ var TraceabilityMatrix = class _TraceabilityMatrix extends VBElement {
       this.appendChild(h);
     }
     this.appendChild(wrapper);
+    table.setAttribute("role", "grid");
+    if (label) {
+      const h = (
+        /** @type {HTMLElement} */
+        this.querySelector(":scope > .tm-label")
+      );
+      h.id ||= `tm-label-${++_TraceabilityMatrix.#seq}`;
+      table.setAttribute("aria-labelledby", h.id);
+    } else {
+      table.setAttribute("aria-label", "Traceability matrix");
+    }
+    this.#table = table;
+    this.#syncRoving();
+    this.listen(table, "keydown", this.#onGridKey);
+    this.listen(table, "focusin", this.#onGridFocus);
+    this.listen(wrapper, "data-table:upgraded", () => this.#syncRoving());
     this.#rowEls = rowEls;
     this.#colEls = colEls;
     this.listen(wrapper, "click", this.#onCellClick);
@@ -4632,6 +4891,88 @@ var TraceabilityMatrix = class _TraceabilityMatrix extends VBElement {
     btn.setAttribute("aria-pressed", "false");
     return btn;
   }
+  /* --- grid keyboard (roving tabindex) --- */
+  /**
+   * Focus targets as rows × columns: each cell's button, or the cell itself
+   * for header cells (made focusable by <data-table> for sorting). Rows
+   * hidden by <data-table> filtering / pagination are skipped.
+   * @returns {HTMLElement[][]}
+   */
+  #gridRows() {
+    const table = this.#table;
+    if (!table) return [];
+    return [...table.querySelectorAll(":scope > thead > tr, :scope > tbody > tr")].filter((tr) => !/** @type {HTMLElement} */
+    tr.hidden && !tr.hasAttribute("data-state-hidden")).map((tr) => [...tr.children].map((cell) => (
+      /** @type {HTMLElement} */
+      cell.querySelector(":scope > button") || cell
+    )));
+  }
+  /**
+   * Make exactly one target the grid's Tab stop: `active`, else the
+   * previous stop if it is still in the grid, else the first cell.
+   * @param {HTMLElement | null} [active]
+   */
+  #syncRoving(active = null) {
+    const all = this.#gridRows().flat();
+    const stop = this.#rovingStop;
+    const current = active && all.includes(active) && active || stop && all.includes(stop) && stop || all[0];
+    this.#rovingStop = current ?? null;
+    for (const el of all) el.setAttribute("tabindex", el === current ? "0" : "-1");
+  }
+  /** Clicking or tabbing into a cell makes it the Tab stop. @param {FocusEvent} e */
+  #onGridFocus = (e) => {
+    const target = (
+      /** @type {HTMLElement} */
+      e.target
+    );
+    if (this.#gridRows().flat().includes(target) && target !== this.#rovingStop) this.#syncRoving(target);
+  };
+  /** @param {KeyboardEvent} e */
+  #onGridKey = (e) => {
+    if (e.altKey || e.metaKey) return;
+    const rows = this.#gridRows();
+    let r = rows.findIndex((row) => row.includes(
+      /** @type {HTMLElement} */
+      e.target
+    ));
+    if (r < 0) return;
+    let c = rows[r].indexOf(
+      /** @type {HTMLElement} */
+      e.target
+    );
+    const last = rows.length - 1;
+    switch (e.key) {
+      case "ArrowRight":
+        c += 1;
+        break;
+      case "ArrowLeft":
+        c -= 1;
+        break;
+      case "ArrowDown":
+        r += 1;
+        break;
+      case "ArrowUp":
+        r -= 1;
+        break;
+      case "Home":
+        if (e.ctrlKey) r = 0;
+        c = 0;
+        break;
+      case "End":
+        if (e.ctrlKey) r = last;
+        c = Infinity;
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+    r = Math.max(0, Math.min(last, r));
+    c = Math.max(0, Math.min(rows[r].length - 1, c));
+    const next = rows[r][c];
+    if (!next || next === e.target) return;
+    this.#syncRoving(next);
+    next.focus();
+  };
   #onCellClick = (e) => {
     const cell = e.target.closest('td, th[scope="row"]');
     if (!cell) return;
@@ -4687,6 +5028,11 @@ var TraceabilityMatrix = class _TraceabilityMatrix extends VBElement {
   static #labelOf(el) {
     return el.getAttribute("data-matrix-label") || el.id || (el.textContent || "").trim().split("\n")[0].slice(0, 60) || "(unnamed)";
   }
+  static #seq = 0;
+  /** @type {HTMLTableElement | null} */
+  #table = null;
+  /** The grid's single Tab stop. @type {HTMLElement | null} */
+  #rovingStop = null;
   /** @type {Element[]} */
   #rowEls = [];
   /** @type {Element[]} */
@@ -4762,7 +5108,7 @@ function formatDate(d, opts = { year: "numeric", month: "long", day: "numeric" }
 // src/web-components/burndown-chart/logic.js
 var BurndownChart = class _BurndownChart extends VBElement {
   static get observedAttributes() {
-    return ["start", "end", "total", "unit", "label", "weekends"];
+    return ["start", "end", "total", "unit", "label", "weekends", "heading-level"];
   }
   /** True between connectedCallback and disconnectedCallback. */
   #live = false;
@@ -4857,7 +5203,8 @@ var BurndownChart = class _BurndownChart extends VBElement {
     if (scopeChanges.length) {
       const notes = document.createElement("aside");
       notes.className = "bdc-scope-changes";
-      const heading = document.createElement("h4");
+      const heading = document.createElement(`h${headingLevelFor(this, "burndown-chart")}`);
+      heading.className = "bdc-scope-heading";
       heading.textContent = "Scope changes";
       notes.appendChild(heading);
       const list = document.createElement("ul");
@@ -5085,7 +5432,7 @@ var Roadmap = class _Roadmap extends VBElement {
     if (clipStart >= clipEnd) return null;
     const x = this.#fractionFor(clipStart);
     const w = this.#fractionFor(clipEnd) - x;
-    const bar = document.createElement("article");
+    const bar = document.createElement("div");
     bar.className = "rm-bar";
     bar.style.setProperty("--rm-x", x.toFixed(4));
     bar.style.setProperty("--rm-w", w.toFixed(4));
@@ -5110,11 +5457,11 @@ var Roadmap = class _Roadmap extends VBElement {
       const badge = document.createElement("span");
       badge.className = "rm-bar-status";
       badge.textContent = statusLabel(status);
-      bar.appendChild(badge);
+      bar.append(" ", badge);
     }
     bar.setAttribute(
       "aria-label",
-      `${heading.textContent} \u2014 ${formatDate(start)} to ${formatDate(end)} in ${laneName}` + (status ? `, status: ${statusLabel(status).toLowerCase()}` : "")
+      `${heading.textContent}${status ? `, ${statusLabel(status)}` : ""} \u2014 ${formatDate(start)} to ${formatDate(end)} in ${laneName}`
     );
     if (this.#editable) {
       bar.setAttribute("aria-describedby", `${this.#uid}-help`);
@@ -5541,7 +5888,7 @@ function VBCollection(Base) {
 // src/web-components/kanban-board/logic.js
 var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
   static get observedAttributes() {
-    return ["src", "compact", "title"];
+    return ["src", "compact", "title", "heading-level"];
   }
   static keyOf(item) {
     return item.id ?? item.storyId;
@@ -5555,7 +5902,7 @@ var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
   #columnEls = {};
   /** @type {HTMLDivElement | null} */
   #liveRegion = null;
-  /** @type {HTMLHeadingElement | null} */
+  /** @type {HTMLElement | null} */
   #titleEl = null;
   /** @type {string} */
   #groupId = "";
@@ -5568,17 +5915,28 @@ var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
   /** Listeners attached for the current connection. */
   #wired = false;
   #readyFired = false;
+  /** Instance number, used to keep fallback region names unique. */
+  #instance = 0;
   #loader = new SrcLoader();
+  /** Stops the drag-surface semantics observer (see board-surface.js). */
+  #stopSemantics = () => {
+  };
   setup() {
     this.#ensureGroupId();
     if (!this.#built) {
       this.#built = true;
       this.#buildFromSections();
+    } else {
+      this.#syncTitle();
     }
     if (!this.#wired) {
       this.#wired = true;
       this.listen(this, "drag-surface:reorder", this.#onReorder);
       this.listen(this, "drag-surface:transfer", this.#onTransfer);
+      this.#stopSemantics = watchSurfaceSemantics(
+        /** @type {any} */
+        this
+      );
     }
     const src = this.getAttribute("src");
     if (src) {
@@ -5624,21 +5982,50 @@ var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
     );
     return { meta: { id, label, wip: wip !== null && isNaN(wip) ? null : wip, color }, children };
   }
-  /** Create, update, or remove the optional heading from the title attribute. */
+  /**
+   * Create, update, or remove the optional heading from the title attribute,
+   * keep heading levels in step with the page outline, and name the board
+   * region.
+   */
   #syncTitle() {
     const title = this.getAttribute("title");
+    const levels = this.#headingLevels();
     if (title) {
       if (!this.#titleEl) {
-        this.#titleEl = document.createElement("h2");
+        this.#titleEl = document.createElement(`h${levels.title}`);
         this.#titleEl.className = "kb-title";
         this.prepend(this.#titleEl);
+      } else {
+        this.#titleEl = retagHeading(this.#titleEl, levels.title);
       }
       this.#titleEl.textContent = title;
     } else if (this.#titleEl) {
       this.#titleEl.remove();
       this.#titleEl = null;
     }
-    this.#columnsEl?.setAttribute("aria-label", title || "Kanban board");
+    for (const h of this.#columnsEl?.querySelectorAll(":scope > .kb-column > .kb-column-header > .kb-column-heading") ?? []) {
+      retagHeading(h, levels.column);
+    }
+    this.#nameRegion();
+  }
+  /** @returns {{ title: number, column: number }} */
+  #headingLevels() {
+    return boardHeadingLevels(
+      /** @type {HTMLElement} */
+      /** @type {unknown} */
+      this,
+      "kanban-board"
+    );
+  }
+  /**
+   * Give the board region a name that is unique on the page (axe
+   * landmark-unique): the title, else "Kanban board", numbered from the
+   * second board on ("Kanban board 2"). Give boards titles for real names.
+   */
+  #nameRegion(shell = this.#columnsEl) {
+    if (!shell) return;
+    const name = this.getAttribute("title") || (this.#instance > 1 ? `Kanban board ${this.#instance}` : "Kanban board");
+    shell.setAttribute("aria-label", name);
   }
   #dispatchReady() {
     this.#readyFired = true;
@@ -5766,6 +6153,7 @@ var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
   }
   teardown() {
     this.#wired = false;
+    this.#stopSemantics();
   }
   // ── Data API (HTML-first / JS-first dual contract) ──────────────
   /**
@@ -5934,7 +6322,8 @@ var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
     const shell = document.createElement("div");
     shell.className = "kb-columns";
     shell.setAttribute("role", "region");
-    shell.setAttribute("aria-label", this.getAttribute("title") || "Kanban board");
+    this.#nameRegion(shell);
+    const { column: columnLevel } = this.#headingLevels();
     let seq = 0;
     this.#columns.forEach((col, i) => {
       const column = document.createElement("section");
@@ -5943,7 +6332,8 @@ var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
       if (col.color) column.setAttribute("data-column-tint", col.color);
       const header = document.createElement("header");
       header.className = "kb-column-header";
-      const h3 = document.createElement("h3");
+      const h3 = document.createElement(`h${columnLevel}`);
+      h3.className = "kb-column-heading";
       h3.textContent = col.label;
       const countBadge = document.createElement("output");
       countBadge.className = "kb-count";
@@ -5981,7 +6371,7 @@ var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
     if (oldValue === newValue || !this.#built) return;
     if (name === "src" && newValue && newValue !== this.#loader.url) this._loadSrc(newValue);
     if (name === "src" && !newValue) this.#loader.cancel();
-    if (name === "title") this.#syncTitle();
+    if (name === "title" || name === "heading-level") this.#syncTitle();
   }
   // ── JSON loading ────────────────────────────────────
   /**
@@ -6049,7 +6439,10 @@ var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
   // ── Helpers ──────────────────────────────────────────
   /** Assign this board's drag-surface group id once. */
   #ensureGroupId() {
-    if (!this.#groupId) this.#groupId = `kb-${++_KanbanBoard.#instanceCount}`;
+    if (!this.#groupId) {
+      this.#instance = ++_KanbanBoard.#instanceCount;
+      this.#groupId = `kb-${this.#instance}`;
+    }
   }
   /**
    * Insert the columns shell just before the live region (after the title).
@@ -6110,7 +6503,7 @@ registerComponent(
 // src/web-components/story-map/logic.js
 var StoryMap = class _StoryMap extends VBElement {
   static get observedAttributes() {
-    return ["src", "compact", "title"];
+    return ["src", "compact", "title", "heading-level"];
   }
   static #instanceCount = 0;
   /** @type {HTMLDivElement | null} */
@@ -6121,7 +6514,7 @@ var StoryMap = class _StoryMap extends VBElement {
   #surfaces = {};
   /** @type {HTMLDivElement | null} */
   #liveRegion = null;
-  /** @type {HTMLHeadingElement | null} */
+  /** @type {HTMLElement | null} */
   #titleEl = null;
   /** @type {string} */
   #groupId = "";
@@ -6136,6 +6529,9 @@ var StoryMap = class _StoryMap extends VBElement {
   #wired = false;
   #readyFired = false;
   #loader = new SrcLoader();
+  /** Stops the drag-surface semantics observer (see board-surface.js). */
+  #stopSemantics = () => {
+  };
   setup() {
     if (!this.#groupId) this.#groupId = `sm-${++_StoryMap.#instanceCount}`;
     if (!this.#built) {
@@ -6161,6 +6557,7 @@ var StoryMap = class _StoryMap extends VBElement {
       this.#wired = true;
       this.listen(this, "drag-surface:reorder", this.#onReorder);
       this.listen(this, "drag-surface:transfer", this.#onTransfer);
+      this.#stopSemantics = watchSurfaceSemantics(this);
     }
     const src = this.getAttribute("src");
     if (src) {
@@ -6171,6 +6568,7 @@ var StoryMap = class _StoryMap extends VBElement {
   }
   teardown() {
     this.#wired = false;
+    this.#stopSemantics();
   }
   /**
    * @param {HTMLElement} section
@@ -6203,12 +6601,13 @@ var StoryMap = class _StoryMap extends VBElement {
       column.setAttribute("data-activity-column", activity.id);
       const header = document.createElement("header");
       header.className = "sm-activity-header";
-      const h3 = document.createElement("h3");
-      h3.textContent = activity.label;
+      const heading = document.createElement(`h${this.#headingLevels().column}`);
+      heading.className = "sm-activity-heading";
+      heading.textContent = activity.label;
       const countBadge = document.createElement("span");
       countBadge.className = "sm-activity-count";
-      h3.appendChild(countBadge);
-      header.appendChild(h3);
+      heading.appendChild(countBadge);
+      header.appendChild(heading);
       column.appendChild(header);
       const surface = document.createElement("drag-surface");
       surface.setAttribute("group", this.#groupId);
@@ -6230,18 +6629,30 @@ var StoryMap = class _StoryMap extends VBElement {
   /** Create, update, or remove the optional heading from the title attribute. */
   #syncTitle() {
     const title = this.getAttribute("title");
+    const levels = this.#headingLevels();
     if (title) {
       if (!this.#titleEl) {
-        this.#titleEl = document.createElement("h2");
+        this.#titleEl = document.createElement(`h${levels.title}`);
         this.#titleEl.className = "sm-title";
         this.prepend(this.#titleEl);
       }
+      this.#titleEl = retagHeading(this.#titleEl, levels.title);
       this.#titleEl.textContent = title;
     } else if (this.#titleEl) {
       this.#titleEl.remove();
       this.#titleEl = null;
     }
+    for (const h of this.querySelectorAll(".sm-activity-heading")) retagHeading(h, levels.column);
     this.#scroll?.setAttribute("aria-label", title || "Story map");
+  }
+  /** @returns {{ title: number, column: number }} */
+  #headingLevels() {
+    return boardHeadingLevels(
+      /** @type {HTMLElement} */
+      /** @type {unknown} */
+      this,
+      "story-map"
+    );
   }
   #dispatchReady() {
     this.#readyFired = true;
@@ -6422,7 +6833,7 @@ var StoryMap = class _StoryMap extends VBElement {
     if (oldValue === newValue || !this.#built) return;
     if (name === "src" && newValue && newValue !== this.#loader.url) this._loadSrc(newValue);
     if (name === "src" && !newValue) this.#loader.cancel();
-    if (name === "title") this.#syncTitle();
+    if (name === "title" || name === "heading-level") this.#syncTitle();
   }
   // ── JSON loading ────────────────────────────────────
   /**
@@ -7125,7 +7536,7 @@ function applyFeedback({ button, duration, announceMessage, eventDetail, state =
       detail: eventDetail
     }));
   }
-  announce2(announceMessage);
+  announce2(announceMessage, button);
 }
 async function pasteFromClipboard(target, options = {}) {
   const { button, announceMessage = DEFAULT_PASTE_ANNOUNCE, duration = COPIED_DURATION } = options;
@@ -7182,11 +7593,25 @@ function getText(button) {
   }
   return "";
 }
-var clearTimer;
-function liveRegion() {
+var clearTimers = /* @__PURE__ */ new WeakMap();
+function announceContainer(button) {
+  let modals = [];
+  try {
+    modals = /** @type {HTMLDialogElement[]} */
+    [...document.querySelectorAll("dialog:modal")];
+  } catch {
+    return document.body;
+  }
+  if (!modals.length) return document.body;
+  const own = button?.isConnected ? modals.find((d) => d.contains(button)) : void 0;
+  if (own) return own;
+  const active = document.activeElement;
+  return modals.find((d) => active && d.contains(active)) ?? modals[modals.length - 1];
+}
+function liveRegion(container) {
   let el = (
     /** @type {HTMLElement | null} */
-    document.querySelector("body > [data-vb-clipboard-status]")
+    container.querySelector(":scope > [data-vb-clipboard-status]")
   );
   if (el) return el;
   el = document.createElement("div");
@@ -7195,19 +7620,19 @@ function liveRegion() {
   el.setAttribute("aria-live", "polite");
   el.setAttribute("aria-atomic", "true");
   el.style.cssText = "position:absolute;inline-size:1px;block-size:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;";
-  document.body.appendChild(el);
+  container.appendChild(el);
   return el;
 }
-function announce2(message) {
+function announce2(message, button) {
   if (!document.body) return;
-  const region = liveRegion();
+  const region = liveRegion(announceContainer(button));
   region.textContent = "";
   requestAnimationFrame(() => {
     region.textContent = message;
-    clearTimeout(clearTimer);
-    clearTimer = setTimeout(() => {
+    clearTimeout(clearTimers.get(region));
+    clearTimers.set(region, setTimeout(() => {
       if (region.textContent === message) region.textContent = "";
-    }, ANNOUNCE_DURATION);
+    }, ANNOUNCE_DURATION));
   });
 }
 if (document.readyState === "loading") {
@@ -8773,6 +9198,11 @@ var styles6 = `
   padding: 3px 8px;
   border-radius: var(--_radius-s);
   text-transform: capitalize;
+  /* --_hue comes from a VB theme token per type (below). The text is the
+     hue pulled toward the theme text colour, over a 12% tint of it, so it
+     stays >= 4.5:1 in light and dark themes. */
+  color: color-mix(in oklab, var(--_hue, var(--_muted)) 55%, var(--_text));
+  background: color-mix(in oklab, var(--_hue, var(--_muted)) 12%, transparent);
 }
 
 .wi-type svg {
@@ -8780,13 +9210,12 @@ var styles6 = `
   height: 12px;
 }
 
-/* Type colors \u2014 driven by VB theme tokens, with color-mix surfaces so the
-   pill background shifts with the active theme. */
-.wi-type[data-type="task"]    { color: var(--color-info,    #3b82f6); background: color-mix(in oklch, var(--color-info,    #3b82f6) 12%, transparent); }
-.wi-type[data-type="bug"]     { color: var(--color-error,   #dc2626); background: color-mix(in oklch, var(--color-error,   #dc2626) 12%, transparent); }
-.wi-type[data-type="chore"]   { color: var(--color-text-muted, #6b7280); background: color-mix(in oklch, var(--color-text-muted, #6b7280) 12%, transparent); }
-.wi-type[data-type="spike"]   { color: var(--color-accent,  #8b5cf6); background: color-mix(in oklch, var(--color-accent,  #8b5cf6) 12%, transparent); }
-.wi-type[data-type="feature"] { color: var(--color-success, #059669); background: color-mix(in oklch, var(--color-success, #059669) 12%, transparent); }
+/* Type hues \u2014 VB theme tokens, so the pills follow the active theme. */
+.wi-type[data-type="task"]    { --_hue: var(--color-info, #3b82f6); }
+.wi-type[data-type="bug"]     { --_hue: var(--color-error, #dc2626); }
+.wi-type[data-type="chore"]   { --_hue: var(--color-text-muted, #6b7280); }
+.wi-type[data-type="spike"]   { --_hue: var(--color-accent, #8b5cf6); }
+.wi-type[data-type="feature"] { --_hue: var(--color-success, #059669); }
 
 /* \u2500\u2500 Badges \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 .wi-badges {
@@ -8795,8 +9224,13 @@ var styles6 = `
   gap: var(--_space-xs);
 }
 
+/* --_hue is the badge colour, set inline per priority / status. The text is
+   that hue pulled toward the theme text colour, over a 12% tint of it, so it
+   stays >= 4.5:1 in light and dark themes while keeping its hue family. */
 .wi-priority,
 .wi-status {
+  color: color-mix(in oklab, var(--_hue, var(--_muted)) 55%, var(--_text));
+  background: color-mix(in oklab, var(--_hue, var(--_muted)) 12%, transparent);
   font-size: 11px;
   padding: 4px 10px;
   border-radius: var(--_radius-full);
@@ -8869,7 +9303,8 @@ var styles6 = `
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-inverted, #fff);
+  /* Fixed white: hashColor() backgrounds are dark at every hue and in every theme. */
+  color: #fff;
   flex-shrink: 0;
 }
 
@@ -9244,8 +9679,8 @@ var WorkItem = class extends UXShadowElement {
             <span class="wi-type" data-type="${esc(type)}">${lucideSvg(typeIcon)} ${esc(type)}</span>
           </div>
           <div class="wi-badges">
-            <span class="wi-priority" style="color:${priorityInfo.color};background:${priorityInfo.bg}">${esc(priorityInfo.label)}</span>
-            <span class="wi-status" style="color:${statusInfo.color};background:${statusInfo.bg}">${esc(statusInfo.label)}</span>
+            <span class="wi-priority" style="--_hue:${priorityInfo.color}">${esc(priorityInfo.label)}</span>
+            <span class="wi-status" style="--_hue:${statusInfo.color}">${esc(statusInfo.label)}</span>
             ${this.estimate ? `<span class="wi-estimate" title="Estimate">${esc(this.estimate)}</span>` : ""}
           </div>
         </header>
@@ -9394,7 +9829,11 @@ var styles7 = `
   gap: var(--_space-xs);
 }
 
+/* --_hue is the status colour, set inline. Text = the hue pulled toward the
+   theme text colour over a 12% tint: >= 4.5:1 in light and dark themes. */
 .adr-status {
+  color: color-mix(in oklab, var(--_hue, var(--_muted)) 55%, var(--_text));
+  background: color-mix(in oklab, var(--_hue, var(--_muted)) 12%, transparent);
   font-size: 11px;
   padding: 4px 10px;
   border-radius: var(--_radius-full);
@@ -9781,7 +10220,7 @@ var AdrWc = class extends UXShadowElement {
           <div class="adr-body">
             <div class="adr-meta">
               ${this.adrId ? `<span class="adr-id">${esc(this.adrId)}</span>` : ""}
-              <span class="adr-status" style="color:${statusInfo.color};background:${statusInfo.bg}">${esc(statusInfo.label)}</span>
+              <span class="adr-status" style="--_hue:${statusInfo.color}">${esc(statusInfo.label)}</span>
             </div>
             <div class="adr-title-wrap">
               <slot name="title"><span class="adr-title-fallback">${esc(this._minimalLabel)}</span></slot>
@@ -9799,7 +10238,7 @@ var AdrWc = class extends UXShadowElement {
             ${hasDate ? `<span class="adr-date-wrap">${lucideSvg(ICONS.calendar)} <slot name="date"></slot></span>` : ""}
           </div>
           <div class="adr-badges">
-            <span class="adr-status" style="color:${statusInfo.color};background:${statusInfo.bg}">${esc(statusInfo.label)}</span>
+            <span class="adr-status" style="--_hue:${statusInfo.color}">${esc(statusInfo.label)}</span>
           </div>
         </header>
 
@@ -10008,9 +10447,12 @@ function buildTriangleSvg({
   center.setAttribute("data-target", "quality");
   center.setAttribute("tabindex", "0");
   center.setAttribute("role", "button");
+  const capText = capacityPoints > 0 ? String(capacityPoints) : "\u2014";
+  const unitText = capacitySource === "manual" ? "pts (manual)" : "pts";
+  const qualityText = formatQualitySummary(qualitySummary);
   center.setAttribute(
     "aria-label",
-    `Quality \u2014 ${formatQualitySummary(qualitySummary)}. Activate to open the quality decision.`
+    `Quality, ${capText} ${unitText}, ${qualityText}. Activate to open the quality decision.`
   );
   const backdrop = document.createElementNS(SVG_NS, "circle");
   backdrop.setAttribute("class", "capacity-backdrop");
@@ -10032,24 +10474,24 @@ function buildTriangleSvg({
   quality.setAttribute("y", "-15");
   quality.setAttribute("text-anchor", "middle");
   quality.textContent = "Quality";
-  center.append(quality);
+  center.append(quality, " ");
   const cap = document.createElementNS(SVG_NS, "text");
   cap.setAttribute("class", "capacity");
   cap.setAttribute("x", "0");
   cap.setAttribute("y", "7");
   cap.setAttribute("text-anchor", "middle");
   cap.setAttribute("dominant-baseline", "middle");
-  cap.textContent = capacityPoints > 0 ? String(capacityPoints) : "\u2014";
-  center.append(cap);
+  cap.textContent = capText;
+  center.append(cap, " ");
   const unit = document.createElementNS(SVG_NS, "text");
   unit.setAttribute("class", "capacity-unit");
   unit.setAttribute("x", "0");
   unit.setAttribute("y", "26");
   unit.setAttribute("text-anchor", "middle");
-  unit.textContent = capacitySource === "manual" ? "pts (manual)" : "pts";
-  center.append(unit);
+  unit.textContent = unitText;
+  center.append(unit, " ");
   const centerTitle = document.createElementNS(SVG_NS, "title");
-  centerTitle.textContent = formatQualitySummary(qualitySummary);
+  centerTitle.textContent = qualityText;
   center.append(centerTitle);
   svg.append(center);
   for (const axis of ["scope", "time", "cost"]) {
@@ -10067,7 +10509,8 @@ function buildVertex(axis, vertex, value) {
   g.setAttribute("data-axis", axis);
   g.setAttribute("tabindex", "0");
   g.setAttribute("role", "button");
-  g.setAttribute("aria-label", `${labels.name} \u2014 ${summary}. Activate to edit.`);
+  const unitHint = `Measured in ${labels.unit}`;
+  g.setAttribute("aria-label", `${labels.name}, ${summary}, ${unitHint.toLowerCase()}. Activate to edit.`);
   const hit = document.createElementNS(SVG_NS, "rect");
   hit.setAttribute("class", "hit");
   const hitW = 160;
@@ -10093,16 +10536,16 @@ function buildVertex(axis, vertex, value) {
   name.setAttribute("y", String(round(vertex.y + labelMeta.dy)));
   name.setAttribute("text-anchor", labelMeta.anchor);
   name.textContent = labels.name;
-  g.append(name);
+  g.append(name, " ");
   const summaryEl = document.createElementNS(SVG_NS, "text");
   summaryEl.setAttribute("class", "vertex-summary");
   summaryEl.setAttribute("x", String(round(vertex.x + summaryMeta.dx)));
   summaryEl.setAttribute("y", String(round(vertex.y + summaryMeta.dy)));
   summaryEl.setAttribute("text-anchor", summaryMeta.anchor);
   summaryEl.textContent = summary;
-  g.append(summaryEl);
+  g.append(summaryEl, " ");
   const title = document.createElementNS(SVG_NS, "title");
-  title.textContent = `${labels.name}: ${summary} \u2014 ${labels.unit}`;
+  title.textContent = unitHint;
   g.append(title);
   return g;
 }
@@ -11052,11 +11495,13 @@ function canSaveAxis({ level, rationale, minRationale = 10 }) {
   return { ok: true };
 }
 function formatAxisTooltip({ ility, level, costWeight }) {
-  const name = ilityLabel(ility);
+  return `${ilityLabel(ility)} \u2014 ${formatAxisDetail({ level, costWeight })}`;
+}
+function formatAxisDetail({ level, costWeight }) {
   const lvl = level ? LEVEL_LABELS[level] || level : "unset";
   const n = Number(costWeight);
   const cost = Number.isFinite(n) ? `${n} pts` : "? pts";
-  return `${name} \u2014 ${lvl} \xB7 ${cost}`;
+  return `${lvl} \xB7 ${cost}`;
 }
 function parseJsonAttr(raw) {
   if (!raw || typeof raw !== "string") return {};
@@ -11208,9 +11653,9 @@ function buildTargetSvg({
     text.setAttribute("text-anchor", anchor);
     text.setAttribute("dominant-baseline", "middle");
     text.textContent = ilityLabel(ility);
-    g.append(text);
+    g.append(text, " ");
     const title = document.createElementNS(SVG_NS2, "title");
-    title.textContent = formatAxisTooltip({ ility, level, costWeight: cost });
+    title.textContent = formatAxisDetail({ level, costWeight: cost });
     g.append(title);
     svg.append(g);
   }
@@ -11879,11 +12324,17 @@ var styles8 = `
   :host(:state(priority-critical))     { border-color: var(--_critical-fg); }
   :host(:state(priority-important))    { border-color: var(--_important-fg); }
   :host(:state(priority-acceptable))   { border-color: var(--_acceptable-fg); }
-  :host(:state(priority-not-relevant)) { opacity: 0.6; }
+  /* Not relevant reads as de-emphasised without opacity, which would pull
+     every bit of text below WCAG AA contrast. */
+  :host(:state(priority-not-relevant)) { border-style: dashed; }
+  :host(:state(priority-not-relevant)) .name { color: var(--_muted); }
 
-  :host(:state(priority-critical))     .priority-default { background: var(--_critical-bg);    color: var(--_critical-fg); }
-  :host(:state(priority-important))    .priority-default { background: var(--_important-bg);   color: var(--_important-fg); }
-  :host(:state(priority-acceptable))   .priority-default { background: var(--_acceptable-bg);  color: var(--_acceptable-fg); }
+  /* Pill text mixes the status hue toward the text colour so it keeps
+     4.5:1 on the tinted pill in light and dark themes; the border keeps the
+     pure hue. */
+  :host(:state(priority-critical))     .priority-default { background: var(--_critical-bg);    color: color-mix(in oklab, var(--_critical-fg) 55%, var(--_text)); }
+  :host(:state(priority-important))    .priority-default { background: var(--_important-bg);   color: color-mix(in oklab, var(--_important-fg) 55%, var(--_text)); }
+  :host(:state(priority-acceptable))   .priority-default { background: var(--_acceptable-bg);  color: color-mix(in oklab, var(--_acceptable-fg) 55%, var(--_text)); }
   :host(:state(priority-not-relevant)) .priority-default { background: var(--_skipped-bg);     color: var(--_skipped-fg); text-decoration: line-through; }
 
   /* Hide the default pill when the author supplied one via slot */
@@ -11896,7 +12347,9 @@ var styles8 = `
   }
 
   .conflicts ::slotted([slot="conflicts"]) {
-    color: var(--_conflict);
+    /* Mixed toward the text colour: the raw error hue fails AA as text on
+       dark surfaces. The border and ring keep the pure hue. */
+    color: color-mix(in oklab, var(--_conflict) 55%, var(--_text));
     font-size: var(--font-size-sm, 0.875rem);
     font-weight: var(--font-weight-semibold, 600);
   }

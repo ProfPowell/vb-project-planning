@@ -21,7 +21,7 @@ crumbLabel: Web Components
 <section>
   <h2>Cartesian convention</h2>
   <p>Quadrant indices follow Cartesian numbering. <code>q1</code> is top-right, <code>q2</code> top-left, <code>q3</code> bottom-left, <code>q4</code> bottom-right:</p>
-  <code-block language="text">
+  <code-block label="Axis convention" language="text">
 +----------+----------+
 |    Q2    |    Q1    |
 +----------+----------+
@@ -45,7 +45,7 @@ crumbLabel: Web Components
 
   <browser-window url="https://profpowell.github.io/vb-project-planning/demos/quadrant-grid-swot/" src="/demos/quadrant-grid-swot/"></browser-window>
 
-  <code-block language="html" data-escape>
+  <code-block label="SWOT recipe" language="html" data-escape>
 <quadrant-grid
   x-label="Origin"
   y-label="Helpfulness"
@@ -69,7 +69,7 @@ crumbLabel: Web Components
 
   <browser-window url="https://profpowell.github.io/vb-project-planning/demos/quadrant-grid-stakeholders/" src="/demos/quadrant-grid-stakeholders/"></browser-window>
 
-  <code-block language="html" data-escape>
+  <code-block label="Stakeholder map recipe" language="html" data-escape>
 <quadrant-grid
   x-label="Interest"
   y-label="Power"
@@ -88,7 +88,7 @@ crumbLabel: Web Components
   <h2>Drag-and-drop</h2>
   <p>Add the <code>draggable</code> attribute to enable moving children between quadrants. Each quadrant becomes a <code>&lt;drag-surface&gt;</code>; the component listens for cross-surface transfers and emits <code>quadrant-grid:move</code>.</p>
 
-  <code-block language="html" data-escape>
+  <code-block label="Drag-and-drop between quadrants" language="html" data-escape>
 <quadrant-grid draggable
   x-label="Effort" y-label="Impact"
   q1-label="Big Bets" q2-label="Quick Wins"
@@ -131,6 +131,7 @@ crumbLabel: Web Components
     <li>When coordinate pins overlap, each pin in the cluster becomes focusable (<code>tabindex="0"</code>, <code>role="group"</code> unless it already has a role) so keyboard users can fan the cluster out.</li>
     <li>Axis and scale labels are <code>aria-hidden</code>; the region label carries the axis names.</li>
     <li>With <code>draggable</code>, a polite live region announces moves using the item's text and the quadrant label (e.g. "Moved Add 2FA to Big Bets").</li>
+    <li>Each <code>&lt;drag-surface&gt;</code> is exposed as a list of its cards (<code>role="list"</code> / <code>"listitem"</code>, kept in step as cards are added and moved). If any card is an element that may not be a list item, such as <code>&lt;article&gt;</code>, that surface is exposed as a labelled <code>role="group"</code> instead and the cards keep their own role. The drag-surface's own move announcements are moved to a hidden status region just after the list, since a list may only contain list items.</li>
   </ul>
 </section>
 

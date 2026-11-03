@@ -43,7 +43,9 @@ const styles = `
     --_does-bg:   color-mix(in oklch, var(--_does)   16%, var(--_card));
     --_feels-bg:  color-mix(in oklch, var(--_feels)  16%, var(--_card));
     --_chip-type-bg: color-mix(in oklch, var(--_accent-bar) 18%, var(--_card));
-    --_chip-type-fg: var(--_accent-bar);
+    /* Chip text = the accent pulled toward the theme text colour, so it stays
+       >= 4.5:1 on its tint in light and dark themes (the raw accent does not). */
+    --_chip-type-fg: color-mix(in oklab, var(--_accent-bar) 55%, var(--_text));
     --_font-sans:    var(--empathy-map-font, var(--font-sans, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif));
     --_font-xs:      var(--empathy-map-font-xs, var(--font-size-xs, 0.75rem));
     --_font-sm:      var(--empathy-map-font-sm, var(--font-size-sm, 0.875rem));

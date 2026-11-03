@@ -229,7 +229,7 @@ test.describe('quality-target', () => {
       denom: 'of 12',
       capacitySource: 'manual',
       hash: null,
-      axisLabel: 'Performance — Critical · 7 pts',
+      axisLabel: 'Critical · 7 pts',
     });
     expect(result.withProp).toEqual({ capacityPoints: 8, overBudget: true, denom: 'of 8' });
     // Unbounded: never over budget; validity fails only on the missing critical rationales.

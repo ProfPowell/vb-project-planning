@@ -8,7 +8,8 @@
     "permittedContent": ["@flow"]
   },
   "attributes": [
-    { "name": "persona-id", "kind": "host-api", "purpose": "config", "type": "string",  "description": "Links to a user-persona element by id. Without a persona slot, the \"As a…\" text uses that persona's role (live-updating)." },
+    { "name": "heading-level", "kind": "host-api", "purpose": "config", "type": "number", "description": "Level (1–6) of the Acceptance Criteria / Tasks / Notes headings. Default: one below the nearest preceding heading on the page (the slotted title is only shown in minimal mode, which has no sections)." },
+    { "name": "persona-id", "kind": "host-api", "purpose": "config", "type": "string",  "description": "Links to a user-persona element by id. Without a persona slot, the \"As a…\" text uses that persona's job-title (live-updating; a legacy non-ARIA role attribute is also read)." },
     { "name": "priority",   "kind": "host-api", "purpose": "config", "type": "enum", "values": ["critical", "high", "medium", "low"], "default": "medium", "description": "Story priority level" },
     { "name": "status",     "kind": "host-api", "purpose": "config", "type": "enum", "values": ["backlog", "to-do", "in-progress", "review", "done"], "default": "backlog", "description": "Workflow status" },
     { "name": "points",     "kind": "host-api", "purpose": "config", "type": "string",  "description": "Story point estimate (badge reads \"[n] story points\" to screen readers)" },
@@ -28,9 +29,9 @@
     { "name": "notes",               "description": "Additional context (e.g., <p>)" }
   ],
   "events": [
-    { "name": "story-ready",      "detail": "{ id, persona, action, benefit, priority, status, points }", "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by attribute changes or moves." },
-    { "name": "status-changed",   "detail": "{ status, storyId }",   "description": "Fired when updateStatus() is called with a known status" },
-    { "name": "priority-changed", "detail": "{ priority, storyId }", "description": "Fired when updatePriority() is called with a known priority" },
+    { "name": "user-story:ready", "detail": "{ id, persona, action, benefit, priority, status, points }", "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by attribute changes or moves. For the 0.3.x line the deprecated un-namespaced alias story-ready is dispatched right after, with the same detail." },
+    { "name": "user-story:status-changed",   "detail": "{ status, storyId }",   "description": "Fired when updateStatus() is called with a known status. For the 0.3.x line the deprecated un-namespaced alias status-changed is dispatched right after, with the same detail." },
+    { "name": "user-story:priority-changed", "detail": "{ priority, storyId }", "description": "Fired when updatePriority() is called with a known priority. For the 0.3.x line the deprecated un-namespaced alias priority-changed is dispatched right after, with the same detail." },
     { "name": "user-story:upgraded", "detail": "", "description": "Once, in a microtask after first connect. Wait for this before assigning .data from a framework." },
     { "name": "user-story:data-changed", "detail": "{ data, source: 'property' }", "description": "After .data is assigned" }
   ]

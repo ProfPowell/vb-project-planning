@@ -244,8 +244,8 @@ class WorkItem extends UXShadowElement {
             <span class="wi-type" data-type="${esc(type)}">${lucideSvg(typeIcon)} ${esc(type)}</span>
           </div>
           <div class="wi-badges">
-            <span class="wi-priority" style="color:${priorityInfo.color};background:${priorityInfo.bg}">${esc(priorityInfo.label)}</span>
-            <span class="wi-status" style="color:${statusInfo.color};background:${statusInfo.bg}">${esc(statusInfo.label)}</span>
+            <span class="wi-priority" style="--_hue:${priorityInfo.color}">${esc(priorityInfo.label)}</span>
+            <span class="wi-status" style="--_hue:${statusInfo.color}">${esc(statusInfo.label)}</span>
             ${this.estimate ? `<span class="wi-estimate" title="Estimate">${esc(this.estimate)}</span>` : ''}
           </div>
         </header>

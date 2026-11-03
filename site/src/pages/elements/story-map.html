@@ -259,6 +259,7 @@ map.activities = [
       <li>Each <code>&lt;drag-surface&gt;</code> has an <code>aria-label</code> describing the activity column (e.g., "Discovery stories")</li>
       <li>A hidden live region with <code>aria-live="polite"</code> announces transfers between columns using the story's text and the activity labels (e.g. "interview 10 target users moved from Discovery to Design")</li>
       <li>Keyboard navigation is provided by the underlying <code>&lt;drag-surface&gt;</code> components</li>
+      <li>Each <code>&lt;drag-surface&gt;</code> is exposed as a list of its cards (<code>role="list"</code> / <code>"listitem"</code>, kept in step as cards are added and moved). If any card is an element that may not be a list item, such as <code>&lt;article&gt;</code>, that surface is exposed as a labelled <code>role="group"</code> instead and the cards keep their own role. The drag-surface's own move announcements are moved to a hidden status region just after the list, since a list may only contain list items.</li>
       <li>Column headers are sticky so the activity label remains visible while scrolling down through long columns</li>
       <li>Respects <code>prefers-reduced-motion: reduce</code> by disabling scroll behavior transitions</li>
       <li>Uses <code>container-type: inline-size</code> and stacks columns vertically at narrow viewports (&lt;30rem)</li>

@@ -87,7 +87,11 @@ const styles = `
   gap: var(--_space-xs);
 }
 
+/* --_hue is the status colour, set inline. Text = the hue pulled toward the
+   theme text colour over a 12% tint: >= 4.5:1 in light and dark themes. */
 .adr-status {
+  color: color-mix(in oklab, var(--_hue, var(--_muted)) 55%, var(--_text));
+  background: color-mix(in oklab, var(--_hue, var(--_muted)) 12%, transparent);
   font-size: 11px;
   padding: 4px 10px;
   border-radius: var(--_radius-full);

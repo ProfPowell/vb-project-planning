@@ -23,7 +23,7 @@ crumbLabel: Web Components
   <h2>Data source</h2>
   <p>Risks come from a <code>&lt;template&gt;</code> child. Each <code>&lt;tr&gt;</code> has cells in this order: Title, Likelihood (1–5), Impact (1–5), Owner, Mitigation. A <code>data-id</code> on the row provides a stable identifier.</p>
 
-  <code-block language="html" data-escape>
+  <code-block label="Inline risks in a template" language="html" data-escape>
 <risk-register label="Q3 project risks">
   <template>
     <tr data-id="vendor-delay"><td>Vendor delay</td><td>4</td><td>3</td><td>PM</td><td>Pre-stage assets in week 6</td></tr>
@@ -34,7 +34,7 @@ crumbLabel: Web Components
 
   <p>Or load asynchronously via <code>src</code>:</p>
 
-  <code-block language="html" data-escape>
+  <code-block label="Loading risks from src" language="html" data-escape>
 <risk-register src="/risks.json" label="Q3 project risks"></risk-register>
   </code-block>
 </section>

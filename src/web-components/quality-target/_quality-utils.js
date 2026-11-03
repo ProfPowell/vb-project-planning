@@ -163,13 +163,17 @@ export function canSaveAxis({ level, rationale, minRationale = 10 }) {
   return { ok: true };
 }
 
-/** Tooltip text used both in the SVG <title> and aria-label. */
+/** Full axis summary: "Performance — unset · 5 pts". */
 export function formatAxisTooltip({ ility, level, costWeight }) {
-  const name = ilityLabel(ility);
+  return `${ilityLabel(ility)} — ${formatAxisDetail({ level, costWeight })}`;
+}
+
+/** Axis detail without the name ("unset · 5 pts"): the SVG <title> tooltip. */
+export function formatAxisDetail({ level, costWeight }) {
   const lvl = level ? LEVEL_LABELS[level] || level : 'unset';
   const n = Number(costWeight);
   const cost = Number.isFinite(n) ? `${n} pts` : '? pts';
-  return `${name} — ${lvl} · ${cost}`;
+  return `${lvl} · ${cost}`;
 }
 
 // ── JSON attribute parsing (data-cost-weights) ───────────────────
@@ -320,6 +324,8 @@ export function buildTargetSvg({
     if (level) g.setAttribute('data-level', String(level));
     g.setAttribute('tabindex', '0');
     g.setAttribute('role', 'button');
+    // WCAG 2.5.3: the name starts with the visible label, followed by the
+    // <title> tooltip text, so it contains the element's text verbatim.
     g.setAttribute('aria-label',
       `${formatAxisTooltip({ ility, level, costWeight: cost })}. Activate to edit.`);
 
@@ -357,11 +363,13 @@ export function buildTargetSvg({
     text.setAttribute('text-anchor', anchor);
     text.setAttribute('dominant-baseline', 'middle');
     text.textContent = ilityLabel(ility);
-    g.append(text);
+    // The whitespace node is not rendered; it keeps the label and tooltip
+    // text word-separated in the element's text content.
+    g.append(text, ' ');
 
-    // Tooltip.
+    // Tooltip: the detail only (the name is the visible label beside it).
     const title = document.createElementNS(SVG_NS, 'title');
-    title.textContent = formatAxisTooltip({ ility, level, costWeight: cost });
+    title.textContent = formatAxisDetail({ level, costWeight: cost });
     g.append(title);
 
     svg.append(g);

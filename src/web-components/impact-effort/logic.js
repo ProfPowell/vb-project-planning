@@ -27,7 +27,7 @@ import { registerComponent } from '../../lib/bundle-registry.js';
 import { VBElement } from '../../lib/vb-element.js';
 import { viewTransitionSwap } from '../../lib/vb-view-transition.js';
 import { diffByKey } from '../../lib/diff-by-key.js';
-import { SrcLoader, announce, createLiveRegion, createStoryCard, isStoryRecord, itemLabel } from '../../lib/board-surface.js';
+import { SrcLoader, announce, createLiveRegion, createStoryCard, isStoryRecord, itemLabel, watchSurfaceSemantics } from '../../lib/board-surface.js';
 
 class ImpactEffort extends VBElement {
   static QUADRANTS = ['quick-wins', 'big-bets', 'fill-ins', 'money-pit'];
@@ -77,6 +77,9 @@ class ImpactEffort extends VBElement {
   /** @type {Map<unknown, any>} */
   #records = new Map();
 
+  /** Stops the drag-surface semantics observer (see board-surface.js). */
+  #stopSemantics = () => {};
+
   setup() {
     if (!this.#groupId) this.#groupId = `ie-${++ImpactEffort.#instanceCount}`;
 
@@ -93,6 +96,7 @@ class ImpactEffort extends VBElement {
     if (!this.#wired) {
       this.#wired = true;
       this.listen(this, 'drag-surface:transfer', this.#onTransfer);
+      this.#stopSemantics = watchSurfaceSemantics(this);
     }
 
     // Data mode: fetch once per src value; ready fires after it renders.
@@ -110,6 +114,7 @@ class ImpactEffort extends VBElement {
     // in place so a matrix that is moved in the DOM keeps its content;
     // the next connect only re-attaches listeners.
     this.#wired = false;
+    this.#stopSemantics();
   }
 
   /** First build: wrapper, quadrants, live region; authored cards moved in. */

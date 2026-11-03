@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kanban Board — WIP Limits</title>
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
-  <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js?v=mw0yti0u"></script>
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
+  <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js?v=mw125meb"></script>
 <style>
     body {
       padding: var(--size-l);
@@ -30,7 +30,8 @@
     .wip-alert[data-visible] { display: block; }
   </style>
 </head>
-<body data-layout="stack" data-layout-gap="l">
+<body>
+<main data-layout="stack" data-layout-gap="l">
   <h1>Kanban Board — WIP Limits</h1>
   <header>
     <h2>WIP Limits Demo</h2>
@@ -60,8 +61,8 @@
       <article draggable="true" data-id="task-8">Set up CI pipeline</article>
     </section>
   </kanban-board>
-
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
+</main>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
 <script type="module">
     const alert = document.getElementById('wip-alert');
 

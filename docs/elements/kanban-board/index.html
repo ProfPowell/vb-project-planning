@@ -85,10 +85,10 @@
 
   <title>kanban-board — VB Project Planning</title>
   <meta name="description" content="Columnar drag-and-drop board with user-defined columns, count badges, and optional WIP limits.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0yti0u">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw125meb">
   
 </head>
 <body style="overflow-x: clip;">
@@ -124,7 +124,7 @@
     <button type="button" data-trigger="" popovertarget="mobile-menu" aria-label="Menu">
       <icon-wc name="menu"></icon-wc>
     </button>
-    <nav popover="" id="mobile-menu" class="mobile-menu-panel">
+    <nav popover="" id="mobile-menu" class="mobile-menu-panel" aria-label="Mobile navigation">
       <button type="button" class="mobile-menu-close" popovertarget="mobile-menu" popovertargetaction="hide" aria-label="Close menu">
         <icon-wc name="x"></icon-wc>
       </button>
@@ -158,7 +158,7 @@
 
 
   <main data-pagefind-body="" style="overflow-x: clip;">
-    <input type="checkbox" id="nav-drawer-toggle" class="nav-drawer-checkbox" data-pagefind-ignore="">
+    <input type="checkbox" id="nav-drawer-toggle" class="nav-drawer-checkbox" aria-label="Show elements navigation" data-pagefind-ignore="">
     <label for="nav-drawer-toggle" class="nav-drawer-toggle" data-pagefind-ignore="">
       <icon-wc name="list-tree" size="sm"></icon-wc>
       Navigation
@@ -743,8 +743,9 @@
 <section>
     <h2>Attributes</h2>
     <table class="props-table"><thead><tr><th>Attribute</th><th>Values</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>src</code></td><td>string</td><td>—</td><td>URL to JSON data for columns and items. Fetched once per value; a new value replaces the board and aborts an older in-flight request</td></tr>
-<tr><td><code>title</code></td><td>string</td><td>—</td><td>Optional heading above the board; also names the board region</td></tr>
-<tr><td><code>compact</code></td><td>boolean</td><td>—</td><td>Reduced spacing variant</td></tr></tbody></table>
+<tr><td><code>title</code></td><td>string</td><td>—</td><td>Optional heading above the board; also names the board region. Untitled boards are named "Kanban board", numbered from the second board on the page ("Kanban board 2") so region names stay unique</td></tr>
+<tr><td><code>compact</code></td><td>boolean</td><td>—</td><td>Reduced spacing variant</td></tr>
+<tr><td><code>heading-level</code></td><td>number</td><td>—</td><td>Level (1-6) of the board's top heading: the title when set, otherwise the column headings (which sit one level below a title). Default: one below the nearest heading before the board, so the outline never skips a level</td></tr></tbody></table>
 </section>
 
 <section>
@@ -2858,8 +2859,10 @@ board.addEventListener(&#39;kanban-board:items-changed&#39;, (e) =&amp;gt; {
 <section>
     <h2>Accessibility</h2>
     <ul>
-      <li>The columns container has <code>role="region"</code>, labelled by the <code>title</code> attribute (or "Kanban board" when there is none)</li>
+      <li>The columns container has <code>role="region"</code>, labelled by the <code>title</code> attribute. An untitled board is "Kanban board", numbered from the second board on a page ("Kanban board 2") so region names stay unique; give each board a <code>title</code> for a meaningful name.</li>
+      <li>Headings follow the page outline: the title (when set) is one level below the nearest heading before the board, and the column headings one level below that — or one below the page heading when there is no title — so levels are never skipped. Set <code>heading-level</code> (1–6) to choose the board's top level yourself.</li>
       <li>Each drag-surface has an <code>aria-label</code> of the column label plus "items" (e.g. "Backlog items")</li>
+      <li>Each <code>&lt;drag-surface&gt;</code> is exposed as a list of its cards (<code>role="list"</code> / <code>"listitem"</code>, kept in step as cards are added and moved). If any card is an element that may not be a list item, such as <code>&lt;article&gt;</code>, that surface is exposed as a labelled <code>role="group"</code> instead and the cards keep their own role. The drag-surface's own move announcements are moved to a hidden status region just after the list, since a list may only contain list items.</li>
       <li>A visually hidden live region announces transfers between columns using the card's text and the column labels (e.g. "Wire auth moved from To Do to In Progress")</li>
       <li>Count badges use <code>&lt;output&gt;</code> elements for live value updates</li>
       <li>Respects <code>prefers-reduced-motion: reduce</code></li>
@@ -3407,7 +3410,7 @@ board.addEventListener(&#39;kanban-board:items-changed&#39;, (e) =&amp;gt; {
 </footer>
 
 
-  <fab-stack>
+  <fab-stack role="complementary" aria-label="Page tools">
     <settings-panel></settings-panel>
     <a href="#" data-back-to-top="" aria-label="Back to top">↑</a>
   </fab-stack>
@@ -3431,10 +3434,10 @@ board.addEventListener(&#39;kanban-board:items-changed&#39;, (e) =&amp;gt; {
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0yti0u"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw125meb"></script>
   
 </body>
 </html>

@@ -32,9 +32,12 @@
  * collided with native ClipboardEvent handlers that read
  * `e.clipboardData`.)
  *
- * Announcements go to one persistent, visually hidden live region
- * appended to <body>, never inside the button, so the button's
- * accessible name is unchanged.
+ * Announcements go to a persistent, visually hidden live region, never
+ * inside the button, so the button's accessible name is unchanged. The
+ * region is normally appended to <body>; while a modal <dialog> is open
+ * everything outside it is inert (and not announced), so the region used
+ * is one inside the open modal dialog that contains the button (or the
+ * top-most open modal), created on first use and reused.
  *
  * @example Programmatic
  * import { copyText, copyRich, pasteFromClipboard } from '/src/utils/copy-init.js';
@@ -154,7 +157,7 @@ function applyFeedback({ button, duration, announceMessage, eventDetail, state =
     }));
   }
 
-  announce(announceMessage);
+  announce(announceMessage, button);
 }
 
 /**
@@ -255,16 +258,41 @@ function getText(button) {
   return '';
 }
 
-/** @type {ReturnType<typeof setTimeout> | undefined} */
-let clearTimer;
+/** Pending clear per live region. @type {WeakMap<HTMLElement, ReturnType<typeof setTimeout>>} */
+const clearTimers = new WeakMap();
 
 /**
- * The page's single clipboard live region: visually hidden, appended to
- * <body> once and reused (shared across copies of this module).
+ * Where an announcement must live to be heard: the open modal <dialog>
+ * containing the button, else the top-most open modal dialog (outside it
+ * the page is inert), else <body>.
+ * @param {HTMLElement} [button]
  * @returns {HTMLElement}
  */
-function liveRegion() {
-  let el = /** @type {HTMLElement | null} */ (document.querySelector('body > [data-vb-clipboard-status]'));
+function announceContainer(button) {
+  /** @type {HTMLDialogElement[]} */
+  let modals = [];
+  try {
+    modals = /** @type {HTMLDialogElement[]} */ ([...document.querySelectorAll('dialog:modal')]);
+  } catch {
+    return document.body; // :modal unsupported: no inert-page problem to solve
+  }
+  if (!modals.length) return document.body;
+  const own = button?.isConnected ? modals.find((d) => d.contains(button)) : undefined;
+  if (own) return own;
+  // The top layer's order is not exposed; the dialog holding focus is the
+  // top-most one, else the last opened is usually last in the DOM.
+  const active = document.activeElement;
+  return modals.find((d) => active && d.contains(active)) ?? modals[modals.length - 1];
+}
+
+/**
+ * The clipboard live region for a container: visually hidden, created in
+ * the container once and reused (shared across copies of this module).
+ * @param {HTMLElement} container
+ * @returns {HTMLElement}
+ */
+function liveRegion(container) {
+  let el = /** @type {HTMLElement | null} */ (container.querySelector(':scope > [data-vb-clipboard-status]'));
   if (el) return el;
   el = document.createElement('div');
   el.setAttribute('data-vb-clipboard-status', '');
@@ -273,7 +301,7 @@ function liveRegion() {
   el.setAttribute('aria-atomic', 'true');
   el.style.cssText = 'position:absolute;inline-size:1px;block-size:1px;margin:-1px;padding:0;' +
     'overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;';
-  document.body.appendChild(el);
+  container.appendChild(el);
   return el;
 }
 
@@ -282,17 +310,18 @@ function liveRegion() {
  * created now, empty) and the text is set on the next frame, so the
  * change is announced even on first use and for repeated messages.
  * @param {string} message
+ * @param {HTMLElement} [button] - the control that triggered it (picks the region)
  */
-function announce(message) {
+function announce(message, button) {
   if (!document.body) return;
-  const region = liveRegion();
+  const region = liveRegion(announceContainer(button));
   region.textContent = '';
   requestAnimationFrame(() => {
     region.textContent = message;
-    clearTimeout(clearTimer);
-    clearTimer = setTimeout(() => {
+    clearTimeout(clearTimers.get(region));
+    clearTimers.set(region, setTimeout(() => {
       if (region.textContent === message) region.textContent = '';
-    }, ANNOUNCE_DURATION);
+    }, ANNOUNCE_DURATION));
   });
 }
 

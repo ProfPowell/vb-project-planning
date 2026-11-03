@@ -85,10 +85,10 @@
 
   <title>quadrant-grid — VB Project Planning</title>
   <meta name="description" content="Generic 2x2 quadrant grid primitive backing SWOT, stakeholder maps, and any custom 2x2 visualization.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw0yti0u">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw125meb">
   
 </head>
 <body style="overflow-x: clip;">
@@ -124,7 +124,7 @@
     <button type="button" data-trigger="" popovertarget="mobile-menu" aria-label="Menu">
       <icon-wc name="menu"></icon-wc>
     </button>
-    <nav popover="" id="mobile-menu" class="mobile-menu-panel">
+    <nav popover="" id="mobile-menu" class="mobile-menu-panel" aria-label="Mobile navigation">
       <button type="button" class="mobile-menu-close" popovertarget="mobile-menu" popovertargetaction="hide" aria-label="Close menu">
         <icon-wc name="x"></icon-wc>
       </button>
@@ -158,7 +158,7 @@
 
 
   <main data-pagefind-body="" style="overflow-x: clip;">
-    <input type="checkbox" id="nav-drawer-toggle" class="nav-drawer-checkbox" data-pagefind-ignore="">
+    <input type="checkbox" id="nav-drawer-toggle" class="nav-drawer-checkbox" aria-label="Show elements navigation" data-pagefind-ignore="">
     <label for="nav-drawer-toggle" class="nav-drawer-toggle" data-pagefind-ignore="">
       <icon-wc name="list-tree" size="sm"></icon-wc>
       Navigation
@@ -229,7 +229,7 @@
 <section>
   <h2>Cartesian convention</h2>
   <p>Quadrant indices follow Cartesian numbering. <code>q1</code> is top-right, <code>q2</code> top-left, <code>q3</code> bottom-left, <code>q4</code> bottom-right:</p>
-  <code-block language="text" data-ssr><template shadowrootmode="open"><style>
+  <code-block language="text" data-ssr label="Axis convention"><template shadowrootmode="open"><style>
       :host {
         --_cb-bg: var(--color-surface-raised, #f6f8fa);
         --_cb-code-bg: var(--color-surface, #fff);
@@ -707,7 +707,7 @@
       }
     </style>
       <div class="header">
-        <div class="label-container" id="code-label"><span class="label">TEXT</span></div>
+        <div class="label-container" id="code-label"><span class="label">Axis convention</span></div>
         <div class="header-actions"><button class="copy-button" aria-label="Copy code to clipboard" title="Copy code">Copy</button></div>
       </div>
       <div class="code-container" role="region" aria-labelledby="code-label" style="">
@@ -749,7 +749,7 @@
 
   <browser-window url="https://profpowell.github.io/vb-project-planning/demos/quadrant-grid-swot/" src="/vb-project-planning/demos/quadrant-grid-swot/"></browser-window>
 
-  <code-block language="html" data-ssr><template shadowrootmode="open"><style>
+  <code-block language="html" data-ssr label="SWOT recipe"><template shadowrootmode="open"><style>
       :host {
         --_cb-bg: var(--color-surface-raised, #f6f8fa);
         --_cb-code-bg: var(--color-surface, #fff);
@@ -1227,7 +1227,7 @@
       }
     </style>
       <div class="header">
-        <div class="label-container" id="code-label"><span class="label">HTML</span></div>
+        <div class="label-container" id="code-label"><span class="label">SWOT recipe</span></div>
         <div class="header-actions"><button class="copy-button" aria-label="Copy code to clipboard" title="Copy code">Copy</button></div>
       </div>
       <div class="code-container" role="region" aria-labelledby="code-label" style="">
@@ -1256,7 +1256,7 @@
 
   <browser-window url="https://profpowell.github.io/vb-project-planning/demos/quadrant-grid-stakeholders/" src="/vb-project-planning/demos/quadrant-grid-stakeholders/"></browser-window>
 
-  <code-block language="html" data-ssr><template shadowrootmode="open"><style>
+  <code-block language="html" data-ssr label="Stakeholder map recipe"><template shadowrootmode="open"><style>
       :host {
         --_cb-bg: var(--color-surface-raised, #f6f8fa);
         --_cb-code-bg: var(--color-surface, #fff);
@@ -1734,7 +1734,7 @@
       }
     </style>
       <div class="header">
-        <div class="label-container" id="code-label"><span class="label">HTML</span></div>
+        <div class="label-container" id="code-label"><span class="label">Stakeholder map recipe</span></div>
         <div class="header-actions"><button class="copy-button" aria-label="Copy code to clipboard" title="Copy code">Copy</button></div>
       </div>
       <div class="code-container" role="region" aria-labelledby="code-label" style="">
@@ -1758,7 +1758,7 @@
   <h2>Drag-and-drop</h2>
   <p>Add the <code>draggable</code> attribute to enable moving children between quadrants. Each quadrant becomes a <code>&lt;drag-surface&gt;</code>; the component listens for cross-surface transfers and emits <code>quadrant-grid:move</code>.</p>
 
-  <code-block language="html" data-ssr><template shadowrootmode="open"><style>
+  <code-block language="html" data-ssr label="Drag-and-drop between quadrants"><template shadowrootmode="open"><style>
       :host {
         --_cb-bg: var(--color-surface-raised, #f6f8fa);
         --_cb-code-bg: var(--color-surface, #fff);
@@ -2236,7 +2236,7 @@
       }
     </style>
       <div class="header">
-        <div class="label-container" id="code-label"><span class="label">HTML</span></div>
+        <div class="label-container" id="code-label"><span class="label">Drag-and-drop between quadrants</span></div>
         <div class="header-actions"><button class="copy-button" aria-label="Copy code to clipboard" title="Copy code">Copy</button></div>
       </div>
       <div class="code-container" role="region" aria-labelledby="code-label" style="">
@@ -2285,6 +2285,7 @@
     <li>When coordinate pins overlap, each pin in the cluster becomes focusable (<code>tabindex="0"</code>, <code>role="group"</code> unless it already has a role) so keyboard users can fan the cluster out.</li>
     <li>Axis and scale labels are <code>aria-hidden</code>; the region label carries the axis names.</li>
     <li>With <code>draggable</code>, a polite live region announces moves using the item's text and the quadrant label (e.g. "Moved Add 2FA to Big Bets").</li>
+    <li>Each <code>&lt;drag-surface&gt;</code> is exposed as a list of its cards (<code>role="list"</code> / <code>"listitem"</code>, kept in step as cards are added and moved). If any card is an element that may not be a list item, such as <code>&lt;article&gt;</code>, that surface is exposed as a labelled <code>role="group"</code> instead and the cards keep their own role. The drag-surface's own move announcements are moved to a hidden status region just after the list, since a list may only contain list items.</li>
   </ul>
 </section>
 
@@ -2324,7 +2325,7 @@
 </footer>
 
 
-  <fab-stack>
+  <fab-stack role="complementary" aria-label="Page tools">
     <settings-panel></settings-panel>
     <a href="#" data-back-to-top="" aria-label="Back to top">↑</a>
   </fab-stack>
@@ -2348,10 +2349,10 @@
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw0yti0u"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw0yti0u"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw125meb"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw125meb"></script>
   
 </body>
 </html>

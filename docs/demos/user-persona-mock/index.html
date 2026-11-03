@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>User Persona — Mock Data</title>
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
-  <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js?v=mw0yti0u"></script>
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
+  <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js?v=mw125meb"></script>
   <style>
     body {
       padding: var(--size-l);
@@ -15,6 +15,7 @@
   </style>
 </head>
 <body>
+<main>
   <h1>User Persona with Mock Data</h1>
   <p>Add <code>data-mock</code> to auto-generate a complete persona with portrait, demographics, quote, goals, frustrations, and behaviors. Use <code>data-seed</code> for deterministic results.</p>
 
@@ -30,7 +31,7 @@
 
   <h2>Partial Override</h2>
   <p>Set some attributes manually and let <code>data-mock</code> fill the rest.</p>
-  <user-persona data-mock="" data-seed="custom-1" role="VP of Engineering" location="New York, NY">
+  <user-persona data-mock="" data-seed="custom-1" job-title="VP of Engineering" location="New York, NY">
     <h2 slot="name">Jordan Rivera</h2>
   </user-persona>
 
@@ -40,7 +41,7 @@
     <user-persona data-mock="" data-seed="compact-2" compact=""></user-persona>
     <user-persona data-mock="" data-seed="compact-3" compact=""></user-persona>
   </layout-grid>
-
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
+</main>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
 </body>
 </html>

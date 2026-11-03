@@ -15,6 +15,7 @@
   </style>
 </head>
 <body>
+<main>
   <h1>User Persona with Mock Data</h1>
   <p>Add <code>data-mock</code> to auto-generate a complete persona with portrait, demographics, quote, goals, frustrations, and behaviors. Use <code>data-seed</code> for deterministic results.</p>
 
@@ -30,7 +31,7 @@
 
   <h2>Partial Override</h2>
   <p>Set some attributes manually and let <code>data-mock</code> fill the rest.</p>
-  <user-persona data-mock data-seed="custom-1" role="VP of Engineering" location="New York, NY">
+  <user-persona data-mock data-seed="custom-1" job-title="VP of Engineering" location="New York, NY">
     <h2 slot="name">Jordan Rivera</h2>
   </user-persona>
 
@@ -40,7 +41,7 @@
     <user-persona data-mock data-seed="compact-2" compact></user-persona>
     <user-persona data-mock data-seed="compact-3" compact></user-persona>
   </layout-grid>
-
+</main>
   <script type="module" src="/assets/pack/vb-project-planning.js"></script>
 </body>
 </html>

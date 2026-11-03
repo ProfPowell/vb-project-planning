@@ -10,6 +10,7 @@
     ]
   },
   "attributes": [
+    { "name": "heading-level", "kind": "host-api", "purpose": "config", "type": "number", "description": "Level (1–6) of the Scope changes heading. Default: one below the nearest preceding heading on the page." },
     {
       "name": "start",
       "kind": "host-api",

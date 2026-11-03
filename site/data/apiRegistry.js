@@ -1978,6 +1978,13 @@ export default {
     },
     "attributes": [
       {
+        "name": "heading-level",
+        "kind": "host-api",
+        "purpose": "config",
+        "type": "number",
+        "description": "Level (1–6) of the Scope changes heading. Default: one below the nearest preceding heading on the page."
+      },
+      {
         "name": "start",
         "kind": "host-api",
         "purpose": "config",
@@ -6022,7 +6029,7 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Optional heading above the board; also names the board region"
+        "description": "Optional heading above the board; also names the board region. Untitled boards are named \"Kanban board\", numbered from the second board on the page (\"Kanban board 2\") so region names stay unique"
       },
       {
         "name": "compact",
@@ -6030,6 +6037,13 @@ export default {
         "purpose": "config",
         "type": "boolean",
         "description": "Reduced spacing variant"
+      },
+      {
+        "name": "heading-level",
+        "kind": "host-api",
+        "purpose": "config",
+        "type": "number",
+        "description": "Level (1-6) of the board's top heading: the title when set, otherwise the column headings (which sit one level below a title). Default: one below the nearest heading before the board, so the outline never skips a level"
       }
     ],
     "childAttributes": [
@@ -9644,6 +9658,13 @@ export default {
     },
     "attributes": [
       {
+        "name": "heading-level",
+        "kind": "host-api",
+        "purpose": "config",
+        "type": "number",
+        "description": "Level (1–6) of the map's top heading: the title if set, else the activity headings. Default: one below the nearest preceding heading on the page, so the outline never skips a level."
+      },
+      {
         "name": "src",
         "kind": "host-api",
         "purpose": "config",
@@ -10801,9 +10822,9 @@ export default {
     ],
     "events": [
       {
-        "name": "journey-ready",
+        "name": "user-journey:ready",
         "detail": "{ title, persona, phaseCount }",
-        "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by later renders or moves."
+        "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by later renders or moves. For the 0.3.x line the deprecated un-namespaced alias journey-ready is dispatched right after, with the same detail."
       },
       {
         "name": "user-journey:upgraded",
@@ -10842,11 +10863,18 @@ export default {
         "description": "Persona name, used when there is no slot=\"name\" child (the slot wins). Drives the avatar initials and color."
       },
       {
+        "name": "job-title",
+        "kind": "host-api",
+        "purpose": "config",
+        "type": "string",
+        "description": "Job title (e.g. \"Product Manager\"), shown under the name. Linked <user-story persona-id> cards use it for their \"As a…\" text. Reflects the jobTitle property."
+      },
+      {
         "name": "role",
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Job title or role"
+        "description": "Deprecated (0.2.x name for job-title; it also gave the element an invalid ARIA role). On upgrade, a value that is not a valid ARIA role is moved to job-title (unless job-title is set) and the role attribute is removed, with one console warning per page. A valid ARIA role is left alone. Will be ignored in 0.4.0."
       },
       {
         "name": "age",
@@ -10888,7 +10916,7 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "URL of a JSON persona record. Fetched once per value; the record sets the attributes above and creates (or replaces) the name, quote, bio, goals, frustrations and behaviors slotted children."
+        "description": "URL of a JSON persona record. Fetched once per value; the record sets job-title (from jobTitle, or the legacy role key), age, location and avatar, and creates (or replaces) the name, quote, bio, goals, frustrations and behaviors slotted children."
       },
       {
         "name": "data-list-stories",
@@ -10902,7 +10930,7 @@ export default {
         "kind": "host-api",
         "purpose": "config",
         "type": "boolean",
-        "description": "Fill any missing name, role, age, location, avatar, quote, goals, frustrations and behaviors with deterministic sample data (seeded by data-seed or the data-mock value)."
+        "description": "Fill any missing name, job title, age, location, avatar, quote, goals, frustrations and behaviors with deterministic sample data (seeded by data-seed or the data-mock value)."
       },
       {
         "name": "id",
@@ -10940,9 +10968,9 @@ export default {
     ],
     "events": [
       {
-        "name": "persona-ready",
-        "detail": "{ name, role }",
-        "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by attribute changes or moves."
+        "name": "user-persona:ready",
+        "detail": "{ name, jobTitle, role }",
+        "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by attribute changes or moves. detail.role is a deprecated copy of jobTitle. For the 0.3.x line the deprecated un-namespaced alias persona-ready is dispatched right after, with the same detail."
       },
       {
         "name": "user-persona:upgraded",
@@ -10969,11 +10997,18 @@ export default {
     },
     "attributes": [
       {
+        "name": "heading-level",
+        "kind": "host-api",
+        "purpose": "config",
+        "type": "number",
+        "description": "Level (1–6) of the Acceptance Criteria / Tasks / Notes headings. Default: one below the nearest preceding heading on the page (the slotted title is only shown in minimal mode, which has no sections)."
+      },
+      {
         "name": "persona-id",
         "kind": "host-api",
         "purpose": "config",
         "type": "string",
-        "description": "Links to a user-persona element by id. Without a persona slot, the \"As a…\" text uses that persona's role (live-updating)."
+        "description": "Links to a user-persona element by id. Without a persona slot, the \"As a…\" text uses that persona's job-title (live-updating; a legacy non-ARIA role attribute is also read)."
       },
       {
         "name": "priority",
@@ -11085,19 +11120,19 @@ export default {
     ],
     "events": [
       {
-        "name": "story-ready",
+        "name": "user-story:ready",
         "detail": "{ id, persona, action, benefit, priority, status, points }",
-        "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by attribute changes or moves."
+        "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by attribute changes or moves. For the 0.3.x line the deprecated un-namespaced alias story-ready is dispatched right after, with the same detail."
       },
       {
-        "name": "status-changed",
+        "name": "user-story:status-changed",
         "detail": "{ status, storyId }",
-        "description": "Fired when updateStatus() is called with a known status"
+        "description": "Fired when updateStatus() is called with a known status. For the 0.3.x line the deprecated un-namespaced alias status-changed is dispatched right after, with the same detail."
       },
       {
-        "name": "priority-changed",
+        "name": "user-story:priority-changed",
         "detail": "{ priority, storyId }",
-        "description": "Fired when updatePriority() is called with a known priority"
+        "description": "Fired when updatePriority() is called with a known priority. For the 0.3.x line the deprecated un-namespaced alias priority-changed is dispatched right after, with the same detail."
       },
       {
         "name": "user-story:upgraded",

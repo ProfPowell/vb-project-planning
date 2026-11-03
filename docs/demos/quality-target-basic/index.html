@@ -4,15 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quality Target — Basic Demo</title>
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yti0u">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yti0u">
-  <script type="module" src="/vb-project-planning/assets/vendor/form-field.js?v=mw0yti0u"></script>
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw125meb">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw125meb">
+  <script type="module" src="/vb-project-planning/assets/vendor/form-field.js?v=mw125meb"></script>
   <style>
     body { padding: var(--size-l); background: var(--color-surface); }
     p { color: var(--color-text-muted); margin-block-end: var(--size-l); }
   </style>
 </head>
-<body data-layout="stack" data-layout-gap="l">
+<body>
+<main data-layout="stack" data-layout-gap="l">
   <header>
     <h1>Quality Target</h1>
     <p>The polygon is the picker. Click any axis to set its priority and rationale; the radar updates live. Bind it to an <code>&lt;iron-triangle&gt;</code> via <code>data-bind-to</code> to budget quality against capacity.</p>
@@ -20,7 +21,7 @@
 
   <iron-triangle id="shape" data-quality-href="#quality"></iron-triangle>
   <quality-target id="quality" name="quality" data-bind-to="shape"></quality-target>
-
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yti0u"></script>
+</main>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw125meb"></script>
 </body>
 </html>

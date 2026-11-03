@@ -27,7 +27,7 @@ crumbLabel: Web Components
     <li><em>(optional)</em> <strong>±delta</strong> — scope change applied that day (e.g. <code>+5</code> or <code>-2</code>)</li>
   </ol>
 
-  <code-block language="html" data-escape>
+  <code-block label="Sprint data in a template" language="html" data-escape>
 <burndown-chart start="2026-05-04" end="2026-05-15" total="42" label="Sprint 14">
   <template>
     <tr><td>2026-05-04</td><td>42</td></tr>
@@ -57,7 +57,7 @@ crumbLabel: Web Components
   <h2>Excluding weekends</h2>
   <p>By default, the ideal line decrements every day equally. For sprints where weekends don't count, set <code>weekends="exclude"</code> — the component holds the ideal value flat over Saturdays and Sundays so the slope reflects working-day capacity:</p>
 
-  <code-block language="html" data-escape>
+  <code-block label="Excluding weekends" language="html" data-escape>
 <burndown-chart start="2026-05-04" end="2026-05-15" total="30" weekends="exclude">
   <template>...</template>
 </burndown-chart>
@@ -72,7 +72,7 @@ crumbLabel: Web Components
     <li><strong>JS.</strong> Reads the template, computes the ideal series, builds a <code>&lt;chart-wc&gt;</code> with two series, and surfaces scope changes as a sibling <code>&lt;aside&gt;</code>.</li>
   </ol>
   <p>This component requires the optional <code>vanilla-breeze-charts</code> bundle for <code>&lt;chart-wc&gt;</code>:</p>
-  <code-block language="html" data-escape>
+  <code-block label="Loading the charts bundle" language="html" data-escape>
 <link rel="stylesheet" href="https://unpkg.com/vanilla-breeze/dist/cdn/vanilla-breeze-charts.css">
 <script type="module" src="https://unpkg.com/vanilla-breeze/dist/cdn/vanilla-breeze-charts.js"></script>
   </code-block>

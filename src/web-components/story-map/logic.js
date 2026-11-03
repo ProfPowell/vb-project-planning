@@ -6,6 +6,9 @@
  *
  * @attr {string} src - URL to JSON data
  * @attr {string} title - Optional heading displayed above the map
+ * @attr {number} heading-level - Level (1–6) of the map's top heading: the
+ *   title if set, else the activity headings. Default: one below the nearest
+ *   preceding heading on the page, so the outline never skips a level.
  * @attr {boolean} compact - Reduced spacing variant
  *
  * Children use:
@@ -31,7 +34,8 @@ import { registerComponent } from '../../lib/bundle-registry.js';
 import { VBElement } from '../../lib/vb-element.js';
 import { viewTransitionSwap } from '../../lib/vb-view-transition.js';
 import {
-  SrcLoader, announce, createLiveRegion, createStoryCard, itemLabel, syncPlaceholder, titleCase,
+  SrcLoader, announce, createLiveRegion, createStoryCard, itemLabel, syncPlaceholder, titleCase, watchSurfaceSemantics,
+  boardHeadingLevels, retagHeading,
 } from '../../lib/board-surface.js';
 
 /**
@@ -39,7 +43,7 @@ import {
  */
 
 class StoryMap extends VBElement {
-  static get observedAttributes() { return ['src', 'compact', 'title']; }
+  static get observedAttributes() { return ['src', 'compact', 'title', 'heading-level']; }
 
   static #instanceCount = 0;
 
@@ -51,7 +55,7 @@ class StoryMap extends VBElement {
   #surfaces = {};
   /** @type {HTMLDivElement | null} */
   #liveRegion = null;
-  /** @type {HTMLHeadingElement | null} */
+  /** @type {HTMLElement | null} */
   #titleEl = null;
   /** @type {string} */
   #groupId = '';
@@ -66,6 +70,8 @@ class StoryMap extends VBElement {
   #wired = false;
   #readyFired = false;
   #loader = new SrcLoader();
+  /** Stops the drag-surface semantics observer (see board-surface.js). */
+  #stopSemantics = () => {};
 
   setup() {
     if (!this.#groupId) this.#groupId = `sm-${++StoryMap.#instanceCount}`;
@@ -92,6 +98,7 @@ class StoryMap extends VBElement {
       this.#wired = true;
       this.listen(this, 'drag-surface:reorder', this.#onReorder);
       this.listen(this, 'drag-surface:transfer', this.#onTransfer);
+      this.#stopSemantics = watchSurfaceSemantics(this);
     }
 
     // Data mode: fetch once per src value; ready fires after it renders.
@@ -109,6 +116,7 @@ class StoryMap extends VBElement {
     // stay in place so a map that is moved in the DOM keeps its content;
     // the next connect only re-attaches listeners.
     this.#wired = false;
+    this.#stopSemantics();
   }
 
   /**
@@ -142,12 +150,13 @@ class StoryMap extends VBElement {
 
       const header = document.createElement('header');
       header.className = 'sm-activity-header';
-      const h3 = document.createElement('h3');
-      h3.textContent = activity.label;
+      const heading = document.createElement(`h${this.#headingLevels().column}`);
+      heading.className = 'sm-activity-heading';
+      heading.textContent = activity.label;
       const countBadge = document.createElement('span');
       countBadge.className = 'sm-activity-count';
-      h3.appendChild(countBadge);
-      header.appendChild(h3);
+      heading.appendChild(countBadge);
+      header.appendChild(heading);
       column.appendChild(header);
 
       const surface = document.createElement('drag-surface');
@@ -173,18 +182,26 @@ class StoryMap extends VBElement {
   /** Create, update, or remove the optional heading from the title attribute. */
   #syncTitle() {
     const title = this.getAttribute('title');
+    const levels = this.#headingLevels();
     if (title) {
       if (!this.#titleEl) {
-        this.#titleEl = document.createElement('h2');
+        this.#titleEl = document.createElement(`h${levels.title}`);
         this.#titleEl.className = 'sm-title';
         this.prepend(this.#titleEl);
       }
+      this.#titleEl = retagHeading(this.#titleEl, levels.title);
       this.#titleEl.textContent = title;
     } else if (this.#titleEl) {
       this.#titleEl.remove();
       this.#titleEl = null;
     }
+    for (const h of this.querySelectorAll('.sm-activity-heading')) retagHeading(h, levels.column);
     this.#scroll?.setAttribute('aria-label', title || 'Story map');
+  }
+
+  /** @returns {{ title: number, column: number }} */
+  #headingLevels() {
+    return boardHeadingLevels(/** @type {HTMLElement} */ (/** @type {unknown} */ (this)), 'story-map');
   }
 
   #dispatchReady() {
@@ -364,7 +381,7 @@ class StoryMap extends VBElement {
     if (oldValue === newValue || !this.#built) return;
     if (name === 'src' && newValue && newValue !== this.#loader.url) this._loadSrc(newValue);
     if (name === 'src' && !newValue) this.#loader.cancel();   // src removed: drop a pending load, keep the cards
-    if (name === 'title') this.#syncTitle();
+    if (name === 'title' || name === 'heading-level') this.#syncTitle();
   }
 
   // ── JSON loading ────────────────────────────────────
