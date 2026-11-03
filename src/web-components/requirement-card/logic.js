@@ -1,11 +1,11 @@
 /**
  * <requirement-card> — Display atom for ONE NFR ility row.
  *
- * Display-only. The prioritization decision lives in <nfr-compass>;
+ * Display-only. The prioritization decision lives in <quality-target>;
  * this component just renders one row's worth of state — name +
  * category badge + priority pill + rationale + (optional) conflict flag —
  * for use on status dashboards, ADR appendices, or anywhere a project
- * wants to surface a single ility outside the compass.
+ * wants to surface a single ility outside the target.
  *
  * Slots:
  *   name           — ility label (e.g. "Performance")
@@ -24,6 +24,8 @@
  *   requirement-card:click — bubbles a structured detail when the card
  *                            is activated (mouse, keyboard, or touch);
  *                            parent components can wire navigation.
+ *                            Inside an <a>/<button> wrapper, the
+ *                            wrapper's own keyboard activation counts.
  *
  * Pattern reference: matches the shadow-DOM + slot conventions from
  * <score-card> (also a single-row dashboard atom).
@@ -58,6 +60,9 @@ const TEMPLATE = `
 `;
 
 class RequirementCard extends VBElement {
+  /** True when this element added role="button" itself (so it may remove it). */
+  #ownsRole = false;
+
   static get observedAttributes() {
     return ['data-priority', 'data-conflict', 'tabindex'];
   }
@@ -82,6 +87,15 @@ class RequirementCard extends VBElement {
     this.#syncInteractive();
 
     this.listen(this, 'click', (e) => this.#onActivate(e));
+    // Keyboard activation of a wrapping <a>/<button> fires `click` on the
+    // wrapper itself, which never reaches the card's own listener. Clicks
+    // that started inside the card are already handled above.
+    const wrapper = this.closest('a[href], button');
+    if (wrapper) {
+      this.listen(wrapper, 'click', (e) => {
+        if (!this.contains(/** @type {Node} */ (e.target))) this.#onActivate(e);
+      });
+    }
     this.listen(this, 'keydown', (e) => {
       const ke = /** @type {KeyboardEvent} */ (e);
       if ((ke.key === 'Enter' || ke.key === ' ') && this.#interactive) {
@@ -146,6 +160,16 @@ class RequirementCard extends VBElement {
 
   #syncInteractive() {
     this.setState('interactive', !!this.#interactive);
+    // A focusable card that is not inside a native control needs a role
+    // so assistive tech announces it as activatable. Author roles win.
+    const needsRole = this.hasAttribute('tabindex') && !this.closest('a[href], button');
+    if (needsRole && !this.hasAttribute('role')) {
+      this.setAttribute('role', 'button');
+      this.#ownsRole = true;
+    } else if (!needsRole && this.#ownsRole) {
+      this.removeAttribute('role');
+      this.#ownsRole = false;
+    }
   }
 
   #onActivate(event) {

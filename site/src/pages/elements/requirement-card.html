@@ -41,6 +41,21 @@ crumbLabel: Web Components
 <section>
   <h2>How it works</h2>
   <p>The <code>data-priority</code> enum drives a <code>:state(priority-*)</code> hook, the default pill text, and the accent color. Add <code>data-conflict</code> to flag a drift or contradiction note; the card renders an emphasized border and exposes the <code>conflicts</code> slot. The card is inert by default — set <code>tabindex="0"</code> (or wrap it in an <code>&lt;a&gt;</code> / <code>&lt;button&gt;</code>) to make it activatable, at which point it emits <code>requirement-card:click</code> with <code>{ priority, hasConflict, originalEvent }</code>.</p>
+  <p>The card never navigates by itself. Listen for <code>requirement-card:click</code> to route, or wrap it in an <code>&lt;a href&gt;</code> and let the link navigate while the event still fires for analytics or in-app routing.</p>
+</section>
+
+<section>
+  <h2>Slots</h2>
+  <table class="props-table">
+    <thead><tr><th>Slot</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>name</code></td><td>Ility label (e.g. "Performance").</td></tr>
+      <tr><td><code>badge</code></td><td>Category / version / source tag, shown as small uppercase muted text.</td></tr>
+      <tr><td><code>priority-pill</code></td><td>Your own pill. When empty, a default pill renders from <code>data-priority</code>.</td></tr>
+      <tr><td><code>rationale</code></td><td>Why this priority was chosen (especially for Critical rows). The row collapses when empty.</td></tr>
+      <tr><td><code>conflicts</code></td><td>Short conflict / drift note, usually paired with <code>data-conflict</code>. The row collapses when empty.</td></tr>
+    </tbody>
+  </table>
 </section>
 
 <section>
@@ -49,8 +64,68 @@ crumbLabel: Web Components
 </section>
 
 <section>
+  <h2>Properties &amp; events</h2>
+  <table class="props-table">
+    <thead><tr><th>Member</th><th>Type</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>priority</code></td><td>R/W string</td><td>Mirror of <code>data-priority</code>, lower-cased. Setting an unknown value removes the attribute.</td></tr>
+      <tr><td><code>hasConflict</code></td><td>R/W boolean</td><td>Mirror of <code>data-conflict</code>.</td></tr>
+    </tbody>
+  </table>
+  {{ eventsTable("requirement-card", apiRegistry) }}
+</section>
+
+<section>
+  <h2>States</h2>
+  <table class="props-table">
+    <thead><tr><th>State</th><th>When</th></tr></thead>
+    <tbody>
+      <tr><td><code>:state(priority-critical)</code>, <code>-important</code>, <code>-acceptable</code>, <code>-not-relevant</code></td><td>Matches <code>data-priority</code>. Drives the border and default pill colours; Not relevant also dims the card and strikes through the pill.</td></tr>
+      <tr><td><code>:state(has-badge)</code>, <code>has-priority-pill</code>, <code>has-rationale</code>, <code>has-conflicts</code></td><td>That slot has real content (whitespace doesn't count). <code>has-priority-pill</code> hides the default pill.</td></tr>
+      <tr><td><code>:state(interactive)</code></td><td>The card has a <code>tabindex</code> or sits inside an <code>&lt;a href&gt;</code> / <code>&lt;button&gt;</code>. Adds the pointer cursor and hover tint.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>CSS parts</h2>
+  <p>The card renders in shadow DOM, so style its insides with <code>::part()</code>: <code>card</code>, <code>head</code>, <code>name</code>, <code>badge</code>, <code>pill</code>, <code>priority-default</code> (the generated pill), <code>rationale</code>, and <code>conflicts</code>.</p>
+  <code-block language="css" label="Tighter pill" data-escape>requirement-card::part(priority-default) {
+  letter-spacing: 0;
+  text-transform: none;
+}</code-block>
+</section>
+
+<section>
+  <h2>CSS Tokens</h2>
+  <p>Every token falls back to a Vanilla Breeze theme token, so the card follows light, dark, and brand themes without configuration.</p>
+  <table class="props-table">
+    <thead><tr><th>Token</th><th>Default</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>--requirement-card-padding</code></td><td><code>var(--size-m)</code></td><td>Inner padding</td></tr>
+      <tr><td><code>--requirement-card-radius</code></td><td><code>var(--radius-m)</code></td><td>Corner radius</td></tr>
+      <tr><td><code>--requirement-card-gap</code></td><td><code>var(--size-2xs)</code></td><td>Gap between rows</td></tr>
+      <tr><td><code>--requirement-card-surface</code></td><td><code>var(--color-surface)</code></td><td>Background</td></tr>
+      <tr><td><code>--requirement-card-border</code></td><td><code>1px solid var(--color-border)</code></td><td>Border shorthand (the priority colour then replaces its colour)</td></tr>
+      <tr><td><code>--requirement-card-text</code></td><td><code>var(--color-text)</code></td><td>Text colour</td></tr>
+      <tr><td><code>--requirement-card-muted</code></td><td><code>var(--color-text-muted)</code></td><td>Badge and rationale colour</td></tr>
+      <tr><td><code>--requirement-card-critical-bg</code> / <code>-fg</code></td><td><code>var(--color-error-subtle)</code> / <code>var(--color-error)</code></td><td>Critical pill and border</td></tr>
+      <tr><td><code>--requirement-card-important-bg</code> / <code>-fg</code></td><td><code>var(--color-warning-subtle)</code> / <code>var(--color-warning)</code></td><td>Important pill and border</td></tr>
+      <tr><td><code>--requirement-card-acceptable-bg</code> / <code>-fg</code></td><td><code>var(--color-success-subtle)</code> / <code>var(--color-success)</code></td><td>Acceptable pill and border</td></tr>
+      <tr><td><code>--requirement-card-skipped-bg</code> / <code>-fg</code></td><td><code>var(--color-surface-raised)</code> / <code>var(--color-text-muted)</code></td><td>Not relevant pill</td></tr>
+      <tr><td><code>--requirement-card-conflict-color</code></td><td><code>var(--color-error)</code></td><td>Conflict border, inset ring, and note text</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
   <h2>Accessibility</h2>
-  <p>Priority is conveyed by the pill's text label, not by accent color alone, so the critical / important / acceptable / not-relevant distinction survives for low-vision and color-blind readers. The card stays non-interactive (no spurious focus stop) until you opt in with <code>tabindex</code> or a wrapping <code>&lt;a&gt;</code> / <code>&lt;button&gt;</code>; when interactive it activates by mouse, keyboard, and touch alike. The conflict note is real slotted prose, so screen readers announce <em>why</em> a row is flagged rather than just seeing an emphasized border.</p>
+  <ul>
+    <li><strong>Never colour-only.</strong> Priority is conveyed by the pill's text label, not by accent colour alone, so the critical / important / acceptable / not-relevant distinction survives for low-vision and colour-blind readers. The conflict note is real slotted prose, so screen readers announce <em>why</em> a row is flagged rather than just seeing an emphasized border.</li>
+    <li><strong>Opt-in interactivity.</strong> The card stays non-interactive (no spurious focus stop) until you opt in.</li>
+    <li><strong>With <code>tabindex</code>.</strong> The card gets <code>role="button"</code> (unless you set your own role) and activates on click, Enter, and Space. Give it an accessible name that says where it goes if the slotted name isn't enough.</li>
+    <li><strong>Wrapped in <code>&lt;a href&gt;</code> / <code>&lt;button&gt;</code>.</strong> The native element supplies the role and focus. Its own keyboard activation fires the event too, so mouse, keyboard, and touch all behave the same. Don't also add <code>tabindex</code> to the card in this case, or keyboard users hit two focus stops.</li>
+  </ul>
 </section>
 
 <section>

@@ -253,6 +253,75 @@ test.describe('requirement-card', () => {
     expect(afterRemove).toEqual({ inert: true, count: 3 });
   });
 
+  test('inside a <button> wrapper, keyboard activation of the wrapper emits exactly once, as does a mouse click', async ({ page }) => {
+    await page.goto(demoPage);
+    await page.waitForSelector('requirement-card[data-upgraded]');
+
+    await page.evaluate(() => {
+      window.__rcWrapped = [];
+      document.addEventListener('requirement-card:click', (e) => {
+        window.__rcWrapped.push({ target: e.target.id, originalType: e.detail.originalEvent?.type });
+      });
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = 'wrap-btn';
+      btn.innerHTML = '<requirement-card id="wrapped-card" data-priority="important"><span slot="name">Security</span></requirement-card>';
+      document.body.appendChild(btn);
+    });
+    await page.waitForSelector('#wrapped-card[data-upgraded]');
+
+    await page.click('#wrapped-card');           // mouse: one event, not two
+    await page.focus('#wrap-btn');
+    await page.keyboard.press('Enter');          // fires click on the <button> itself
+    await page.keyboard.press('Space');
+
+    const result = await page.evaluate(() => ({
+      events: window.__rcWrapped,
+      role: document.getElementById('wrapped-card').getAttribute('role'),
+    }));
+    expect(result.events).toEqual([
+      { target: 'wrapped-card', originalType: 'click' },
+      { target: 'wrapped-card', originalType: 'click' },
+      { target: 'wrapped-card', originalType: 'click' },
+    ]);
+    // The native <button> already carries the role; the card adds none.
+    expect(result.role).toBeNull();
+  });
+
+  test('tabindex adds role="button" (and removes it again), but never overrides an author role', async ({ page }) => {
+    await page.goto(demoPage);
+    await page.waitForSelector('requirement-card[data-upgraded]');
+
+    const result = await page.evaluate(async () => {
+      const make = (attrs) => {
+        const el = document.createElement('requirement-card');
+        for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+        el.innerHTML = '<span slot="name">Privacy</span>';
+        document.body.appendChild(el);
+        return el;
+      };
+      const plain = make({ tabindex: '0' });
+      const authored = make({ tabindex: '0', role: 'link' });
+      const inert = make({});
+      await new Promise(r => requestAnimationFrame(r));
+      const out = {
+        plain: plain.getAttribute('role'),
+        authored: authored.getAttribute('role'),
+        inert: inert.getAttribute('role'),
+      };
+      plain.removeAttribute('tabindex');
+      authored.removeAttribute('tabindex');
+      out.plainAfter = plain.getAttribute('role');
+      out.authoredAfter = authored.getAttribute('role');
+      return out;
+    });
+
+    expect(result).toEqual({
+      plain: 'button', authored: 'link', inert: null,
+      plainAfter: null, authoredAfter: 'link',
+    });
+  });
+
   // Regression guard: #syncSlot must not count a slot's FALLBACK content as
   // slotted content (`assignedNodes({ flatten: true })` does), otherwise
   // `has-priority-pill` is always on and the default pill is hidden.
