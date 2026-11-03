@@ -13,13 +13,12 @@
     { "name": "data-capacity-points",       "kind": "data",     "purpose": "config",         "type": "number",  "description": "Literal capacity fallback when no triangle is bound" },
     { "name": "data-cost-weights",          "kind": "data",     "purpose": "config",         "type": "string",  "description": "JSON object overriding default per-ility cost weights" },
     { "name": "data-radius",                "kind": "data",     "purpose": "config",         "type": "number",  "default": "100", "description": "Base radius in SVG units" },
-    { "name": "data-show-envelope",         "kind": "data",     "purpose": "visual-variant", "type": "boolean", "description": "Show the capacity envelope polygon (default true; set to \"false\" to hide)" },
     { "name": "data-min-rationale",         "kind": "data",     "purpose": "config",         "type": "number",  "default": "10",  "description": "Min characters for a Critical row's rationale" },
     { "name": "data-max-rationale",         "kind": "data",     "purpose": "config",         "type": "number",  "default": "200", "description": "Max characters for the rationale textarea" },
     { "name": "data-min-overrun-rationale", "kind": "data",     "purpose": "config",         "type": "number",  "default": "10",  "description": "Min characters for overrunRationale" },
     { "name": "data-max-overrun-rationale", "kind": "data",     "purpose": "config",         "type": "number",  "default": "400", "description": "Max characters for overrunRationale" },
-    { "name": "disabled",                   "kind": "native",   "purpose": "config",         "type": "boolean", "description": "All inputs disabled" },
-    { "name": "locked",                     "kind": "host-api", "purpose": "semantic-state", "type": "boolean", "description": "Read-only mode for shipped vectors" }
+    { "name": "disabled",                   "kind": "native",   "purpose": "config",         "type": "boolean", "description": "No editing: axes leave the tab order, openEditor() is a no-op, dialog and footer controls are disabled; also bars the element from form validation" },
+    { "name": "locked",                     "kind": "host-api", "purpose": "semantic-state", "type": "boolean", "description": "Read-only mode for shipped vectors; same editing lock as disabled, but the value still submits and validates" }
   ],
   "slots": [],
   "events": [
