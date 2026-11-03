@@ -26,6 +26,8 @@ test.describe('quadrant-grid — HTML-first contract', () => {
     await page.waitForSelector('quadrant-grid[data-upgraded]');
 
     const state = await page.evaluate(() => {
+      // Zones are in visual DOM order (Q2, Q1, Q3, Q4); sort by index for per-zone checks.
+      const byZone = (list) => [...list].sort((a, b) => a.dataset.quadrantZone - b.dataset.quadrantZone);
       const qg = document.querySelector('quadrant-grid');
       const wrapper = qg.querySelector(':scope > .qg-wrapper');
       return {
@@ -35,7 +37,7 @@ test.describe('quadrant-grid — HTML-first contract', () => {
         xLabel: wrapper.querySelector('.qg-x-label')?.textContent,
         yScale: [...wrapper.querySelectorAll('.qg-y-scale span')].map((s) => s.textContent),
         xScale: [...wrapper.querySelectorAll('.qg-x-scale span')].map((s) => s.textContent),
-        zones: [...wrapper.querySelectorAll('.qg-grid > .qg-quadrant')].map((s) => ({
+        zones: byZone(wrapper.querySelectorAll('.qg-grid > .qg-quadrant')).map((s) => ({
           zone: s.dataset.quadrantZone,
           aria: s.getAttribute('aria-label'),
           label: s.querySelector(':scope > .qg-quadrant-label')?.textContent,
@@ -81,8 +83,10 @@ test.describe('quadrant-grid — HTML-first contract', () => {
     await page.waitForSelector('quadrant-grid drag-surface[data-upgraded]');
 
     const state = await page.evaluate(() => {
+      // Zones are in visual DOM order (Q2, Q1, Q3, Q4); sort by index for per-zone checks.
+      const byZone = (list) => [...list].sort((a, b) => a.dataset.quadrantZone - b.dataset.quadrantZone);
       const qg = document.querySelector('quadrant-grid');
-      const zones = [...qg.querySelectorAll('.qg-grid > .qg-quadrant')].map((s) => {
+      const zones = byZone(qg.querySelectorAll('.qg-grid > .qg-quadrant')).map((s) => {
         const surface = s.querySelector(':scope > drag-surface');
         return {
           zone: s.dataset.quadrantZone,
@@ -185,6 +189,8 @@ test.describe('quadrant-grid — HTML-first contract', () => {
     await page.waitForSelector('quadrant-grid[data-upgraded]');
 
     const state = await page.evaluate(() => {
+      // Zones are in visual DOM order (Q2, Q1, Q3, Q4); sort by index for per-zone checks.
+      const byZone = (list) => [...list].sort((a, b) => a.dataset.quadrantZone - b.dataset.quadrantZone);
       const qg = document.createElement('quadrant-grid');
       qg.innerHTML = `
         <span data-quadrant="3" data-x="0.1" data-y="0.9" data-id="explicit">Explicit beats coords</span>
@@ -192,7 +198,7 @@ test.describe('quadrant-grid — HTML-first contract', () => {
         <span data-id="no-placement">Not captured</span>
         <span data-x="0.2" data-y="0.2" data-id="coords">Coords only</span>`;
       document.body.appendChild(qg);
-      const zones = [...qg.querySelectorAll('.qg-grid > .qg-quadrant')];
+      const zones = byZone(qg.querySelectorAll('.qg-grid > .qg-quadrant'));
       return {
         upgraded: qg.hasAttribute('data-upgraded'),
         regionLabel: qg.querySelector('.qg-wrapper')?.getAttribute('aria-label'),

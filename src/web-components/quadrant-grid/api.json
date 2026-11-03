@@ -79,7 +79,7 @@
       "kind": "host-api",
       "purpose": "config",
       "type": "boolean",
-      "description": "Enable drag-and-drop between quadrants (composes <drag-surface>)"
+      "description": "Enable drag-and-drop between quadrants (composes one <drag-surface> per quadrant)"
     }
   ],
   "childAttributes": [
@@ -93,13 +93,13 @@
       "name": "data-x",
       "on": "*",
       "type": "number",
-      "description": "Normalized x coordinate 0..1; quadrant is computed from coords"
+      "description": "Normalized x coordinate 0..1; quadrant is computed from coords; removed when the child is dragged to another quadrant"
     },
     {
       "name": "data-y",
       "on": "*",
       "type": "number",
-      "description": "Normalized y coordinate 0..1; quadrant is computed from coords"
+      "description": "Normalized y coordinate 0..1; quadrant is computed from coords; removed when the child is dragged to another quadrant"
     },
     {
       "name": "data-id",
@@ -112,7 +112,12 @@
     {
       "name": "quadrant-grid:move",
       "detail": "{ item, itemId, from, to }",
-      "description": "Fired when a draggable child moves between quadrants"
+      "description": "Fired when a draggable child moves between quadrants (from / to are indices 0..3). A coordinate-pinned child dropped in another quadrant loses its data-x / data-y and joins that quadrant's stack"
+    },
+    {
+      "name": "quadrant-grid:upgraded",
+      "detail": "",
+      "description": "Fired (in a microtask) each time the grid connects and upgrades"
     }
   ],
   "structure": [],
