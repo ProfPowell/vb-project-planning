@@ -6,8 +6,9 @@
   "htmlvalidate": { "flow": true, "permittedContent": ["section"] },
   "attributes": [
     { "name": "src",     "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL to JSON data for columns and items. Fetched once per value; a new value replaces the board and aborts an older in-flight request" },
-    { "name": "title",   "kind": "host-api", "purpose": "config", "type": "string",  "description": "Optional heading above the board; also names the board region" },
-    { "name": "compact", "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Reduced spacing variant" }
+    { "name": "title",   "kind": "host-api", "purpose": "config", "type": "string",  "description": "Optional heading above the board; also names the board region. Untitled boards are named \"Kanban board\", numbered from the second board on the page (\"Kanban board 2\") so region names stay unique" },
+    { "name": "compact", "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Reduced spacing variant" },
+    { "name": "heading-level", "kind": "host-api", "purpose": "config", "type": "number", "description": "Level (1-6) of the board's top heading: the title when set, otherwise the column headings (which sit one level below a title). Default: one below the nearest heading before the board, so the outline never skips a level" }
   ],
   "childAttributes": [
     { "name": "data-column",       "on": "section", "type": "string",  "description": "Column identifier" },

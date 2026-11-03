@@ -9,6 +9,9 @@
  * @attr {string} src - URL to JSON data for columns and items
  * @attr {string} title - Optional heading above the board
  * @attr {boolean} compact - Reduced spacing variant
+ * @attr {number} heading-level - Level (1–6) of the board's top heading: the
+ *   title when set, otherwise the column headings (columns sit one level
+ *   below a title). Default: one below the nearest heading before the board.
  *
  * Children use:
  * @attr {string} data-column - Column identifier (on <section>)
@@ -39,11 +42,11 @@ import { VBElement } from '../../lib/vb-element.js';
 import { VBCollection } from '../../lib/vb-collection.js';
 import { viewTransitionSwap } from '../../lib/vb-view-transition.js';
 import {
-  SrcLoader, announce, createLiveRegion, createStoryCard, isStoryRecord, itemLabel, syncPlaceholder, titleCase,
+  SrcLoader, announce, createLiveRegion, createStoryCard, isStoryRecord, itemLabel, syncPlaceholder, titleCase, watchSurfaceSemantics,
 } from '../../lib/board-surface.js';
 
 class KanbanBoard extends VBCollection(VBElement) {
-  static get observedAttributes() { return ['src', 'compact', 'title']; }
+  static get observedAttributes() { return ['src', 'compact', 'title', 'heading-level']; }
   static keyOf(item) { return item.id ?? item.storyId; }
 
   static #instanceCount = 0;
@@ -56,7 +59,7 @@ class KanbanBoard extends VBCollection(VBElement) {
   #columnEls = {};
   /** @type {HTMLDivElement | null} */
   #liveRegion = null;
-  /** @type {HTMLHeadingElement | null} */
+  /** @type {HTMLElement | null} */
   #titleEl = null;
   /** @type {string} */
   #groupId = '';
@@ -69,7 +72,11 @@ class KanbanBoard extends VBCollection(VBElement) {
   /** Listeners attached for the current connection. */
   #wired = false;
   #readyFired = false;
+  /** Instance number, used to keep fallback region names unique. */
+  #instance = 0;
   #loader = new SrcLoader();
+  /** Stops the drag-surface semantics observer (see board-surface.js). */
+  #stopSemantics = () => {};
 
   setup() {
     this.#ensureGroupId();
@@ -77,12 +84,16 @@ class KanbanBoard extends VBCollection(VBElement) {
     if (!this.#built) {
       this.#built = true;
       this.#buildFromSections();
+    } else {
+      // Reconnected (possibly elsewhere in the page): re-derive heading levels.
+      this.#syncTitle();
     }
 
     if (!this.#wired) {
       this.#wired = true;
       this.listen(this, 'drag-surface:reorder', this.#onReorder);
       this.listen(this, 'drag-surface:transfer', this.#onTransfer);
+      this.#stopSemantics = watchSurfaceSemantics(/** @type {any} */ (this));
     }
 
     // Data mode: fetch once per src value; ready fires after it renders.
@@ -130,21 +141,85 @@ class KanbanBoard extends VBCollection(VBElement) {
     return { meta: { id, label, wip: wip !== null && isNaN(wip) ? null : wip, color }, children };
   }
 
-  /** Create, update, or remove the optional heading from the title attribute. */
+  /**
+   * Create, update, or remove the optional heading from the title attribute,
+   * keep heading levels in step with the page outline, and name the board
+   * region.
+   */
   #syncTitle() {
     const title = this.getAttribute('title');
+    const levels = this.#headingLevels();
     if (title) {
       if (!this.#titleEl) {
-        this.#titleEl = document.createElement('h2');
+        this.#titleEl = document.createElement(`h${levels.title}`);
         this.#titleEl.className = 'kb-title';
         this.prepend(this.#titleEl);
+      } else {
+        this.#titleEl = KanbanBoard.#retag(this.#titleEl, levels.title);
       }
       this.#titleEl.textContent = title;
     } else if (this.#titleEl) {
       this.#titleEl.remove();
       this.#titleEl = null;
     }
-    this.#columnsEl?.setAttribute('aria-label', title || 'Kanban board');
+    for (const h of this.#columnsEl?.querySelectorAll(':scope > .kb-column > .kb-column-header > .kb-column-heading') ?? []) {
+      KanbanBoard.#retag(h, levels.column);
+    }
+    this.#nameRegion();
+  }
+
+  /**
+   * Heading levels for the title and the column headings. `heading-level`
+   * sets the top one; otherwise it is one below the nearest heading that
+   * precedes the board (ignoring other boards' own headings), so the
+   * columns never skip a level (axe heading-order).
+   * @returns {{ title: number, column: number }}
+   */
+  #headingLevels() {
+    const attr = parseInt(this.getAttribute('heading-level') ?? '', 10);
+    const top = attr >= 1 && attr <= 6 ? attr : this.#contextLevel();
+    return { title: top, column: Math.min(6, this.getAttribute('title') ? top + 1 : top) };
+  }
+
+  /** One below the nearest preceding heading in document order; 2 if none. */
+  #contextLevel() {
+    const self = /** @type {Element} */ (/** @type {unknown} */ (this));
+    if (!self.isConnected) return 2;
+    let level = 1;
+    for (const h of document.querySelectorAll('h1, h2, h3, h4, h5, h6, [role="heading"][aria-level]')) {
+      if (h.closest('kanban-board')) continue;
+      if (!(h.compareDocumentPosition(self) & Node.DOCUMENT_POSITION_FOLLOWING)) break;
+      level = Number(h.getAttribute('aria-level')) || Number(h.localName.slice(1)) || level;
+    }
+    return Math.min(6, level + 1);
+  }
+
+  /**
+   * Swap a heading element for one of another level, keeping its children
+   * and attributes.
+   * @param {Element} el
+   * @param {number} level
+   * @returns {HTMLElement}
+   */
+  static #retag(el, level) {
+    if (el.localName === `h${level}`) return /** @type {HTMLElement} */ (el);
+    const next = document.createElement(`h${level}`);
+    for (const { name, value } of [...el.attributes]) next.setAttribute(name, value);
+    next.append(...el.childNodes);
+    el.replaceWith(next);
+    return next;
+  }
+
+  /**
+   * Give the board region a name that is unique on the page (axe
+   * landmark-unique): the title, else "Kanban board", numbered from the
+   * second board on ("Kanban board 2"). Give boards titles for real names.
+   */
+  #nameRegion(shell = this.#columnsEl) {
+    if (!shell) return;
+    const name = this.getAttribute('title')
+      || (this.#instance > 1 ? `Kanban board ${this.#instance}` : 'Kanban board');
+    shell.setAttribute('aria-label', name);
   }
 
   #dispatchReady() {
@@ -281,6 +356,7 @@ class KanbanBoard extends VBCollection(VBElement) {
     // stay in place so a board that is moved in the DOM keeps its content;
     // the next connect only re-attaches listeners.
     this.#wired = false;
+    this.#stopSemantics();
   }
 
   // ── Data API (HTML-first / JS-first dual contract) ──────────────
@@ -459,7 +535,8 @@ class KanbanBoard extends VBCollection(VBElement) {
     const shell = document.createElement('div');
     shell.className = 'kb-columns';
     shell.setAttribute('role', 'region');
-    shell.setAttribute('aria-label', this.getAttribute('title') || 'Kanban board');
+    this.#nameRegion(shell);
+    const { column: columnLevel } = this.#headingLevels();
 
     let seq = 0;
     this.#columns.forEach((col, i) => {
@@ -470,7 +547,8 @@ class KanbanBoard extends VBCollection(VBElement) {
 
       const header = document.createElement('header');
       header.className = 'kb-column-header';
-      const h3 = document.createElement('h3');
+      const h3 = document.createElement(`h${columnLevel}`);
+      h3.className = 'kb-column-heading';
       h3.textContent = col.label;
       const countBadge = document.createElement('output');
       countBadge.className = 'kb-count';
@@ -513,7 +591,7 @@ class KanbanBoard extends VBCollection(VBElement) {
     if (oldValue === newValue || !this.#built) return;
     if (name === 'src' && newValue && newValue !== this.#loader.url) this._loadSrc(newValue);
     if (name === 'src' && !newValue) this.#loader.cancel();   // src removed: drop a pending load, keep the cards
-    if (name === 'title') this.#syncTitle();
+    if (name === 'title' || name === 'heading-level') this.#syncTitle();
   }
 
   // ── JSON loading ────────────────────────────────────
@@ -590,7 +668,10 @@ class KanbanBoard extends VBCollection(VBElement) {
 
   /** Assign this board's drag-surface group id once. */
   #ensureGroupId() {
-    if (!this.#groupId) this.#groupId = `kb-${++KanbanBoard.#instanceCount}`;
+    if (!this.#groupId) {
+      this.#instance = ++KanbanBoard.#instanceCount;
+      this.#groupId = `kb-${this.#instance}`;
+    }
   }
 
   /**

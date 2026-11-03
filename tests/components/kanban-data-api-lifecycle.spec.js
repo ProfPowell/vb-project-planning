@@ -240,7 +240,7 @@ test.describe('kanban-board — lifecycle', () => {
       const board = document.querySelector('kanban-board');
       const domIds = [...board.querySelectorAll('[draggable="true"]')].map((el) => el.dataset.id);
       return {
-        labels: [...board.querySelectorAll('.kb-column h3')].map((h) => h.firstChild.textContent),
+        labels: [...board.querySelectorAll('.kb-column-heading')].map((h) => h.firstChild.textContent),
         domIds,
         itemIds: board.items.map((it) => it.id),
         sameNode: board.querySelector('[data-id="PROJ-201"]') === window.__node,
