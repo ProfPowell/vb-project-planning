@@ -19,6 +19,17 @@
  *      connection in surrounding components (cards, timelines, etc.).
  *      The highlight is cleared when the matrix is removed.
  *
+ * Keyboard (WAI-ARIA APG grid pattern): the table gets role="grid" and is
+ * a single Tab stop with a roving tabindex. Arrow keys move between cells,
+ * including the sortable column headers <data-table> provides; Home / End
+ * go to the first / last cell of the row, Ctrl+Home / Ctrl+End to the
+ * first / last cell of the grid. In a cell, focus goes to its button, so
+ * Enter / Space still toggle the highlight (aria-pressed) and, on a column
+ * header, sort. role="grid" (rather than a plain table) is what makes
+ * screen readers pass the arrow keys through instead of using them for
+ * browse-mode reading; native <tr>/<th>/<td> map to row / columnheader /
+ * rowheader / gridcell, which axe and the APG accept.
+ *
  * Column identifiers: by default a column element is matched by its
  * `id`, `story-id` (<user-story>) or `item-id` (<work-item>), so
  * `rows="work-item" cols="user-story" link-attr="story-ids"` works even
@@ -185,6 +196,22 @@ class TraceabilityMatrix extends VBElement {
     }
     this.appendChild(wrapper);
 
+    table.setAttribute('role', 'grid');
+    if (label) {
+      const h = /** @type {HTMLElement} */ (this.querySelector(':scope > .tm-label'));
+      h.id ||= `tm-label-${++TraceabilityMatrix.#seq}`;
+      table.setAttribute('aria-labelledby', h.id);
+    } else {
+      table.setAttribute('aria-label', 'Traceability matrix');
+    }
+    this.#table = table;
+    this.#syncRoving();
+    this.listen(table, 'keydown', this.#onGridKey);
+    this.listen(table, 'focusin', this.#onGridFocus);
+    /* <data-table> makes each sortable header a Tab stop when it upgrades,
+       which may happen after this build; fold them back into the grid. */
+    this.listen(wrapper, 'data-table:upgraded', () => this.#syncRoving());
+
     /* Wire chain-highlight clicks via event delegation on the wrapper.
        Each cell holds a <button>, so Enter/Space activate it too. Source
        elements are keyed by position, so rows/cols without an id still
@@ -214,6 +241,70 @@ class TraceabilityMatrix extends VBElement {
     btn.setAttribute('aria-pressed', 'false');
     return btn;
   }
+
+  /* --- grid keyboard (roving tabindex) --- */
+
+  /**
+   * Focus targets as rows × columns: each cell's button, or the cell itself
+   * for header cells (made focusable by <data-table> for sorting). Rows
+   * hidden by <data-table> filtering / pagination are skipped.
+   * @returns {HTMLElement[][]}
+   */
+  #gridRows() {
+    const table = this.#table;
+    if (!table) return [];
+    return [...table.querySelectorAll(':scope > thead > tr, :scope > tbody > tr')]
+      .filter((tr) => !(/** @type {HTMLElement} */ (tr).hidden) && !tr.hasAttribute('data-state-hidden'))
+      .map((tr) => [...tr.children].map((cell) => /** @type {HTMLElement} */ (
+        cell.querySelector(':scope > button') || cell)));
+  }
+
+  /**
+   * Make exactly one target the grid's Tab stop: `active`, else the
+   * previous stop if it is still in the grid, else the first cell.
+   * @param {HTMLElement | null} [active]
+   */
+  #syncRoving(active = null) {
+    const all = this.#gridRows().flat();
+    const stop = this.#rovingStop;
+    const current = (active && all.includes(active) && active)
+      || (stop && all.includes(stop) && stop)
+      || all[0];
+    this.#rovingStop = current ?? null;
+    for (const el of all) el.setAttribute('tabindex', el === current ? '0' : '-1');
+  }
+
+  /** Clicking or tabbing into a cell makes it the Tab stop. @param {FocusEvent} e */
+  #onGridFocus = (e) => {
+    const target = /** @type {HTMLElement} */ (e.target);
+    if (this.#gridRows().flat().includes(target) && target !== this.#rovingStop) this.#syncRoving(target);
+  };
+
+  /** @param {KeyboardEvent} e */
+  #onGridKey = (e) => {
+    if (e.altKey || e.metaKey) return;
+    const rows = this.#gridRows();
+    let r = rows.findIndex((row) => row.includes(/** @type {HTMLElement} */ (e.target)));
+    if (r < 0) return;
+    let c = rows[r].indexOf(/** @type {HTMLElement} */ (e.target));
+    const last = rows.length - 1;
+    switch (e.key) {
+      case 'ArrowRight': c += 1; break;
+      case 'ArrowLeft': c -= 1; break;
+      case 'ArrowDown': r += 1; break;
+      case 'ArrowUp': r -= 1; break;
+      case 'Home': if (e.ctrlKey) r = 0; c = 0; break;
+      case 'End': if (e.ctrlKey) r = last; c = Infinity; break;
+      default: return;
+    }
+    e.preventDefault();
+    r = Math.max(0, Math.min(last, r));
+    c = Math.max(0, Math.min(rows[r].length - 1, c));
+    const next = rows[r][c];
+    if (!next || next === e.target) return;
+    this.#syncRoving(next);
+    next.focus();
+  };
 
   #onCellClick = (e) => {
     const cell = e.target.closest('td, th[scope="row"]');
@@ -279,6 +370,11 @@ class TraceabilityMatrix extends VBElement {
       || '(unnamed)';
   }
 
+  static #seq = 0;
+  /** @type {HTMLTableElement | null} */
+  #table = null;
+  /** The grid's single Tab stop. @type {HTMLElement | null} */
+  #rovingStop = null;
   /** @type {Element[]} */
   #rowEls = [];
   /** @type {Element[]} */

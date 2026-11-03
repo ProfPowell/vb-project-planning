@@ -94,8 +94,12 @@ product-roadmap > section[data-lane] {
     inset-block: var(--size-2xs, 0.25rem);
     inset-inline-start: calc(var(--rm-x) * 100%);
     inline-size: calc(var(--rm-w) * 100%);
-    background: var(--color-accent, oklch(45% 0.18 260));
-    color: var(--color-text-on-primary, #fff);
+    --rm-bar-bg: var(--color-accent, oklch(45% 0.18 260));
+    background: var(--rm-bar-bg);
+    /* Theme colours can be light (a coral accent, or any colour in dark
+       mode): cap the lightness so white bar text keeps ≥ 4.5:1. */
+    background: oklch(from var(--rm-bar-bg) min(l, 0.45) c h);
+    color: oklch(100% 0 0);
     border-radius: var(--radius-s, 0.25rem);
     padding: var(--size-2xs, 0.25rem) var(--size-s, 0.75rem);
     font-size: var(--font-size-sm, 0.875rem);
@@ -167,11 +171,16 @@ product-roadmap > section[data-lane] {
     border: 0;
   }
 
-  .rm-bar[data-status="planned"]      { background: var(--color-info, oklch(60% 0.12 240)); }
-  .rm-bar[data-status="in-progress"]  { background: var(--color-accent, oklch(50% 0.16 260)); }
-  .rm-bar[data-status="at-risk"]      { background: var(--color-warning, oklch(65% 0.16 60)); color: var(--color-text, #1a1a1a); }
-  .rm-bar[data-status="shipped"]      { background: var(--color-success, oklch(55% 0.14 145)); }
-  .rm-bar[data-status="blocked"]      { background: var(--color-danger, oklch(55% 0.18 25)); }
+  .rm-bar[data-status="planned"]      { --rm-bar-bg: var(--color-info, oklch(60% 0.12 240)); }
+  .rm-bar[data-status="in-progress"]  { --rm-bar-bg: var(--color-accent, oklch(50% 0.16 260)); }
+  .rm-bar[data-status="shipped"]      { --rm-bar-bg: var(--color-success, oklch(55% 0.14 145)); }
+  .rm-bar[data-status="blocked"]      { --rm-bar-bg: var(--color-danger, oklch(55% 0.18 25)); }
+  /* At risk keeps a light warning fill with dark text: floor the lightness instead. */
+  .rm-bar[data-status="at-risk"] {
+    --rm-bar-bg: var(--color-warning, oklch(65% 0.16 60));
+    background: oklch(from var(--rm-bar-bg) max(l, 0.8) c h);
+    color: oklch(20% 0 0);
+  }
 
   .rm-today {
     position: absolute;

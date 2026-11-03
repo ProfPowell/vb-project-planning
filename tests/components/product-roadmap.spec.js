@@ -62,7 +62,7 @@ test.describe('product-roadmap — HTML-first contract', () => {
     expect(first.x).toBe('0.0000');
     // Ends are inclusive: Jul 1 → Dec 31 is 184 days of a 365-day (Jul 1 → Jun 30) range.
     expect(parseFloat(first.w)).toBeCloseTo(184 / 365, 3);
-    expect(first.aria).toBe('Multi-tenant database — July 1, 2026 to December 31, 2026 in Platform, status: in progress');
+    expect(first.aria).toBe('Multi-tenant database, In progress — July 1, 2026 to December 31, 2026 in Platform');
 
     // A single-quarter initiative spans exactly a quarter of the axis.
     const push = state.lanes[2].bars[1];

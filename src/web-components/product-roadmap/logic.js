@@ -249,7 +249,8 @@ class Roadmap extends VBElement {
     const x = this.#fractionFor(clipStart);
     const w = this.#fractionFor(clipEnd) - x;
 
-    const bar = document.createElement('article');
+    /* A <div>, not an <article>: role="button" is not allowed on article. */
+    const bar = document.createElement('div');
     bar.className = 'rm-bar';
     bar.style.setProperty('--rm-x', x.toFixed(4));
     bar.style.setProperty('--rm-w', w.toFixed(4));
@@ -274,12 +275,17 @@ class Roadmap extends VBElement {
       const badge = document.createElement('span');
       badge.className = 'rm-bar-status';
       badge.textContent = statusLabel(status);
-      bar.appendChild(badge);
+      /* Word-separate title and badge in the bar's text ("iOS rewrite At
+         risk", not "iOS rewriteAt risk"); not rendered in the flex bar. */
+      bar.append(' ', badge);
     }
 
+    /* The accessible name starts with the visible text (title, then the
+       status badge) so speech-input users can say what they see (WCAG
+       2.5.3); dates and lane follow as extra context. */
     bar.setAttribute('aria-label',
-      `${heading.textContent} — ${formatDate(start)} to ${formatDate(end)} in ${laneName}` +
-      (status ? `, status: ${statusLabel(status).toLowerCase()}` : ''));
+      `${heading.textContent}${status ? `, ${statusLabel(status)}` : ''}`
+      + ` — ${formatDate(start)} to ${formatDate(end)} in ${laneName}`);
 
     if (this.#editable) {
       bar.setAttribute('aria-describedby', `${this.#uid}-help`);

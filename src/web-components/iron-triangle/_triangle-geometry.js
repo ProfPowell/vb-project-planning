@@ -170,9 +170,15 @@ export function buildTriangleSvg({
   center.setAttribute('data-target', 'quality');
   center.setAttribute('tabindex', '0');
   center.setAttribute('role', 'button');
+  const capText = capacityPoints > 0 ? String(capacityPoints) : '—';
+  const unitText = capacitySource === 'manual' ? 'pts (manual)' : 'pts';
+  const qualityText = formatQualitySummary(qualitySummary);
+  // WCAG 2.5.3 (label in name): the name repeats the visible text in order
+  // ("Quality", the capacity, its unit, then the <title> tooltip summary)
+  // before the extra instruction, so speech-input users can say what they see.
   center.setAttribute(
     'aria-label',
-    `Quality — ${formatQualitySummary(qualitySummary)}. Activate to open the quality decision.`,
+    `Quality, ${capText} ${unitText}, ${qualityText}. Activate to open the quality decision.`,
   );
 
   // Backdrop circle — sits behind the text, masks the polygon stroke.
@@ -200,7 +206,10 @@ export function buildTriangleSvg({
   quality.setAttribute('y', '-15');
   quality.setAttribute('text-anchor', 'middle');
   quality.textContent = 'Quality';
-  center.append(quality);
+  // Whitespace text nodes between the <text> runs are not rendered, but keep
+  // the element's text content word-separated ("Quality 4 pts", not
+  // "Quality4pts") for tools that derive the visible label from it.
+  center.append(quality, ' ');
 
   // Capacity number (hero).
   const cap = document.createElementNS(SVG_NS, 'text');
@@ -209,8 +218,8 @@ export function buildTriangleSvg({
   cap.setAttribute('y', '7');
   cap.setAttribute('text-anchor', 'middle');
   cap.setAttribute('dominant-baseline', 'middle');
-  cap.textContent = capacityPoints > 0 ? String(capacityPoints) : '—';
-  center.append(cap);
+  cap.textContent = capText;
+  center.append(cap, ' ');
 
   // "pts" subtitle.
   const unit = document.createElementNS(SVG_NS, 'text');
@@ -218,12 +227,12 @@ export function buildTriangleSvg({
   unit.setAttribute('x', '0');
   unit.setAttribute('y', '26');
   unit.setAttribute('text-anchor', 'middle');
-  unit.textContent = capacitySource === 'manual' ? 'pts (manual)' : 'pts';
-  center.append(unit);
+  unit.textContent = unitText;
+  center.append(unit, ' ');
 
   // Native <title> tooltip — the quality summary.
   const centerTitle = document.createElementNS(SVG_NS, 'title');
-  centerTitle.textContent = formatQualitySummary(qualitySummary);
+  centerTitle.textContent = qualityText;
   center.append(centerTitle);
   svg.append(center);
 
@@ -251,7 +260,10 @@ function buildVertex(axis, vertex, value) {
   g.setAttribute('data-axis', axis);
   g.setAttribute('tabindex', '0');
   g.setAttribute('role', 'button');
-  g.setAttribute('aria-label', `${labels.name} — ${summary}. Activate to edit.`);
+  // WCAG 2.5.3: the name starts with the visible text (name, summary) and
+  // the unit tooltip, in that order, then the instruction.
+  const unitHint = `Measured in ${labels.unit}`;
+  g.setAttribute('aria-label', `${labels.name}, ${summary}, ${unitHint.toLowerCase()}. Activate to edit.`);
 
   // Invisible hit area: a roomy rect that fully contains the
   // {label, summary} text cluster. The longest summary
@@ -292,7 +304,7 @@ function buildVertex(axis, vertex, value) {
   name.setAttribute('y', String(round(vertex.y + labelMeta.dy)));
   name.setAttribute('text-anchor', labelMeta.anchor);
   name.textContent = labels.name;
-  g.append(name);
+  g.append(name, ' ');
 
   // Computed summary or "TBD".
   const summaryEl = document.createElementNS(SVG_NS, 'text');
@@ -301,11 +313,11 @@ function buildVertex(axis, vertex, value) {
   summaryEl.setAttribute('y', String(round(vertex.y + summaryMeta.dy)));
   summaryEl.setAttribute('text-anchor', summaryMeta.anchor);
   summaryEl.textContent = summary;
-  g.append(summaryEl);
+  g.append(summaryEl, ' ');
 
-  // Native <title> tooltip — unit hint.
+  // Native <title> tooltip — unit hint (name and summary are already visible).
   const title = document.createElementNS(SVG_NS, 'title');
-  title.textContent = `${labels.name}: ${summary} — ${labels.unit}`;
+  title.textContent = unitHint;
   g.append(title);
 
   return g;

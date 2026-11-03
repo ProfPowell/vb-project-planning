@@ -141,7 +141,10 @@ quadrant-grid {
     max-inline-size: calc(100% - var(--size-xs, 0.5rem));
     padding: var(--size-3xs, 0.125rem) var(--size-xs, 0.5rem);
     background: var(--color-accent, oklch(45% 0.18 260));
-    color: var(--color-text-on-primary, #fff);
+    /* Theme accents can be light (e.g. coral, or any accent in dark mode):
+       cap the lightness so white pin text keeps ≥ 4.5:1 in every theme. */
+    background: oklch(from var(--color-accent, oklch(45% 0.18 260)) min(l, 0.45) c h);
+    color: oklch(100% 0 0);
     border-radius: var(--radius-s, 0.25rem);
     font-size: var(--font-size-xs, 0.75rem);
     inset-inline-start: clamp(var(--qg-pin-half-w, 1.5rem), calc(var(--qg-local-x, 0.5) * 100%), calc(100% - var(--qg-pin-half-w, 1.5rem)));

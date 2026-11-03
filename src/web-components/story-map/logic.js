@@ -31,7 +31,7 @@ import { registerComponent } from '../../lib/bundle-registry.js';
 import { VBElement } from '../../lib/vb-element.js';
 import { viewTransitionSwap } from '../../lib/vb-view-transition.js';
 import {
-  SrcLoader, announce, createLiveRegion, createStoryCard, itemLabel, syncPlaceholder, titleCase,
+  SrcLoader, announce, createLiveRegion, createStoryCard, itemLabel, syncPlaceholder, titleCase, watchSurfaceSemantics,
 } from '../../lib/board-surface.js';
 
 /**
@@ -66,6 +66,8 @@ class StoryMap extends VBElement {
   #wired = false;
   #readyFired = false;
   #loader = new SrcLoader();
+  /** Stops the drag-surface semantics observer (see board-surface.js). */
+  #stopSemantics = () => {};
 
   setup() {
     if (!this.#groupId) this.#groupId = `sm-${++StoryMap.#instanceCount}`;
@@ -92,6 +94,7 @@ class StoryMap extends VBElement {
       this.#wired = true;
       this.listen(this, 'drag-surface:reorder', this.#onReorder);
       this.listen(this, 'drag-surface:transfer', this.#onTransfer);
+      this.#stopSemantics = watchSurfaceSemantics(this);
     }
 
     // Data mode: fetch once per src value; ready fires after it renders.
@@ -109,6 +112,7 @@ class StoryMap extends VBElement {
     // stay in place so a map that is moved in the DOM keeps its content;
     // the next connect only re-attaches listeners.
     this.#wired = false;
+    this.#stopSemantics();
   }
 
   /**

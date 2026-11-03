@@ -50,7 +50,7 @@ kanban-board:not(:defined) {
   border-block-end: 2px solid var(--color-border, #e0e0e0);
 }
 
-.kb-column-header h3 {
+.kb-column-heading {
   margin: 0;
   font-size: 0.875rem;
   font-weight: 700;
@@ -180,7 +180,7 @@ kanban-board[compact] .kb-column-header {
   padding: var(--size-xs, 8px) var(--size-s, 12px);
 }
 
-kanban-board[compact] .kb-column-header h3 {
+kanban-board[compact] .kb-column-heading {
   font-size: 0.75rem;
 }
 

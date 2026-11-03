@@ -230,8 +230,10 @@ board.addEventListener('kanban-board:items-changed', (e) =&gt; {
 <section>
     <h2>Accessibility</h2>
     <ul>
-      <li>The columns container has <code>role="region"</code>, labelled by the <code>title</code> attribute (or "Kanban board" when there is none)</li>
+      <li>The columns container has <code>role="region"</code>, labelled by the <code>title</code> attribute. An untitled board is "Kanban board", numbered from the second board on a page ("Kanban board 2") so region names stay unique; give each board a <code>title</code> for a meaningful name.</li>
+      <li>Headings follow the page outline: the title (when set) is one level below the nearest heading before the board, and the column headings one level below that &mdash; or one below the page heading when there is no title &mdash; so levels are never skipped. Set <code>heading-level</code> (1&ndash;6) to choose the board's top level yourself.</li>
       <li>Each drag-surface has an <code>aria-label</code> of the column label plus "items" (e.g. "Backlog items")</li>
+      <li>Each <code>&lt;drag-surface&gt;</code> is exposed as a list of its cards (<code>role="list"</code> / <code>"listitem"</code>, kept in step as cards are added and moved). If any card is an element that may not be a list item, such as <code>&lt;article&gt;</code>, that surface is exposed as a labelled <code>role="group"</code> instead and the cards keep their own role. The drag-surface's own move announcements are moved to a hidden status region just after the list, since a list may only contain list items.</li>
       <li>A visually hidden live region announces transfers between columns using the card's text and the column labels (e.g. "Wire auth moved from To Do to In Progress")</li>
       <li>Count badges use <code>&lt;output&gt;</code> elements for live value updates</li>
       <li>Respects <code>prefers-reduced-motion: reduce</code></li>
