@@ -6,6 +6,8 @@ the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-02
+
 ### Added
 - `iron-triangle` accessibility hooks the docs promised but the SVG rewrite
   never shipped: a visually-hidden `<output aria-live="polite">` capacity
@@ -34,7 +36,7 @@ the project adheres to [Semantic Versioning](https://semver.org/).
   `>=0.3.0`. Earlier Vanilla Breeze releases still registered these same
   custom elements in core, so loading both would raise duplicate-definition
   errors; 0.3.0 is the first "slimmed core" without them.
-- Docs site re-vendored against vanilla-breeze 0.3.1 (was 0.3.0). Dropped a
+- Docs site re-vendored against vanilla-breeze 0.4.1 (was 0.3.0). Dropped a
   stale, unreferenced `chart-wc.js` from the published vendor assets.
 - README now documents `<data-table>` alongside `<drag-surface>` as a runtime
   peer; the risk-register and traceability-matrix demos load it.
@@ -76,5 +78,6 @@ Initial release, decomposed out of `vanilla-breeze` core.
 - `gantt-chart` dependency arrows now render (an invalid `%` unit in the SVG
   path data was silently dropping them).
 
-[Unreleased]: https://github.com/ProfPowell/vb-project-planning/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ProfPowell/vb-project-planning/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ProfPowell/vb-project-planning/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ProfPowell/vb-project-planning/releases/tag/v0.1.0

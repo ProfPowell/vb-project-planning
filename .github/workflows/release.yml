@@ -3,8 +3,10 @@ name: Release
 # Publish to npm when a version tag is pushed:
 #   npm version minor            # bumps package.json + creates tag vX.Y.Z
 #   git push --follow-tags
-# Requires an NPM_TOKEN repository secret (automation token) — or switch the
-# publish step to npm trusted publishing and drop the token.
+# Publishes to npm only if that version is not already on the registry, so a
+# maintainer may also `npm publish` locally and then push the tag to get the
+# GitHub release. CI publishing needs an NPM_TOKEN repository secret
+# (automation token) — or switch the publish step to npm trusted publishing.
 
 on:
   push:
@@ -44,7 +46,19 @@ jobs:
       - name: Component tests
         run: npx playwright test
 
+      - name: Already on npm?
+        id: registry
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if npm view "@profpowell/vb-project-planning@$VERSION" version >/dev/null 2>&1; then
+            echo "$VERSION is already published; skipping npm publish."
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish to npm
+        if: steps.registry.outputs.published == 'false'
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
