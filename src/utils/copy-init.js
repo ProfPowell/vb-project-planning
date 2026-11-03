@@ -26,6 +26,16 @@
  * <input id="dest" type="text">
  * <button data-paste-target="#dest">Paste</button>
  *
+ * Events: successful copies dispatch `vb:copy` ({ text } or { payload })
+ * and pastes dispatch `vb:paste` ({ text }) from the button, bubbling.
+ * (Before 0.2.2 these were synthetic `copy` / `paste` events, which
+ * collided with native ClipboardEvent handlers that read
+ * `e.clipboardData`.)
+ *
+ * Announcements go to one persistent, visually hidden live region
+ * appended to <body>, never inside the button, so the button's
+ * accessible name is unchanged.
+ *
  * @example Programmatic
  * import { copyText, copyRich, pasteFromClipboard } from '/src/utils/copy-init.js';
  * await copyText('hello', { button: myButton });
@@ -34,7 +44,10 @@
  */
 
 const COPIED_DURATION = 1500;
-const ANNOUNCE_DURATION = 1000;
+/** How long an announcement stays in the live region before it is cleared. */
+const ANNOUNCE_DURATION = 5000;
+const COPY_EVENT = 'vb:copy';
+const PASTE_EVENT = 'vb:paste';
 const SELECTOR = '[data-copy], [data-copy-target], [data-paste-target]';
 const DEFAULT_ANNOUNCE = 'Copied to clipboard';
 const DEFAULT_PASTE_ANNOUNCE = 'Pasted from clipboard';
@@ -45,8 +58,8 @@ const resetTimers = new WeakMap();
  * Copy text to the clipboard with VB's standard feedback semantics.
  *
  * Performs writeText, sets data-state="copied" on the button (if given),
- * announces to screen readers, and dispatches a `copy` CustomEvent from
- * the button. Safe to call when the Clipboard API is unavailable or
+ * announces to screen readers, and dispatches a `vb:copy` CustomEvent
+ * from the button. Safe to call when the Clipboard API is unavailable or
  * permission is denied — returns false silently.
  *
  * @param {string} text - The text to copy.
@@ -122,10 +135,10 @@ async function copyRich(payload, options = {}) {
 
 /**
  * Apply the VB-standard post-write feedback: data-state, screen-reader
- * announce, and a CustomEvent from the button.
+ * announce, and a `vb:copy` / `vb:paste` CustomEvent from the button.
  * @param {{ button?: HTMLElement, duration: number, announceMessage: string, eventDetail: object, state?: string, eventName?: string }} args
  */
-function applyFeedback({ button, duration, announceMessage, eventDetail, state = 'copied', eventName = 'copy' }) {
+function applyFeedback({ button, duration, announceMessage, eventDetail, state = 'copied', eventName = COPY_EVENT }) {
   if (button) {
     button.dataset.state = state;
     const prior = resetTimers.get(button);
@@ -141,7 +154,7 @@ function applyFeedback({ button, duration, announceMessage, eventDetail, state =
     }));
   }
 
-  announce(announceMessage, button ?? document.body);
+  announce(announceMessage);
 }
 
 /**
@@ -151,7 +164,7 @@ function applyFeedback({ button, duration, announceMessage, eventDetail, state =
  * elements receive `.textContent`. After writing, an `input` event
  * is dispatched on the target so framework listeners notice the change.
  * Sets data-state="pasted" on the button, announces to screen readers,
- * and dispatches a `paste` CustomEvent from the button.
+ * and dispatches a `vb:paste` CustomEvent from the button.
  *
  * Safe to call when the Clipboard API is unavailable or the user
  * denies permission — returns null silently.
@@ -188,7 +201,7 @@ async function pasteFromClipboard(target, options = {}) {
     announceMessage,
     eventDetail: { text },
     state: 'pasted',
-    eventName: 'paste',
+    eventName: PASTE_EVENT,
   });
   return text;
 }
@@ -242,19 +255,45 @@ function getText(button) {
   return '';
 }
 
+/** @type {ReturnType<typeof setTimeout> | undefined} */
+let clearTimer;
+
 /**
- * Announce a message to screen readers
- * @param {string} message
- * @param {Element} context - Element to append announcement to
+ * The page's single clipboard live region: visually hidden, appended to
+ * <body> once and reused (shared across copies of this module).
+ * @returns {HTMLElement}
  */
-function announce(message, context) {
-  const el = document.createElement('div');
+function liveRegion() {
+  let el = /** @type {HTMLElement | null} */ (document.querySelector('body > [data-vb-clipboard-status]'));
+  if (el) return el;
+  el = document.createElement('div');
+  el.setAttribute('data-vb-clipboard-status', '');
   el.setAttribute('role', 'status');
   el.setAttribute('aria-live', 'polite');
-  el.className = 'visually-hidden';
-  el.textContent = message;
-  context.appendChild(el);
-  setTimeout(() => el.remove(), ANNOUNCE_DURATION);
+  el.setAttribute('aria-atomic', 'true');
+  el.style.cssText = 'position:absolute;inline-size:1px;block-size:1px;margin:-1px;padding:0;' +
+    'overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;';
+  document.body.appendChild(el);
+  return el;
+}
+
+/**
+ * Announce a message to screen readers. The region already exists (or is
+ * created now, empty) and the text is set on the next frame, so the
+ * change is announced even on first use and for repeated messages.
+ * @param {string} message
+ */
+function announce(message) {
+  if (!document.body) return;
+  const region = liveRegion();
+  region.textContent = '';
+  requestAnimationFrame(() => {
+    region.textContent = message;
+    clearTimeout(clearTimer);
+    clearTimer = setTimeout(() => {
+      if (region.textContent === message) region.textContent = '';
+    }, ANNOUNCE_DURATION);
+  });
 }
 
 // Auto-init on DOMContentLoaded
