@@ -10,11 +10,16 @@ import { resolve, join, extname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HOST = '127.0.0.1';
-const PORT = 4331;
+const PORT = Number(process.env.VB_TEST_PORT) || 4331;
 const MOUNT = '/vb-project-planning';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const docsRoot = resolve(here, '..', 'docs');
+// The pack bundle is served from dist/, not docs/assets/pack/, so specs
+// always exercise the code `npm run build` just produced. Otherwise a change
+// to src/ is tested against whatever bundle the last docs publish copied.
+const distRoot = resolve(here, '..', 'dist');
+const PACK_PREFIX = '/assets/pack/';
 
 const CONTENT_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -44,9 +49,13 @@ const server = createServer(async (req, res) => {
       pathname += 'index.html';
     }
 
-    // Prevent path traversal outside docsRoot.
-    const filePath = normalize(join(docsRoot, pathname));
-    if (!filePath.startsWith(docsRoot)) {
+    const fromDist = pathname.startsWith(PACK_PREFIX);
+    const root = fromDist ? distRoot : docsRoot;
+    const rel = fromDist ? pathname.slice(PACK_PREFIX.length) : pathname;
+
+    // Prevent path traversal outside the served root.
+    const filePath = normalize(join(root, rel));
+    if (!filePath.startsWith(root + '/') && filePath !== root) {
       res.writeHead(403);
       res.end('Forbidden');
       return;

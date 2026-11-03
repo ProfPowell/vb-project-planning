@@ -298,7 +298,6 @@ var styles = `
 `;
 
 // src/lib/bundle-registry.js
-var reducedMotionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
 var components = /* @__PURE__ */ new Map();
 function registerComponent(tag, impl, opts = {}) {
   const priority = opts.priority ?? 10;
@@ -330,19 +329,29 @@ function registerComponent(tag, impl, opts = {}) {
   customElements.define(tag, impl);
 }
 
-// src/web-components/_ux-base.js
-function esc(s) {
-  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+// src/lib/hash.js
+function stringHash(str) {
+  let h = 0;
+  const s = String(str ?? "");
+  for (let i = 0; i < s.length; i++) {
+    h = s.charCodeAt(i) + ((h << 5) - h);
+  }
+  return h;
 }
+
+// src/lib/escape.js
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => ESCAPES[c]);
+}
+var ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+
+// src/web-components/_ux-base.js
 function initials(name) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 }
 function hashColor(name) {
-  let hash3 = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash3 = name.charCodeAt(i) + ((hash3 << 5) - hash3);
-  }
-  const hue = (hash3 % 360 + 360) % 360;
+  const hash = stringHash(name);
+  const hue = (hash % 360 + 360) % 360;
   return `hsl(${hue}, 65%, 55%)`;
 }
 function lucideSvg(inner) {
@@ -385,13 +394,6 @@ var EMOTION_META = {
 // src/lib/portrait-url.js
 var CDN = "https://cdn.jsdelivr.net/gh/faker-js/assets-person-portrait";
 var SIZES = [32, 64, 128, 256, 512];
-function hash(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) {
-    h = str.charCodeAt(i) + ((h << 5) - h);
-  }
-  return h;
-}
 function snapSize(px) {
   let best = SIZES[0];
   let bestDist = Math.abs(px - best);
@@ -405,7 +407,7 @@ function snapSize(px) {
   return best;
 }
 function portraitUrl(seed, size = 128) {
-  const h = hash(String(seed));
+  const h = stringHash(String(seed));
   const index = (h % 100 + 100) % 100;
   const sex = (h >>> 16 & 1) === 0 ? "female" : "male";
   const snapped = snapSize(size);
@@ -413,11 +415,6 @@ function portraitUrl(seed, size = 128) {
 }
 
 // src/web-components/user-persona/logic.js
-function hash2(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
-  return h;
-}
 var MOCK_NAMES = [
   "Sarah Chen",
   "Marcus Johnson",
@@ -725,11 +722,11 @@ var UserPersona = class extends HTMLElement {
   // ── Mock data ──────────────────────────────────────────────────────
   #applyMock() {
     const seed = this.dataset.seed || this.dataset.mock || String(Date.now());
-    const pick = (arr) => arr[(hash2(seed + arr.length) % arr.length + arr.length) % arr.length];
+    const pick = (arr) => arr[(stringHash(seed + arr.length) % arr.length + arr.length) % arr.length];
     const pickN = (arr, n) => {
       const out = [];
       for (let i = 0; i < n; i++) {
-        out.push(arr[(hash2(seed + i + arr.length) % arr.length + arr.length) % arr.length]);
+        out.push(arr[(stringHash(seed + i + arr.length) % arr.length + arr.length) % arr.length]);
       }
       return [...new Set(out)];
     };
@@ -740,7 +737,7 @@ var UserPersona = class extends HTMLElement {
       this.appendChild(h2);
     }
     if (!this.getAttribute("role")) this.setAttribute("role", pick(MOCK_ROLES));
-    if (!this.getAttribute("age")) this.setAttribute("age", String(25 + (hash2(seed) % 30 + 30) % 30));
+    if (!this.getAttribute("age")) this.setAttribute("age", String(25 + (stringHash(seed) % 30 + 30) % 30));
     if (!this.getAttribute("location")) this.setAttribute("location", pick(MOCK_LOCATIONS));
     if (!this.getAttribute("avatar")) {
       const name = this.querySelector('[slot="name"]')?.textContent?.trim() || "Persona";
@@ -9212,12 +9209,12 @@ function defaultFormula(time, cost, focusFactor) {
   return Math.ceil(weeks * fte * f);
 }
 function fnv1a(str) {
-  let hash3 = 2166136261;
+  let hash = 2166136261;
   for (let i = 0; i < str.length; i++) {
-    hash3 ^= str.charCodeAt(i);
-    hash3 = Math.imul(hash3, 16777619);
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
   }
-  return (hash3 >>> 0).toString(36);
+  return (hash >>> 0).toString(36);
 }
 function stableStringify(value) {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
@@ -10320,19 +10317,6 @@ var ILITY_LABELS = Object.freeze({
   portability: "Portability",
   internationalization: "Internationalization",
   privacy: "Privacy"
-});
-var ILITY_ABBR = Object.freeze({
-  accessibility: "a11y",
-  internationalization: "i18n",
-  maintainability: "maint",
-  observability: "obs",
-  compatibility: "compat",
-  portability: "porta",
-  performance: "perf",
-  reliability: "rely",
-  scalability: "scale",
-  security: "sec",
-  privacy: "priv"
 });
 var LEVEL_RATIO = Object.freeze({
   critical: 1,

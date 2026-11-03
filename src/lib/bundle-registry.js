@@ -1,82 +1,9 @@
 /**
  * Bundle Registry — Vanilla Breeze
  *
- * Provides infrastructure for modular bundles to register effects,
- * components, and activate full bundles at runtime.
+ * Provides infrastructure for modular bundles to register components
+ * and activate full bundles at runtime.
  */
-
-// ─── Effect registry ─────────────────────────────────────────────────────────
-
-const effects = new Map()
-let observer = null
-const reducedMotionMq = window.matchMedia('(prefers-reduced-motion: reduce)')
-
-function startObserver() {
-  if (observer) return
-  observer = new MutationObserver(mutations => {
-    for (const mutation of mutations) {
-      for (const node of mutation.addedNodes) {
-        if (node.nodeType !== Node.ELEMENT_NODE) continue
-        const el = /** @type {Element} */ (node)
-        matchEffects(el)
-        el.querySelectorAll('*').forEach(matchEffects)
-      }
-      for (const node of mutation.removedNodes) {
-        if (node.nodeType !== Node.ELEMENT_NODE) continue
-        const el = /** @type {Element} */ (node)
-        unmatchEffects(el)
-        el.querySelectorAll('*').forEach(unmatchEffects)
-      }
-    }
-  })
-  observer.observe(document.body, { childList: true, subtree: true })
-}
-
-function matchEffects(el) {
-  for (const [, def] of effects) {
-    if (el.matches?.(def.selector)) {
-      if (reducedMotionMq.matches && def.reducedMotionFallback) {
-        def.reducedMotionFallback(el)
-      } else {
-        def.init(el)
-      }
-    }
-  }
-}
-
-function unmatchEffects(el) {
-  for (const [, def] of effects) {
-    if (el.matches?.(def.selector) && def.destroy) {
-      def.destroy(el)
-    }
-  }
-}
-
-/**
- * Register a DOM effect that auto-initializes on matching elements.
- *
- * @param {string} name - Unique effect name
- * @param {{ selector: string, init: (el: Element) => void, destroy?: (el: Element) => void, reducedMotionFallback?: (el: Element) => void }} def
- */
-export function registerEffect(name, def) {
-  effects.set(name, def)
-
-  // Initialize on existing matching elements
-  document.querySelectorAll(def.selector).forEach(el => {
-    if (reducedMotionMq.matches && def.reducedMotionFallback) {
-      def.reducedMotionFallback(el)
-    } else {
-      def.init(el)
-    }
-  })
-
-  // Start shared observer lazily
-  if (document.body) {
-    startObserver()
-  } else {
-    document.addEventListener('DOMContentLoaded', startObserver, { once: true })
-  }
-}
 
 // ─── Component registry ──────────────────────────────────────────────────────
 

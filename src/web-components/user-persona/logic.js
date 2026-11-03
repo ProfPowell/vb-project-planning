@@ -29,13 +29,8 @@ import { styles } from './styles.js';
 import { registerComponent } from '../../lib/bundle-registry.js';
 import { esc, initials, hashColor } from '../_ux-base.js';
 import { portraitUrl } from '../../lib/portrait-url.js';
+import { stringHash as hash } from '../../lib/hash.js';
 
-/** Simple string hash → integer (same algorithm as portrait-url.js). */
-function hash(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
-  return h;
-}
 
 // ── Mock persona corpus (~1 KB) ───────────────────────────────────────
 const MOCK_NAMES = [

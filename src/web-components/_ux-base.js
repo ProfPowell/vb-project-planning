@@ -6,18 +6,9 @@
  * Light DOM components (impact-effort, story-map) extend VBElement.
  */
 
-/**
- * HTML-escape a string to prevent XSS in shadow DOM innerHTML.
- * @param {string} s
- * @returns {string}
- */
-export function esc(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+import { stringHash } from '../lib/hash.js';
+
+export { esc } from '../lib/escape.js';
 
 /**
  * Extract up to 2 initials from a name.
@@ -39,10 +30,7 @@ export function initials(name) {
  * @returns {string} HSL color string
  */
 export function hashColor(name) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
+  const hash = stringHash(name);
   const hue = ((hash % 360) + 360) % 360;
   return `hsl(${hue}, 65%, 55%)`;
 }
