@@ -303,8 +303,12 @@ gantt-chart:not([data-upgraded]) > table {
 }
 
 /* ── Visually hidden (original table + live region) ── */
+/* Visually hidden, still read by screen readers. table-layout: fixed is
+   required: a table ignores width: 1px and grows to its content, which made
+   the page scroll sideways on phones. */
 .gc-sr-only {
   position: absolute;
+  table-layout: fixed;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -377,6 +381,7 @@ gantt-chart[compact] .gc-group-spacer {
 
   gantt-chart[data-upgraded] .gc-sr-only {
     position: static;
+    table-layout: auto;
     width: auto;
     height: auto;
     margin: 0;

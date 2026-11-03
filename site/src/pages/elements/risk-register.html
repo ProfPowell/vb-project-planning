@@ -16,7 +16,7 @@ crumbLabel: Web Components
   <p>It composes <code>&lt;data-table&gt;</code> (sorting plus a <code>data-heatmap="low-good"</code> Severity column) and <code>&lt;quadrant-grid&gt;</code> — most of the code is glue, since both children do the work.</p>
   <p>The component computes Severity itself and writes it into each Severity cell (as text and <code>data-sort-value</code>). It does not use <code>&lt;data-table&gt;</code>'s <code>data-rollup="product"</code>, because that multiplies <em>every</em> numeric-looking cell in the row &mdash; a title such as &ldquo;2FA rollout&rdquo; or a mitigation such as &ldquo;3 vendor quotes&rdquo; would inflate the score. A row with a missing or non-numeric Likelihood or Impact gets an empty Severity cell and no dot in the grid.</p>
 
-  <browser-window url="risk-register" src="/demos/risk-register-basic/"></browser-window>
+  <browser-window url="https://profpowell.github.io/vb-project-planning/demos/risk-register-basic/" src="/demos/risk-register-basic/"></browser-window>
 </section>
 
 <section>
