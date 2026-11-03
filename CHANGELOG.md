@@ -6,6 +6,27 @@ the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- `gantt-chart`: the visually hidden screen-reader table made pages scroll
+  sideways on phones (a table ignores `width: 1px`; it now uses
+  `table-layout: fixed`).
+- `risk-register`: the table scrolls inside its own box on narrow screens
+  instead of pushing the page sideways.
+
+### Documentation
+- Docs site: removed links to vanilla-breeze.com's retired "UX Planning Pack"
+  page (10 element pages); fixed the burndown page's intro, which a raw
+  `<chart-wc>` in its description broke; replaced a burndown code sample that
+  pointed at this site's `/cdn/` path with the real unpkg URLs; demo frames
+  show their real address instead of `vanilla-breeze.dev`; the capacity-plan,
+  quality-target and iron-triangle demos load VB's `<form-field>`; five
+  working demos that nothing linked to (two full workflows, three recipes)
+  are on the demos index.
+- README: `<form-field>` and `<chart-wc>` documented as runtime peers.
+- New `tests/components/docs-site.spec.js` crawls the built site and fails on
+  console errors, failed requests, broken links or anchors, orphan pages,
+  undefined scripted components, and sideways scrolling at phone width.
+
 ## [0.2.2] - 2026-11-03
 
 A correctness, accessibility and documentation release covering every

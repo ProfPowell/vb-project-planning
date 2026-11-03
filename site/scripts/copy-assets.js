@@ -44,6 +44,9 @@ cp(resolve(nm, 'vanilla-breeze/dist/cdn/components/drag-surface.js'), resolve(ve
 // <data-table> peer — risk-register and traceability-matrix compose it for the
 // severity rollup, heatmap, and header sorting.
 cp(resolve(nm, 'vanilla-breeze/dist/cdn/components/data-table.js'), resolve(vendor, 'data-table.js'));
+// <form-field> peer: iron-triangle, quality-target (and capacity-plan, which embeds it)
+// wrap their dialog inputs in VB form-fields.
+cp(resolve(nm, 'vanilla-breeze/dist/cdn/components/form-field.js'), resolve(vendor, 'form-field.js'));
 // <chart-wc> renderer — burndown-chart composes it internally. Charts are an
 // opt-in add-on (not in the main bundle), so vendor the charts bundle + its CSS.
 cp(resolve(nm, 'vanilla-breeze/dist/cdn/vanilla-breeze-charts.js'), resolve(vendor, 'vanilla-breeze-charts.js'));

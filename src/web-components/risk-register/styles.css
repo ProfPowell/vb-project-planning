@@ -23,8 +23,16 @@ risk-register {
 
   .rr-layout {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--size-l, 1.5rem);
+  }
+
+  /* The table scrolls inside its own box on narrow screens instead of
+     pushing the whole page sideways. */
+  .rr-layout > data-table {
+    display: block;
+    min-inline-size: 0;
+    overflow-x: auto;
   }
 
   /* Table on top, quadrant below by default; side-by-side on wide screens */

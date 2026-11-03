@@ -1,7 +1,7 @@
 ---
 layout: element
 title: "burndown-chart"
-description: "Sprint burndown plot. Wraps <chart-wc> with auto-computed ideal line and scope-change annotations."
+description: "Sprint burndown plot. Wraps Vanilla Breeze's chart-wc with an auto-computed ideal line and scope-change annotations."
 elementName: burndown-chart
 category: component
 currentPath: /docs/elements/web-components/burndown-chart/
@@ -15,7 +15,7 @@ crumbLabel: Web Components
   <p>The <code>&lt;burndown-chart&gt;</code> component plots sprint progress as a two-series line chart: the <em>actual</em> remaining work each day vs. the <em>ideal</em> straight-line trend from total → 0 across the sprint duration.</p>
   <p>It composes <code>&lt;chart-wc type="line"&gt;</code> for rendering. The author supplies only the daily remaining counts (and optional scope-change deltas) — the ideal slope is mechanical and should not be hand-computed in author data.</p>
 
-  <browser-window url="burndown-chart" src="/demos/burndown-chart-basic/"></browser-window>
+  <browser-window url="https://profpowell.github.io/vb-project-planning/demos/burndown-chart-basic/" src="/demos/burndown-chart-basic/"></browser-window>
 </section>
 
 <section>
@@ -73,8 +73,8 @@ crumbLabel: Web Components
   </ol>
   <p>This component requires the optional <code>vanilla-breeze-charts</code> bundle for <code>&lt;chart-wc&gt;</code>:</p>
   <code-block language="html" data-escape>
-<link rel="stylesheet" href="/cdn/vanilla-breeze-charts.css">
-<script type="module" src="/cdn/vanilla-breeze-charts.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/vanilla-breeze/dist/cdn/vanilla-breeze-charts.css">
+<script type="module" src="https://unpkg.com/vanilla-breeze/dist/cdn/vanilla-breeze-charts.js"></script>
   </code-block>
 </section>
 

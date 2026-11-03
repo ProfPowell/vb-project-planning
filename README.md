@@ -62,12 +62,14 @@ import '@profpowell/vb-project-planning/kanban-board';
 <user-persona name="Fred" role="Engineer">…</user-persona>
 ```
 
-## Runtime peers: `<drag-surface>` and `<data-table>`
+## Runtime peers from Vanilla Breeze
 
-Two Vanilla Breeze core elements are used as runtime peers. Load VB on the page (the full bundle, or the per-component files under `dist/cdn/components/`) and they light up; without them the components still render, only the composed behaviour is unavailable.
+Four Vanilla Breeze elements are used as runtime peers. Load VB on the page (the full bundle, or the per-component files under `dist/cdn/components/`) and they light up; without them the components still render, only the composed behaviour is unavailable.
 
 - `<drag-surface>` — the drag-to-reorder components (`kanban-board`, `quadrant-grid`, `impact-effort`, `story-map`). Without it, drag-reordering is off.
 - `<data-table>` — `risk-register` and `traceability-matrix` compose it for the severity rollup, heatmap, and sortable headers. Without it, the plain table renders but those features are inert.
+- `<form-field>` — `iron-triangle` and `quality-target` (and `capacity-plan`, which embeds a quality target) wrap their dialog inputs in it for labels and validation messages. Without it, the inputs still work with native validation only.
+- `<chart-wc>` — `burndown-chart` draws its chart with it. It ships in VB's optional charts bundle (`dist/cdn/vanilla-breeze-charts.js` + `.css`), not the main bundle. Without it no chart appears (the data lives in a `<template>`); only the scope-change notes render, so load the charts bundle wherever you use `burndown-chart`.
 
 ## Design-token contract
 
@@ -77,7 +79,7 @@ These components are **token-driven**: they read Vanilla Breeze CSS custom prope
 <link rel="stylesheet" href="https://unpkg.com/vanilla-breeze/dist/cdn/vanilla-breeze.css">
 ```
 
-`vanilla-breeze` is declared as an **optional peer dependency**: required if you want VB to supply tokens/themes and the `<drag-surface>` / `<data-table>` peers (most consumers do).
+`vanilla-breeze` is declared as an **optional peer dependency**: required if you want VB to supply tokens/themes and the peers above (most consumers do).
 
 ## Relationship to Vanilla Breeze
 
