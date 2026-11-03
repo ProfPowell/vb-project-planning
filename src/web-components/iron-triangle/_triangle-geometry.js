@@ -172,7 +172,7 @@ export function buildTriangleSvg({
   center.setAttribute('role', 'button');
   center.setAttribute(
     'aria-label',
-    `Quality — ${formatQualitySummary(qualitySummary)}. Activate to open the NFR compass.`,
+    `Quality — ${formatQualitySummary(qualitySummary)}. Activate to open the quality decision.`,
   );
 
   // Backdrop circle — sits behind the text, masks the polygon stroke.

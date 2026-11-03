@@ -25,7 +25,7 @@
  *     is never colour-only.
  *
  * Optional: pass a `data-quality-summary` attribute or set the
- * `qualitySummary` property to surface the bound NFR compass's
+ * `qualitySummary` property to surface the bound quality-target's
  * decision on hover (e.g. "3 critical: perf, sec, a11y").
  */
 
@@ -171,7 +171,7 @@ class IronTriangle extends VBElement {
 
   /** Imperatively open a vertex editor. */
   openEditor(axis) {
-    if (!SECTIONS.includes(axis)) return;
+    if (!SECTIONS.includes(axis) || this.#inert) return;
     const dialog = this.#ensureDialog(axis);
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
@@ -235,7 +235,7 @@ class IronTriangle extends VBElement {
     const center = event.target.closest?.('.center[data-target="quality"]');
     if (center && this.contains(center)) {
       event.preventDefault();
-      this.#fireQualityOpen();
+      if (!this.hasAttribute('disabled')) this.#fireQualityOpen();
     }
   }
 
@@ -250,7 +250,7 @@ class IronTriangle extends VBElement {
     const center = event.target.closest?.('.center[data-target="quality"]');
     if (center && this.contains(center)) {
       event.preventDefault();
-      this.#fireQualityOpen();
+      if (!this.hasAttribute('disabled')) this.#fireQualityOpen();
     }
   }
 
@@ -314,6 +314,7 @@ class IronTriangle extends VBElement {
       this.#recompute({ source: 'dialog', field: axis });
     });
 
+    this.#syncDisabledLocked();
     return dialog;
   }
 
@@ -399,6 +400,7 @@ class IronTriangle extends VBElement {
     const existing = this.querySelector(':scope > svg');
     if (existing) existing.replaceWith(svg);
     else this.prepend(svg);
+    this.#syncHitTargetsInert();
     this.dataset.capacityPoints = String(this.#value.capacityPoints);
     this.dataset.capacitySource = this.#value.capacitySource;
   }
@@ -422,11 +424,39 @@ class IronTriangle extends VBElement {
     } catch { /* older Safari */ }
   }
 
+  get #inert() { return this.hasAttribute('disabled') || this.hasAttribute('locked'); }
+
+  /**
+   * disabled / locked: no editing path stays open. styles.css already sets
+   * pointer-events: none; this closes the keyboard and programmatic paths
+   * (vertex targets leave the tab order, openEditor() is a no-op) and
+   * disables the mode switch and every dialog control, including dialogs
+   * built later.
+   *
+   * The centre Quality target is navigation, not editing, so under `locked`
+   * it stays focusable and clickable (styles.css re-enables its pointer).
+   * Under `disabled` it goes inert too: browsers suppress mouse events
+   * inside a disabled form-associated element, so keeping only its
+   * keyboard path alive would be inconsistent.
+   */
   #syncDisabledLocked() {
-    const off = this.hasAttribute('disabled') || this.hasAttribute('locked');
+    const off = this.#inert;
     if (this.#modeButton) this.#modeButton.disabled = off;
     for (const dialog of Object.values(this.#dialogs)) {
       for (const el of dialog.querySelectorAll('input, select, textarea, button')) /** @type {any} */ (el).disabled = off;
+    }
+    this.#syncHitTargetsInert();
+  }
+
+  /** Hit targets follow disabled / locked across re-renders. */
+  #syncHitTargetsInert() {
+    const editingOff = this.#inert;
+    const navOff = this.hasAttribute('disabled');
+    for (const target of this.querySelectorAll(':scope > svg [role="button"][tabindex]')) {
+      const off = target.matches('.center[data-target="quality"]') ? navOff : editingOff;
+      target.setAttribute('tabindex', off ? '-1' : '0');
+      if (off) target.setAttribute('aria-disabled', 'true');
+      else target.removeAttribute('aria-disabled');
     }
   }
 
@@ -448,7 +478,9 @@ class IronTriangle extends VBElement {
 
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'iron-triangle-mode';
+    // VB's `ghost` variant keeps the switch secondary to the triangle;
+    // styles.css trims it further to sit inside the small status strip.
+    button.className = 'iron-triangle-mode ghost';
     button.setAttribute('aria-pressed', 'false');
     button.textContent = 'Manual capacity';
     button.addEventListener('click', () => this.#openCapacityDialog());
@@ -486,9 +518,14 @@ class IronTriangle extends VBElement {
 
     if (this.#modeButton) {
       this.#modeButton.setAttribute('aria-pressed', manual ? 'true' : 'false');
-      this.#modeButton.setAttribute('aria-label',
-        manual ? `Manual capacity: ${capacityPoints} points. Activate to edit or return to the formula.`
-               : 'Manual capacity. Activate to override the formula with a fixed number.');
+      // Pressed state is carried by the visible text too, not only by the
+      // underline. The aria-label starts with that visible text so voice
+      // users can say what they see (WCAG 2.5.3 Label in Name).
+      const label = manual && capacityPoints > 0 ? `Manual capacity: ${capacityPoints} pts` : 'Manual capacity';
+      if (this.#modeButton.textContent !== label) this.#modeButton.textContent = label;
+      this.#modeButton.setAttribute('aria-label', manual
+        ? `${label}. Activate to edit or return to the formula.`
+        : `${label}. Activate to override the formula with a fixed number.`);
     }
     if (this.#deadlineWarning) {
       this.#deadlineWarning.textContent = overDeadline ? `Deadline has passed (${deadline})` : '';
@@ -566,6 +603,7 @@ class IronTriangle extends VBElement {
       if (Number.isFinite(n) && n > 0) this.setManual(n);
     });
 
+    this.#syncDisabledLocked();
     return dialog;
   }
 

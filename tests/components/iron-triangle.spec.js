@@ -372,6 +372,10 @@ test.describe('iron-triangle', () => {
 
     const toggle = page.locator('iron-triangle > .iron-triangle-status button.iron-triangle-mode');
     await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    // Quiet, secondary styling: VB ghost variant, no underline until pressed.
+    await expect(toggle).toHaveClass(/\bghost\b/);
+    await expect(toggle).toHaveText('Manual capacity');
+    await expect(toggle).toHaveCSS('text-decoration-line', 'none');
 
     await page.evaluate(() => {
       window.__modes = [];
@@ -390,6 +394,11 @@ test.describe('iron-triangle', () => {
     await dialog.locator('button[type="submit"]').click();
     await expect(dialog).toBeHidden();
     await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    // Pressed state shows in text and underline, not colour alone; the
+    // accessible name starts with the visible text (label in name).
+    await expect(toggle).toHaveText('Manual capacity: 20 pts');
+    await expect(toggle).toHaveCSS('text-decoration-line', 'underline');
+    await expect(toggle).toHaveAttribute('aria-label', /^Manual capacity: 20 pts\. /);
 
     const afterManual = await page.evaluate(() => {
       const tri = document.querySelector('iron-triangle');
@@ -404,6 +413,7 @@ test.describe('iron-triangle', () => {
     await dialog.locator('button[value="formula"]').click();
     await expect(dialog).toBeHidden();
     await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await expect(toggle).toHaveText('Manual capacity');
 
     const afterFormula = await page.evaluate(() => {
       const tri = document.querySelector('iron-triangle');
@@ -420,5 +430,95 @@ test.describe('iron-triangle', () => {
     await expect(toggle).toBeDisabled();
     await page.evaluate(() => document.querySelector('iron-triangle').removeAttribute('locked'));
     await expect(toggle).toBeEnabled();
+  });
+
+  test('locked closes every editing path but keeps the centre Quality link working', async ({ page }) => {
+    await gotoUpgraded(page);
+
+    // Build one vertex dialog while unlocked so we can check it gets locked.
+    await page.evaluate(() => {
+      const tri = document.querySelector('iron-triangle');
+      tri.openEditor('time');
+      tri.querySelector('dialog[open]').close();
+      window.__qualityOpens = 0;
+      tri.addEventListener('iron-triangle:open-quality', (e) => { e.preventDefault(); window.__qualityOpens++; });
+      tri.setAttribute('locked', '');
+    });
+
+    const vertices = page.locator('iron-triangle > svg .vertex[data-axis]');
+    const center = page.locator('iron-triangle > svg .center[data-target="quality"]');
+    const locked = await page.evaluate(() => {
+      const tri = document.querySelector('iron-triangle');
+      const hits = () => [...tri.querySelectorAll(':scope > svg .vertex[data-axis]')];
+      const centre = () => tri.querySelector(':scope > svg .center[data-target="quality"]');
+      const out = {
+        centre: { tabindex: centre().getAttribute('tabindex'), ariaDisabled: centre().hasAttribute('aria-disabled') },
+        count: hits().length,
+        tabindex: [...new Set(hits().map(t => t.getAttribute('tabindex')))],
+        ariaDisabled: hits().every(t => t.getAttribute('aria-disabled') === 'true'),
+        dialogControlsDisabled: [...tri.querySelectorAll('dialog input, dialog select, dialog textarea, dialog button')].every(el => el.disabled),
+      };
+      tri.openEditor('cost');
+      out.openedAnyway = !!tri.querySelector('dialog[open]');
+      // A recompute re-renders the SVG; vertices must stay inert.
+      tri.value = { time: { sprintWeeks: 2, sprintCount: 4 } };
+      out.afterRender = [...new Set(hits().map(t => t.getAttribute('tabindex')))];
+      return out;
+    });
+    expect(locked).toEqual({
+      centre: { tabindex: '0', ariaDisabled: false },
+      count: 3, tabindex: ['-1'], ariaDisabled: true,
+      dialogControlsDisabled: true, openedAnyway: false, afterRender: ['-1'],
+    });
+
+    // Keyboard on a (programmatically focused) vertex does nothing…
+    await vertices.first().focus();
+    await page.keyboard.press('Enter');
+    // …but the centre Quality link still works by keyboard and mouse.
+    await center.focus();
+    await page.keyboard.press('Enter');
+    await center.click();
+    const afterInput = await page.evaluate(() => ({
+      open: !!document.querySelector('iron-triangle dialog[open]'),
+      qualityOpens: window.__qualityOpens,
+    }));
+    expect(afterInput).toEqual({ open: false, qualityOpens: 2 });
+
+    await page.evaluate(() => document.querySelector('iron-triangle').removeAttribute('locked'));
+    const unlocked = await page.evaluate(() => {
+      const hits = [...document.querySelectorAll('iron-triangle > svg [role="button"]')];
+      return {
+        tabindex: [...new Set(hits.map(t => t.getAttribute('tabindex')))],
+        ariaDisabled: hits.some(t => t.hasAttribute('aria-disabled')),
+      };
+    });
+    expect(unlocked).toEqual({ tabindex: ['0'], ariaDisabled: false });
+  });
+
+  test('disabled turns everything off, including the centre Quality link', async ({ page }) => {
+    await gotoUpgraded(page);
+
+    await page.evaluate(() => {
+      const tri = document.querySelector('iron-triangle');
+      window.__qualityOpens = 0;
+      tri.addEventListener('iron-triangle:open-quality', (e) => { e.preventDefault(); window.__qualityOpens++; });
+      tri.setAttribute('disabled', '');
+    });
+
+    const state = await page.evaluate(() => {
+      const hits = [...document.querySelectorAll('iron-triangle > svg [role="button"]')];
+      return {
+        count: hits.length,
+        tabindex: [...new Set(hits.map(t => t.getAttribute('tabindex')))],
+        ariaDisabled: hits.every(t => t.getAttribute('aria-disabled') === 'true'),
+      };
+    });
+    expect(state).toEqual({ count: 4, tabindex: ['-1'], ariaDisabled: true });
+
+    const center = page.locator('iron-triangle > svg .center[data-target="quality"]');
+    await center.focus();
+    await page.keyboard.press('Enter');
+    await center.dispatchEvent('click');   // even a synthetic click is ignored
+    expect(await page.evaluate(() => window.__qualityOpens)).toBe(0);
   });
 });

@@ -150,13 +150,27 @@ iron-triangle > .iron-triangle-status .iron-triangle-readout {
   border: 0;
 }
 
+/* Quiet, secondary switch: ghost button, compact, muted until hovered or
+   pressed. VB's touch-target minimum block size is kept. Pressed adds an underline (plus the "Manual capacity: N pts" label) so
+   the state never rests on colour alone. */
 iron-triangle > .iron-triangle-status .iron-triangle-mode {
   font-size: inherit;
+  font-weight: var(--font-weight-normal, 400);
+  padding-block: 0;
+  padding-inline: var(--size-xs, 0.5rem);
+  border-color: transparent;
+  color: var(--color-text-muted);
+}
+
+iron-triangle > .iron-triangle-status .iron-triangle-mode:hover {
+  color: var(--color-text);
 }
 
 iron-triangle > .iron-triangle-status .iron-triangle-mode[aria-pressed="true"] {
-  border-color: var(--color-interactive);
   color: var(--color-interactive);
+  text-decoration: underline;
+  text-decoration-thickness: var(--border-width-medium, 2px);
+  text-underline-offset: 0.25em;
 }
 
 /* Visible, text-bearing warning — never colour-only. */
@@ -191,6 +205,13 @@ iron-triangle[disabled],
 iron-triangle[locked] {
   opacity: 0.85;
   pointer-events: none;
+}
+
+/* The centre Quality target navigates to the quality decision rather than
+   editing the shape, so it keeps working on a locked (read-only) triangle.
+   A disabled triangle stays fully off, like any disabled control. */
+iron-triangle[locked]:not([disabled]) svg .center[data-target="quality"] {
+  pointer-events: auto;
 }
 
 /* ── Dialog chrome ────────────────────────────────────────────── */
