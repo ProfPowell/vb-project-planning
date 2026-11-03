@@ -35,7 +35,13 @@ export function viewTransitionSwap(host, swap, prefix = 'vb-vt') {
   const name = `${prefix}-${++counter}`;
   host.style.viewTransitionName = name;
   const tx = document.startViewTransition(swap);
-  tx.finished.finally(() => {
+  // The browser aborts a transition when, e.g., the viewport resizes or
+  // another transition starts. That rejects `ready` (and can reject
+  // `finished`); unhandled, it surfaces as an uncaught exception even though
+  // the DOM swap itself already ran. The swap's own errors still reach
+  // callers through `updateCallbackDone`.
+  tx.ready.catch(() => {});
+  tx.finished.catch(() => {}).finally(() => {
     if (host.style.viewTransitionName === name) {
       host.style.viewTransitionName = '';
     }

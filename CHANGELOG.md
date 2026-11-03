@@ -12,6 +12,11 @@ the project adheres to [Semantic Versioning](https://semver.org/).
   `table-layout: fixed`).
 - `risk-register`: the table scrolls inside its own box on narrow screens
   instead of pushing the page sideways.
+- `traceability-matrix`: same for wide matrices.
+- Interrupted view transitions (a re-render during another re-render, or a
+  viewport resize mid-transition) no longer throw uncaught "Transition was
+  skipped/aborted" errors. Affects every component that re-renders through
+  the shared view-transition helper.
 
 ### Documentation
 - Docs site: removed links to vanilla-breeze.com's retired "UX Planning Pack"
@@ -21,7 +26,7 @@ the project adheres to [Semantic Versioning](https://semver.org/).
   show their real address instead of `vanilla-breeze.dev`; the capacity-plan,
   quality-target and iron-triangle demos load VB's `<form-field>`; five
   working demos that nothing linked to (two full workflows, three recipes)
-  are on the demos index.
+  are on the demos index; demo grids shrink to fit 320px phones.
 - README: `<form-field>` and `<chart-wc>` documented as runtime peers.
 - New `tests/components/docs-site.spec.js` crawls the built site and fails on
   console errors, failed requests, broken links or anchors, orphan pages,
