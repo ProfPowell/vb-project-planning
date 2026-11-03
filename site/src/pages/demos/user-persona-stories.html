@@ -22,9 +22,11 @@
       gap: var(--size-s);
       grid-template-columns: repeat(auto-fit, minmax(min(28ch, 100%), 1fr));
     }
+    main { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--size-l); }
   </style>
 </head>
 <body>
+<main>
   <header>
     <h1>Persona ↔ Stories traceability</h1>
     <p>Add <code>data-list-stories</code> to <code>&lt;user-persona&gt;</code> and the card auto-lists every <code>&lt;user-story&gt;</code> on the page whose <code>persona-id</code> matches the persona's <code>id</code>. The list updates live as stories are added, removed, or relabeled.</p>
@@ -70,7 +72,7 @@
       <button id="removeBtn" type="button">Remove last story</button>
     </p>
   </section>
-
+</main>
   <script type="module" src="/assets/pack/vb-project-planning.js"></script>
 <script>
     const grid = document.querySelector('section.stories-grid');

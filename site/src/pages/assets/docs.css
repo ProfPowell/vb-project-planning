@@ -775,3 +775,41 @@ h1 .pack-badge {
 .attribute-entry .pack-badge {
   align-self: flex-start;
 }
+
+/* ===========================================
+   Sidebar nav target size (WCAG 2.2 SC 2.5.8)
+   The compact tree nav rendered its links ~22px tall; give every link a
+   ≥24px block size so each is a comfortable pointer/touch target.
+   =========================================== */
+
+#nav-drawer a {
+  display: flex;
+  align-items: center;
+  min-block-size: 24px;
+}
+
+/* ===========================================
+   Code-sample token colours (WCAG 1.4.3)
+   Vanilla Breeze maps <code-block>'s --cb-string/--cb-tag/--cb-number/
+   --cb-meta to var(--color-accent) and --cb-keyword/--cb-function/
+   --cb-attribute/--cb-builtin to var(--color-primary). Accent on the code
+   background is ~3.5:1 in the default theme. Pull every token toward the text
+   colour so it keeps its hue but clears 4.5:1 in light AND dark mode (text
+   is near-black in light, near-white in dark, so the mix darkens or lightens
+   as needed) and across themes. Line numbers/comments use the
+   muted text nudged toward the text colour (some themes, e.g.
+   catppuccin-latte, set a muted tone just under 4.5:1).
+   =========================================== */
+
+code-block {
+  --cb-string: color-mix(in oklab, var(--color-accent) 50%, var(--color-text));
+  --cb-tag: color-mix(in oklab, var(--color-accent) 50%, var(--color-text));
+  --cb-number: color-mix(in oklab, var(--color-accent) 50%, var(--color-text));
+  --cb-meta: color-mix(in oklab, var(--color-accent) 50%, var(--color-text));
+  --cb-keyword: color-mix(in oklab, var(--color-primary) 70%, var(--color-text));
+  --cb-function: color-mix(in oklab, var(--color-primary) 70%, var(--color-text));
+  --cb-attribute: color-mix(in oklab, var(--color-primary) 70%, var(--color-text));
+  --cb-builtin: color-mix(in oklab, var(--color-primary) 70%, var(--color-text));
+  --cb-comment: color-mix(in oklab, var(--color-text-muted) 60%, var(--color-text));
+  --cb-line-numbers-color: color-mix(in oklab, var(--color-text-muted) 60%, var(--color-text));
+}

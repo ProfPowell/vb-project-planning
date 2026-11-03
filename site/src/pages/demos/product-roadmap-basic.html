@@ -11,9 +11,11 @@
     body { padding: var(--size-l); background: var(--color-surface); max-inline-size: 78rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--size-l); }
     h1 { font-size: var(--font-size-l); margin: 0; }
     p  { color: var(--color-text-muted); margin: 0; }
+    main { display: flex; flex-direction: column; gap: var(--size-l); }
   </style>
 </head>
 <body>
+<main>
   <h1>FY27 product roadmap (read-only)</h1>
   <p>Themes × quarters with status-coded bars. Authors describe lanes and initiatives in HTML; the component handles axis rendering, bar positioning, and clipping to the visible range.</p>
 
@@ -43,7 +45,7 @@
       </article>
     </section>
   </product-roadmap>
-
+</main>
   <script type="module" src="/assets/pack/vb-project-planning.js"></script>
 </body>
 </html>
