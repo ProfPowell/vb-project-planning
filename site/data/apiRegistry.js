@@ -5795,7 +5795,7 @@ export default {
     "$schema": "../../../schemas/api.schema.json",
     "element": "iron-triangle",
     "type": "web-component",
-    "description": "Triangle-as-UI project-shape constraint surface. Three vertex hit-targets (Scope/Time/Cost) open native <dialog> editors; the center 'Quality' target fires iron-triangle:open-quality with a data-quality-href fallback. Computes capacityPoints from sprintWeeks × sprintCount × teamFTE × focusFactor. Form-associated.",
+    "description": "Triangle-as-UI project-shape constraint surface. Three vertex hit-targets (Scope/Time/Cost) open native <dialog> editors; the center 'Quality' target fires iron-triangle:open-quality with a data-quality-href fallback. Computes capacityPoints from sprintWeeks × sprintCount × teamFTE × focusFactor. Form-associated. Renders a status strip below the SVG: a visually-hidden <output aria-live=polite> capacity readout, a <button aria-pressed> formula/manual switch that opens a manual-capacity dialog, and a visible 'Deadline has passed' warning.",
     "htmlvalidate": {
       "flow": true,
       "permittedContent": [
@@ -5846,14 +5846,14 @@ export default {
         "kind": "native",
         "purpose": "config",
         "type": "boolean",
-        "description": "All inputs disabled"
+        "description": "Fully off: vertex and centre Quality targets leave the tab order (aria-disabled), openEditor() is a no-op, the mode switch and all dialog controls are disabled. setManual() / setFormula() / revise() still work for the host."
       },
       {
         "name": "locked",
         "kind": "host-api",
         "purpose": "semantic-state",
         "type": "boolean",
-        "description": "Read-only mode for shipped vectors"
+        "description": "Read-only mode for shipped shapes: the same editing lock as disabled, but the centre Quality target still opens the quality decision (iron-triangle:open-quality / data-quality-href)"
       }
     ],
     "slots": [],
@@ -7675,13 +7675,6 @@ export default {
         "description": "Base radius in SVG units"
       },
       {
-        "name": "data-show-envelope",
-        "kind": "data",
-        "purpose": "visual-variant",
-        "type": "boolean",
-        "description": "Show the capacity envelope polygon (default true; set to \"false\" to hide)"
-      },
-      {
         "name": "data-min-rationale",
         "kind": "data",
         "purpose": "config",
@@ -7718,14 +7711,14 @@ export default {
         "kind": "native",
         "purpose": "config",
         "type": "boolean",
-        "description": "All inputs disabled"
+        "description": "No editing: axes leave the tab order, openEditor() is a no-op, dialog and footer controls are disabled; also bars the element from form validation"
       },
       {
         "name": "locked",
         "kind": "host-api",
         "purpose": "semantic-state",
         "type": "boolean",
-        "description": "Read-only mode for shipped vectors"
+        "description": "Read-only mode for shipped vectors; same editing lock as disabled, but the value still submits and validates"
       }
     ],
     "slots": [],
@@ -7988,7 +7981,7 @@ export default {
     "$schema": "../../../schemas/api.schema.json",
     "element": "requirement-card",
     "type": "web-component",
-    "description": "Display-only card for ONE NFR ility row. Renders priority + rationale + optional conflict flag for status dashboards and ADR appendices. The prioritization decision itself lives in <nfr-compass>.",
+    "description": "Display-only card for ONE NFR ility row. Renders priority + rationale + optional conflict flag for status dashboards and ADR appendices. The prioritization decision itself lives in <quality-target>.",
     "htmlvalidate": {
       "flow": true,
       "permittedContent": [
