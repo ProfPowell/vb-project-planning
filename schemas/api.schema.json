@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ProfPowell/vb-project-planning/schemas/api.schema.json",
+  "title": "Component API manifest (src/web-components/<name>/api.json)",
+  "description": "The documented public surface of one component. The docs site renders attribute and event tables from it, and tests/unit/api-manifests.test.mjs checks it against the component's code.",
+  "type": "object",
+  "required": ["element", "type", "description", "attributes", "events"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "element": { "type": "string", "pattern": "^[a-z][a-z0-9]*-[a-z0-9-]+$", "description": "Custom element tag name" },
+    "type": { "enum": ["web-component", "custom-element"] },
+    "description": { "type": "string", "minLength": 1 },
+    "htmlvalidate": {
+      "type": "object",
+      "description": "Content model hints for html-validate",
+      "properties": {
+        "flow": { "type": "boolean" },
+        "phrasing": { "type": "boolean" },
+        "permittedContent": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "attributes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "kind", "purpose", "type", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "kind": { "enum": ["host-api", "data", "native"], "description": "host-api: component-defined; data: data-* attribute; native: standard HTML attribute" },
+          "purpose": { "enum": ["config", "semantic-state", "visual-variant"] },
+          "type": { "enum": ["string", "enum", "boolean", "number"] },
+          "values": { "type": "array", "items": { "type": "string" }, "description": "Allowed values when type is enum" },
+          "default": { "type": "string" },
+          "description": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "slots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "description": "Slot name, or \"(default)\" for the unnamed slot" },
+          "description": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "detail", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$|^[a-z]+(-[a-z]+)+$", "description": "<element>:<event>. A few older events are un-namespaced (persona-ready, story-ready, journey-ready, status-changed, priority-changed); new events must use <element>:<event>." },
+          "detail": { "type": "string", "description": "Shape of event.detail, or empty for none" },
+          "description": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "structure": {
+      "type": "array",
+      "description": "Expected light-DOM children",
+      "items": {
+        "type": "object",
+        "required": ["element", "description"],
+        "properties": {
+          "element": { "type": "string" },
+          "required": { "type": "boolean" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "childAttributes": {
+      "type": "array",
+      "description": "Attributes read from light-DOM children",
+      "items": {
+        "type": "object",
+        "required": ["name", "on", "type", "description"],
+        "properties": {
+          "name": { "type": "string" },
+          "on": { "type": "string" },
+          "type": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    }
+  }
+}

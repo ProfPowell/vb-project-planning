@@ -45,6 +45,11 @@ crumbLabel: Web Components
 </section>
 
 <section>
+  <h2>Events</h2>
+  {{ eventsTable("risk-register", apiRegistry) }}
+</section>
+
+<section>
   <h2>Quadrant placement</h2>
   <p>Scores are integers from 1 to 5 (larger values are capped at 5). Each score maps to a grid coordinate with <code>(score − 1) / 4</code>, so 1 sits on the low edge, 3 on the centre line, and 5 on the high edge. A score is in the <strong>high</strong> half only when it is <strong>above 3</strong>; a mid score of 3 counts as low. In the example above, &ldquo;Vendor delay&rdquo; (likelihood 4, impact 3) is high likelihood, low impact and lands in <strong>Mitigate</strong>; &ldquo;Data breach&rdquo; (2, 5) lands in <strong>Plan</strong>.</p>
   <p>The grid uses standard risk-management labels:</p>

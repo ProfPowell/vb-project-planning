@@ -28,7 +28,7 @@
     { "name": "data-item-ids",  "on": "tr", "type": "string",  "description": "Comma-separated linked work-item IDs (exposed as task.itemIds)" }
   ],
   "events": [
-    { "name": "gantt-chart:upgraded",      "detail": null, "description": "Once per connect, in a microtask after setup; a safe signal for the first .tasks assignment (fires for an empty chart too)" },
+    { "name": "gantt-chart:upgraded",      "detail": "", "description": "Once per connect, in a microtask after setup; a safe signal for the first .tasks assignment (fires for an empty chart too)" },
     { "name": "gantt-chart:ready",         "detail": "{ taskCount, dateRange: { start, end } }", "description": "After a render with tasks on connect, and after a src load. dateRange values are YYYY-MM-DD" },
     { "name": "gantt-chart:task-click",    "detail": "{ task }", "description": "When a bar or milestone is clicked or activated with Enter/Space" },
     { "name": "gantt-chart:tasks-changed", "detail": "{ tasks, source: 'property' | 'src' }", "description": "After .tasks is assigned (source 'property') or src data loads (source 'src'), with the normalized tasks" }

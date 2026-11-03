@@ -34,8 +34,7 @@
  * @attr {string} src   - URL to JSON: [{ id, title, likelihood, impact, owner, mitigation }]
  * @attr {string} label - Optional heading shown above the table
  *
- * @fires risk-register:ready  - { count } after first render
- * @fires risk-register:change - { row, field, value } on inline edit
+ * @fires risk-register:ready - { count } after first render
  */
 
 import { registerComponent } from '../../lib/bundle-registry.js';
