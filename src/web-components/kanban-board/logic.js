@@ -18,9 +18,9 @@
  *
  * @fires kanban-board:transfer - Item moved between columns
  * @fires kanban-board:reorder - Item reordered within a column
- * @fires kanban-board:ready - Once after the first render (with src: after the JSON renders)
+ * @fires kanban-board:ready - Once per element, after the first render (with src: after the JSON renders)
  * @fires kanban-board:wip-exceeded - Fired when a drop takes a column over its WIP limit
- * @fires kanban-board:items-changed - { items, source: 'api' | 'drag' }
+ * @fires kanban-board:items-changed - { items, source: 'api' | 'drag' | 'src' }
  * @fires kanban-board:upgraded - Each time the board connects and upgrades
  *
  * @example
@@ -509,6 +509,7 @@ class KanbanBoard extends VBCollection(VBElement) {
   attributeChangedCallback(name, oldValue, newValue) {
     if (oldValue === newValue || !this.#built) return;
     if (name === 'src' && newValue && newValue !== this.#loader.url) this._loadSrc(newValue);
+    if (name === 'src' && !newValue) this.#loader.cancel();   // src removed: drop a pending load, keep the cards
     if (name === 'title') this.#syncTitle();
   }
 
@@ -517,8 +518,9 @@ class KanbanBoard extends VBCollection(VBElement) {
   /**
    * Fetch `{ columns: [{ id, label?, wip?, color?, items: [...] }] }` and
    * replace the board with it. One request per src value; a newer src
-   * aborts an older in-flight one. Fires `kanban-board:ready` once the
-   * data has rendered.
+   * aborts an older in-flight one. Once the data has rendered, fires
+   * `kanban-board:items-changed` (source 'src'), and `kanban-board:ready`
+   * if it has not fired yet (ready is once per element).
    * @param {string} url
    */
   async _loadSrc(url) {
@@ -552,7 +554,9 @@ class KanbanBoard extends VBCollection(VBElement) {
       // viewTransitionSwap runs render synchronously when it can't animate.
       const tx = viewTransitionSwap(this, render, 'kb-vt');
       if (tx) await tx.updateCallbackDone;
-      if (isCurrent()) this.#dispatchReady();
+      if (!isCurrent()) return;
+      this._emit('items-changed', { items: this.items }, 'src');
+      if (!this.#readyFired) this.#dispatchReady();
     } catch (err) {
       console.warn(`[kanban-board] Failed to load src="${url}":`, err);
     }

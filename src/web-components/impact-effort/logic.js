@@ -18,8 +18,8 @@
  * @attr {string} data-id - Stable identifier for the item
  *
  * @fires impact-effort:move - When an item is dragged between quadrants
- * @fires impact-effort:ready - Once after the first render (with src: after the loaded cards are in the DOM)
- * @fires impact-effort:items-changed - { items, source: 'property' } after .items is set
+ * @fires impact-effort:ready - Once per element, after the first render (with src: after the loaded cards are in the DOM)
+ * @fires impact-effort:items-changed - { items, source: 'property' | 'src' } after .items is set or src loads
  * @fires impact-effort:upgraded - Each time the matrix connects and upgrades
  */
 
@@ -331,6 +331,7 @@ class ImpactEffort extends VBElement {
   attributeChangedCallback(name, oldVal, newVal) {
     if (oldVal === newVal || !this.#built) return;
     if (name === 'src' && newVal && newVal !== this.#loader.url) this.#loadFromSrc(newVal);
+    if (name === 'src' && !newVal) this.#loader.cancel();   // src removed: drop a pending load, keep the cards
     if (name === 'title') this.#syncTitle();
   }
 
@@ -339,8 +340,9 @@ class ImpactEffort extends VBElement {
   /**
    * Fetch an array of items (same shape as `.items`) and replace the
    * matrix with it. One request per src value; a newer src aborts an
-   * older in-flight one. `impact-effort:ready` fires once the cards are
-   * in the DOM (after the View Transition's update callback).
+   * older in-flight one. Once the cards are in the DOM (after the View
+   * Transition's update callback) `impact-effort:items-changed` fires with
+   * source 'src', and `impact-effort:ready` if it has not fired yet.
    * @param {string} url
    */
   async #loadFromSrc(url) {
@@ -354,7 +356,12 @@ class ImpactEffort extends VBElement {
       // viewTransitionSwap runs the swap synchronously when it can't animate.
       const tx = viewTransitionSwap(this, () => this.#applyItems(entries), 'ie-vt');
       if (tx) await tx.updateCallbackDone;
-      if (isCurrent()) this.#dispatchReady();
+      if (!isCurrent()) return;
+      this.dispatchEvent(new CustomEvent('impact-effort:items-changed', {
+        detail: { items: this.items, source: 'src' },
+        bubbles: true,
+      }));
+      if (!this.#readyFired) this.#dispatchReady();
     } catch (err) {
       console.warn(`[impact-effort] Failed to load src="${url}":`, err);
     }

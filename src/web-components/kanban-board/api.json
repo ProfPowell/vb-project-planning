@@ -18,9 +18,9 @@
   "events": [
     { "name": "kanban-board:transfer",      "detail": "{ itemId, fromColumn, toColumn, newIndex, item }", "description": "Item moved between columns" },
     { "name": "kanban-board:reorder",       "detail": "{ itemId, column, oldIndex, newIndex }",           "description": "Item reordered within a column" },
-    { "name": "kanban-board:ready",         "detail": "{ columnCount, itemCount }",                       "description": "Fired once after the first render. With src, fired once the JSON has loaded and rendered (and again after each later src change). Not re-fired when the board is moved in the DOM" },
+    { "name": "kanban-board:ready",         "detail": "{ columnCount, itemCount }",                       "description": "Fired once after the first render. With src, fired once the JSON has loaded and rendered. Once per element: not re-fired by a later src change (watch items-changed with source 'src') or when the board is moved in the DOM" },
     { "name": "kanban-board:wip-exceeded",  "detail": "{ column, limit, count }",                         "description": "Fired when a drop takes a column over its WIP limit" },
-    { "name": "kanban-board:items-changed", "detail": "{ items, source: 'api' | 'drag' }",                "description": "Fired after the items array changes: an .items assignment, or a .columns assignment that drops cards (source 'api'), or a drag (source 'drag'). Filter on source to avoid feedback loops" },
+    { "name": "kanban-board:items-changed", "detail": "{ items, source: 'api' | 'drag' | 'src' }",        "description": "Fired after the items array changes: an .items assignment, or a .columns assignment that drops cards (source 'api'), a drag (source 'drag'), or each src load once its data has rendered (source 'src'). Filter on source to avoid feedback loops" },
     { "name": "kanban-board:upgraded",      "detail": "",                                                 "description": "Fired (in a microtask) each time the board connects and upgrades; a safe signal for assigning .columns / .items from a framework" }
   ]
 }

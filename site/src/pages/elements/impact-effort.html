@@ -154,7 +154,7 @@ matrix.addEventListener('impact-effort:move', (e) => {
 
   <section>
     <h2>Data Mode</h2>
-    <p>Load items from a JSON file by setting the <code>src</code> attribute. The file should contain an array of item objects &mdash; the same shape as <code>.items</code> &mdash; each with an <code>id</code>, <code>quadrant</code>, and <code>label</code> (or <code>text</code>). The URL is fetched once; <code>impact-effort:ready</code> fires once the loaded cards are in the DOM, with their counts. Changing <code>src</code> replaces the items (a response for an older URL is ignored).</p>
+    <p>Load items from a JSON file by setting the <code>src</code> attribute. The file should contain an array of item objects &mdash; the same shape as <code>.items</code> &mdash; each with an <code>id</code>, <code>quadrant</code>, and <code>label</code> (or <code>text</code>). The URL is fetched once; <code>impact-effort:ready</code> fires once the loaded cards are in the DOM, with their counts. Changing <code>src</code> replaces the items (the request for an older URL is aborted). <code>ready</code> fires once per matrix; every src load also fires <code>impact-effort:items-changed</code> with <code>source: 'src'</code> once its cards are in the DOM.</p>
 
     <code-block language="json" show-lines label="JSON data format">[
   { "id": "PROJ-101", "quadrant": "quick-wins", "label": "Add keyboard shortcuts" },

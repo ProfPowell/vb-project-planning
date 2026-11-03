@@ -363,6 +363,7 @@ class StoryMap extends VBElement {
   attributeChangedCallback(name, oldValue, newValue) {
     if (oldValue === newValue || !this.#built) return;
     if (name === 'src' && newValue && newValue !== this.#loader.url) this._loadSrc(newValue);
+    if (name === 'src' && !newValue) this.#loader.cancel();   // src removed: drop a pending load, keep the cards
     if (name === 'title') this.#syncTitle();
   }
 
@@ -371,8 +372,9 @@ class StoryMap extends VBElement {
   /**
    * Fetch `{ activities: [{ id, label?, journeyPhase?, stories: [...] }] }`
    * and replace the map with it. One request per src value; a newer src
-   * aborts an older in-flight one. Fires `story-map:ready` once the data
-   * has rendered.
+   * aborts an older in-flight one. Once the data has rendered, fires
+   * `story-map:activities-changed` (source 'src'), and `story-map:ready`
+   * if it has not fired yet (ready is once per element).
    * @param {string} url
    */
   async _loadSrc(url) {
@@ -393,7 +395,12 @@ class StoryMap extends VBElement {
       // viewTransitionSwap runs the swap synchronously when it can't animate.
       const tx = viewTransitionSwap(this, () => this.#renderColumns(metas, children), 'sm-vt');
       if (tx) await tx.updateCallbackDone;
-      if (isCurrent()) this.#dispatchReady();
+      if (!isCurrent()) return;
+      this.dispatchEvent(new CustomEvent('story-map:activities-changed', {
+        detail: { activities: this.activities, source: 'src' },
+        bubbles: true,
+      }));
+      if (!this.#readyFired) this.#dispatchReady();
     } catch (err) {
       console.warn(`[story-map] Failed to load src="${url}":`, err);
     }

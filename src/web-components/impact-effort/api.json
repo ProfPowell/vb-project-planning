@@ -16,8 +16,8 @@
   ],
   "events": [
     { "name": "impact-effort:move",          "detail": "{ itemId, from, to, item }",       "description": "Fired when an item is dragged between quadrants; from and to are quadrant names" },
-    { "name": "impact-effort:ready",         "detail": "{ quadrantCounts }",               "description": "Fired once after the first render, with the number of items per quadrant. With src, fired once the loaded cards are in the DOM (after the View Transition's update), and again after each later src change. Not re-fired when the matrix is moved in the DOM" },
-    { "name": "impact-effort:items-changed", "detail": "{ items, source: 'property' }",    "description": "Fired after each .items assignment" },
+    { "name": "impact-effort:ready",         "detail": "{ quadrantCounts }",               "description": "Fired once after the first render, with the number of items per quadrant. With src, fired once the loaded cards are in the DOM (after the View Transition's update). Once per element: not re-fired by a later src change (watch items-changed with source 'src') or when the matrix is moved in the DOM" },
+    { "name": "impact-effort:items-changed", "detail": "{ items, source: 'property' | 'src' }", "description": "Fired after each .items assignment (source 'property') and after each src load's cards are in the DOM (source 'src')" },
     { "name": "impact-effort:upgraded",      "detail": "",                                 "description": "Fired (in a microtask) each time the matrix connects and upgrades" }
   ]
 }

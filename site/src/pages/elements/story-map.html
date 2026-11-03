@@ -146,7 +146,7 @@ map.addEventListener('story-map:reorder', (e) => {
   <section>
     <h2>JSON Loading</h2>
     <p>Load the entire story map from a JSON file using the <code>src</code> attribute. The component creates activity columns with <code>&lt;user-story&gt;</code> cards automatically: <code>persona</code>, <code>action</code>, and <code>benefit</code> become <code>&lt;span slot="…"&gt;</code> children, <code>title</code> an <code>&lt;h3 slot="title"&gt;</code>, and <code>id</code> / <code>storyId</code>, <code>priority</code>, <code>status</code>, <code>points</code>, and <code>detail</code> (default <code>compact</code>) the matching attributes.</p>
-    <p>The URL is fetched once and <code>story-map:ready</code> fires after the stories have rendered. Changing <code>src</code> loads the new URL and replaces the map (a response for an older URL is ignored). Moving the map in the DOM keeps its stories and does not refetch.</p>
+    <p>The URL is fetched once and <code>story-map:ready</code> fires after the stories have rendered. Changing <code>src</code> loads the new URL and replaces the map (the request for an older URL is aborted). <code>ready</code> fires once per map; every src load also fires <code>story-map:activities-changed</code> with <code>source: 'src'</code> after it renders. Moving the map in the DOM keeps its stories and does not refetch.</p>
 
     <code-block language="html" show-lines label="Loading from JSON" data-escape><story-map src="/data/story-map.json"></story-map></code-block>
 

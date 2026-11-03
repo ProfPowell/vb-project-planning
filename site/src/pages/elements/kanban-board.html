@@ -189,7 +189,7 @@ board.addEventListener('kanban-board:items-changed', (e) =&gt; {
 
 <section>
     <h2>JSON Data Mode</h2>
-    <p>Set the <code>src</code> attribute to load board data from a JSON URL. The URL is fetched once; <code>kanban-board:ready</code> fires after the data has rendered. Changing <code>src</code> loads the new URL and replaces the board (a response for an older URL is ignored). Moving the board in the DOM keeps the loaded cards and does not refetch.</p>
+    <p>Set the <code>src</code> attribute to load board data from a JSON URL. The URL is fetched once; <code>kanban-board:ready</code> fires after the data has rendered. Changing <code>src</code> loads the new URL and replaces the board (the request for an older URL is aborted). <code>ready</code> fires once per board; every src load that renders also fires <code>kanban-board:items-changed</code> with <code>source: 'src'</code>, so listen for that to react to later loads. Moving the board in the DOM keeps the loaded cards and does not refetch.</p>
     <p>Items with a <code>storyId</code>, <code>persona</code>, <code>action</code>, or <code>benefit</code> field are rendered as <code>&lt;user-story&gt;</code> cards: <code>persona</code>, <code>action</code>, and <code>benefit</code> become <code>&lt;span slot="…"&gt;</code> children, <code>title</code> an <code>&lt;h3 slot="title"&gt;</code>, and <code>storyId</code>, <code>priority</code>, <code>status</code>, <code>points</code>, and <code>detail</code> (default <code>minimal</code>) the matching attributes. All other items are rendered as <code>&lt;article class="kb-card"&gt;</code> showing <code>text</code> (or <code>label</code> / <code>title</code>).</p>
 
     <code-block language="json" label="JSON schema">{

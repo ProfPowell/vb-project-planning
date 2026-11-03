@@ -17,8 +17,8 @@
   "events": [
     { "name": "story-map:reorder",            "detail": "{ itemId, activity, oldIndex, newIndex }",      "description": "Item reordered within a column" },
     { "name": "story-map:transfer",           "detail": "{ itemId, fromActivity, toActivity, newIndex }", "description": "Item moved between columns" },
-    { "name": "story-map:ready",              "detail": "{ activityCount, storyCount }",                  "description": "Fired once after the first render. With src, fired once the JSON has loaded and rendered (and again after each later src change). Not re-fired when the map is moved in the DOM" },
-    { "name": "story-map:activities-changed", "detail": "{ activities, source: 'property' }",             "description": "Fired after each .activities assignment" },
+    { "name": "story-map:ready",              "detail": "{ activityCount, storyCount }",                  "description": "Fired once after the first render. With src, fired once the JSON has loaded and rendered. Once per element: not re-fired by a later src change (watch activities-changed with source 'src') or when the map is moved in the DOM" },
+    { "name": "story-map:activities-changed", "detail": "{ activities, source: 'property' | 'src' }",     "description": "Fired after each .activities assignment (source 'property') and after each src load has rendered (source 'src')" },
     { "name": "story-map:upgraded",           "detail": "",                                               "description": "Fired (in a microtask) each time the map connects and upgrades" }
   ]
 }
