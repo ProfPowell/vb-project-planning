@@ -72,7 +72,7 @@ class KanbanBoard extends VBCollection(VBElement) {
   #loader = new SrcLoader();
 
   setup() {
-    if (!this.#groupId) this.#groupId = `kb-${++KanbanBoard.#instanceCount}`;
+    this.#ensureGroupId();
 
     if (!this.#built) {
       this.#built = true;
@@ -451,6 +451,9 @@ class KanbanBoard extends VBCollection(VBElement) {
    * @returns {HTMLDivElement}
    */
   #assembleShell(children = []) {
+    // `.columns` may be set before the first connect (JS-first), so the
+    // drag-surface group id is assigned here, not only in setup().
+    this.#ensureGroupId();
     this.#surfaces = {};
     this.#columnEls = {};
     const shell = document.createElement('div');
@@ -584,6 +587,11 @@ class KanbanBoard extends VBCollection(VBElement) {
   }
 
   // ── Helpers ──────────────────────────────────────────
+
+  /** Assign this board's drag-surface group id once. */
+  #ensureGroupId() {
+    if (!this.#groupId) this.#groupId = `kb-${++KanbanBoard.#instanceCount}`;
+  }
 
   /**
    * Insert the columns shell just before the live region (after the title).

@@ -256,6 +256,24 @@ test.describe('kanban-board — lifecycle', () => {
     expect(state.changed).toEqual([{ source: 'api', n: 5 }]);
   });
 
+  test('JS-first: .columns set before connect gives every surface the board group', async ({ page }) => {
+    await page.goto(demoPage);
+    await page.waitForSelector('kanban-board[data-upgraded]');
+    const state = await page.evaluate(() => {
+      const board = document.createElement('kanban-board');
+      board.columns = [{ id: 'todo', label: 'To Do' }, { id: 'done', label: 'Done' }];
+      document.body.appendChild(board);
+      const groups = [...board.querySelectorAll('drag-surface')].map((s) => s.getAttribute('group'));
+      const others = [...document.querySelectorAll('kanban-board')].filter((b) => b !== board)
+        .flatMap((b) => [...b.querySelectorAll('drag-surface')].map((s) => s.getAttribute('group')));
+      return { groups, others };
+    });
+    expect(state.groups).toHaveLength(2);
+    expect(state.groups[0]).toBeTruthy();
+    expect(state.groups[1]).toBe(state.groups[0]);
+    expect(state.others).not.toContain(state.groups[0]);
+  });
+
   test('two src boards on one page render independently', async ({ page }) => {
     const a = await routeJson(page, '**/fixtures/a.json', { columns: [{ id: 'x', items: [{ id: 'a1', text: 'A one' }] }, { id: 'y', items: [] }] });
     const b = await routeJson(page, '**/fixtures/b.json', { columns: [{ id: 'x', items: [{ id: 'b1', text: 'B one' }, { id: 'b2', text: 'B two' }] }] });
