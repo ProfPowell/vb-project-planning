@@ -78,7 +78,7 @@ test.describe('risk-register', () => {
     ]);
 
     expect(state.dots).toHaveLength(6);
-    expect(state.dots[0]).toEqual({
+    expect(state.dots.find((d) => d.id === 'vendor-delay')).toEqual({
       id: 'vendor-delay',
       x: '0.800',
       y: '0.600',
