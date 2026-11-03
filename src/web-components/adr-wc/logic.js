@@ -19,9 +19,11 @@
  * @attr {string}  superseded-by - Comma-separated ADR IDs that supersede this
  * @attr {string}  detail        - full | compact | minimal
  * @attr {boolean} compact       - Alias for detail="compact"
- * @attr {string}  src           - URL to JSON data
+ * @attr {string}  src           - URL to JSON data (fetched once per value)
  *
- * @fires adr-wc:ready - After render with { adrId, status }
+ * @fires adr-wc:ready        - Once, after the first render (after the src data renders when src is set), detail: { adrId, title, status }
+ * @fires adr-wc:upgraded     - Once, after first connect
+ * @fires adr-wc:data-changed - After .data assignment, detail: { data, source: 'property' }
  *
  * @example
  * <adr-wc adr-id="ADR-001" status="accepted">
@@ -38,7 +40,10 @@
 
 import { styles } from './styles.js';
 import { registerComponent } from '../../lib/bundle-registry.js';
-import { esc, lucideSvg } from '../_ux-base.js';
+import { parseISODate, formatDate } from '../../lib/dates.js';
+import {
+  esc, lucideSvg, UXShadowElement, lookup, fillSlot, slottedChild, splitList, detailLevel, markEmptySections,
+} from '../_ux-base.js';
 
 /* ── Status metadata ──────────────────────────────── */
 
@@ -61,7 +66,9 @@ const ICONS = {
 
 /* ── Component ─────────────────────────────────────── */
 
-class AdrWc extends HTMLElement {
+class AdrWc extends UXShadowElement {
+  static readyEvent = 'adr-wc:ready';
+
   static get observedAttributes() {
     return [
       'adr-id', 'status',
@@ -70,48 +77,14 @@ class AdrWc extends HTMLElement {
     ];
   }
 
-  #slotCache = new Map();
+  /* ── Lifecycle (see UXShadowElement) ──────────── */
 
-  constructor() {
-    super();
-    this.attachShadow({ mode: 'open' });
-  }
-
-  /* ── Slot caching ───────────────────────────────── */
-
-  #cacheSlotValues() {
-    for (const child of [...this.children]) {
-      const slotName = child.getAttribute('slot');
-      if (slotName) {
-        this.#slotCache.set(slotName, child.textContent.trim());
-      }
-    }
-  }
-
-  /* ── Lifecycle ─────────────────────────────────── */
-
-  connectedCallback() {
-    this.#cacheSlotValues();
+  _setup() {
     if (this.adrId && !this.id) this.id = this.adrId;
-    if (this.hasAttribute('src')) {
-      this._loadSrc(this.getAttribute('src'));
-    }
-    this.#render();
-    this.setAttribute('data-upgraded', '');
   }
 
-  disconnectedCallback() {
-    this.removeAttribute('data-upgraded');
-  }
-
-  attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue !== newValue && this.shadowRoot) {
-      if (name === 'src' && this.isConnected) {
-        this._loadSrc(newValue);
-      } else {
-        this.#render();
-      }
-    }
+  _readyDetail() {
+    return { adrId: this.adrId, title: this.adrTitle, status: this.status };
   }
 
   /* ── Getters ───────────────────────────────────── */
@@ -121,31 +94,20 @@ class AdrWc extends HTMLElement {
 
   /** Read the title from the slotted heading's text content */
   get adrTitle() {
-    const slotted = this.querySelector('[slot="title"]');
-    return slotted?.textContent?.trim() || this.#slotCache.get('title') || '';
+    return this._slotText('title');
   }
 
   /** Read the date from the slotted <time>'s datetime attribute or text */
   get adrDate() {
-    const slotted = this.querySelector('[slot="date"]');
-    return slotted?.getAttribute('datetime') || slotted?.textContent?.trim() || this.#slotCache.get('date') || '';
+    const slotted = slottedChild(this, 'date');
+    return slotted?.getAttribute('datetime') || this._slotText('date');
   }
 
-  get supersedes() {
-    const raw = this.getAttribute('supersedes') || '';
-    return raw ? raw.split(',').map(s => s.trim()).filter(Boolean) : [];
-  }
+  get supersedes() { return splitList(this.getAttribute('supersedes')); }
 
-  get supersededBy() {
-    const raw = this.getAttribute('superseded-by') || '';
-    return raw ? raw.split(',').map(s => s.trim()).filter(Boolean) : [];
-  }
+  get supersededBy() { return splitList(this.getAttribute('superseded-by')); }
 
-  get _detailLevel() {
-    if (this.getAttribute('detail')) return this.getAttribute('detail');
-    if (this.hasAttribute('compact')) return 'compact';
-    return 'full';
-  }
+  get _detailLevel() { return detailLevel(this); }
 
   get _minimalLabel() {
     return this.adrTitle || this.adrId || 'ADR';
@@ -174,19 +136,13 @@ class AdrWc extends HTMLElement {
    * call. Idempotent for repeat calls.
    */
   set data(value) {
-    if (!value || typeof value !== 'object') return;
-    this._applyData(value);
-    this.#cacheSlotValues();
-    if (this.shadowRoot) this.#render();
-    this.dispatchEvent(new CustomEvent('adr-wc:data-changed', {
-      detail: { data: this.data, source: 'property' },
-      bubbles: true, composed: true,
-    }));
+    this._setData(value);
   }
 
   /**
    * Apply a data record to attributes + slotted children. Used by both
-   * the .data setter and async _loadSrc.
+   * the .data setter and the src loader. Slotted children are created only
+   * when absent (authored content wins).
    * @param {Record<string, unknown>} data
    */
   _applyData(data) {
@@ -201,73 +157,48 @@ class AdrWc extends HTMLElement {
       this.setAttribute('superseded-by', Array.isArray(data.supersededBy) ? data.supersededBy.join(',') : String(data.supersededBy));
     }
 
-    if (data.title && !this.querySelector('[slot="title"]')) {
-      const h = document.createElement('h3');
-      h.slot = 'title';
-      h.textContent = String(data.title);
-      this.appendChild(h);
-    }
-    if (data.date && !this.querySelector('[slot="date"]')) {
+    fillSlot(this, 'title', data.title, { tag: 'h3' });
+    if (data.date && !slottedChild(this, 'date')) {
+      // A calendar date: YYYY-MM-DD is local midnight, so April 1 stays
+      // April 1 west of UTC (new Date('2026-04-01') would show March 31).
+      const raw = String(data.date);
+      const day = parseISODate(raw);
       const t = document.createElement('time');
       t.slot = 'date';
-      t.setAttribute('datetime', String(data.date));
-      t.textContent = new Date(String(data.date)).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+      t.setAttribute('datetime', raw);
+      t.textContent = day ? formatDate(day) : raw;
       this.appendChild(t);
     }
-    for (const key of ['context', 'decision']) {
-      if (data[key] && !this.querySelector(`[slot="${key}"]`)) {
-        const p = document.createElement('p');
-        p.slot = key;
-        p.textContent = String(data[key]);
-        this.appendChild(p);
-      }
-    }
-    if (data.consequences && !this.querySelector('[slot="consequences"]')) {
-      const ul = document.createElement('ul');
-      ul.slot = 'consequences';
-      const items = Array.isArray(data.consequences) ? data.consequences : [data.consequences];
-      for (const item of items) {
-        const li = document.createElement('li');
-        li.textContent = String(item);
-        ul.appendChild(li);
-      }
-      this.appendChild(ul);
-    }
+    fillSlot(this, 'context', data.context);
+    fillSlot(this, 'decision', data.decision);
+    fillSlot(this, 'consequences', data.consequences, { list: true });
   }
 
-  /* ── JSON loading ──────────────────────────────── */
+  /* ── JSON loading states ───────────────────────── */
 
-  async _loadSrc(url) {
-    if (!url) return;
-    const root = /** @type {ShadowRoot} */ (this.shadowRoot);
-    root.innerHTML = `<style>${styles}</style><div class="state-msg">Loading\u2026</div>`;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+  _renderLoading() {
+    /** @type {ShadowRoot} */ (this.shadowRoot).innerHTML =
+      `<style>${styles}</style><div class="state-msg">Loading\u2026</div>`;
+  }
 
-      this._applyData(data);
-      this.#cacheSlotValues();
-      this.#render();
-    } catch (err) {
-      root.innerHTML = `<style>${styles}</style>` +
-        `<div class="state-msg state-msg--error">Could not load: ${esc(/** @type {Error} */ (err).message)}</div>`;
-    }
+  /** @param {Error} err */
+  _renderError(err) {
+    /** @type {ShadowRoot} */ (this.shadowRoot).innerHTML = `<style>${styles}</style>` +
+      `<div class="state-msg state-msg--error">Could not load: ${esc(err.message)}</div>`;
   }
 
   /* ── Render ────────────────────────────────────── */
 
-  #render() {
+  _render() {
     const root = /** @type {ShadowRoot} */ (this.shadowRoot);
-    const statusInfo = STATUSES[this.status] || STATUSES.proposed;
+    const statusInfo = lookup(STATUSES, this.status, 'proposed');
     const level = this._detailLevel;
     const ariaLabel = this.adrId ? `ADR: ${esc(this.adrId)}` : 'Architectural Decision Record';
-    const hasDate = !!this.querySelector('[slot="date"]') || this.#slotCache.has('date');
+    const hasDate = !!slottedChild(this, 'date') || this._slotCache.has('date');
 
     if (level === 'minimal') {
       root.innerHTML = `<style>${styles}</style>
-        <article class="adr-card adr-card--minimal" role="article" aria-label="${ariaLabel}"
-          tabindex="0">
+        <article class="adr-card adr-card--minimal" role="article" aria-label="${ariaLabel}">
           <div class="adr-body">
             <div class="adr-meta">
               ${this.adrId ? `<span class="adr-id">${esc(this.adrId)}</span>` : ''}
@@ -350,24 +281,7 @@ class AdrWc extends HTMLElement {
 
       </article>`;
 
-    // Compact: mark empty slot sections
-    if (level === 'compact') {
-      for (const section of root.querySelectorAll('.adr-section')) {
-        const slot = section.querySelector('slot');
-        if (slot && slot.assignedNodes().length === 0) {
-          section.setAttribute('data-empty', '');
-        }
-      }
-    }
-
-    this.dispatchEvent(new CustomEvent('adr-wc:ready', {
-      detail: {
-        adrId: this.adrId,
-        title: this.adrTitle,
-        status: this.status,
-      },
-      bubbles: true, composed: true,
-    }));
+    if (level === 'compact') markEmptySections(root, '.adr-section');
   }
 }
 
