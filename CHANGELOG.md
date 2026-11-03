@@ -6,6 +6,143 @@ the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-11-03
+
+A correctness, accessibility and documentation release covering every
+component. Some fixes change observable behaviour; those are listed under
+**Changed** so integrators can check them.
+
+### Security
+- Data from `src` JSON and from author markup is now escaped everywhere it is
+  written into HTML. Script could run from crafted values in `user-journey`
+  (story ids, persona id, phase emotion), `burndown-chart` (scope-change dates
+  and the `unit` attribute), `work-item` (assignee initials), and
+  `user-persona` (avatar URL inside an unquoted CSS `url()`). One shared
+  escaper (`src/lib/escape.js`) replaces three divergent copies.
+
+### Fixed
+- `kanban-board`, `story-map`: `src` no longer re-fetches in an endless loop.
+- `user-persona`, `user-story`, `user-journey`, `empathy-map`, `work-item`,
+  `adr-wc`: one fetch per `src` value (it was two on every upgrade, with no
+  ordering guarantee); newer values abort older requests.
+- Moving any component in the DOM (for example dragging a card between
+  kanban columns) keeps its content and state. It no longer re-fetches,
+  re-fires `ready`, empties the board, or duplicates titles, wrappers and
+  live regions. Affects kanban-board, story-map, impact-effort,
+  quadrant-grid, gantt-chart, review-surface and the six record cards.
+- Dates are calendar days in local time everywhere (`src/lib/dates.js`):
+  `gantt-chart` and `adr-wc` no longer show the day before west of UTC;
+  `burndown-chart` no longer repeats or drops a day across a DST change;
+  gantt quarter ticks no longer slip a month for ranges starting on the 31st.
+- `product-roadmap`: a click selects without rescheduling; end dates are
+  inclusive (same-day and single-quarter initiatives no longer vanish);
+  drags snap to the nearest period; cross-lane moves work (the old HTML5
+  drag path could never fire `move`).
+- `gantt-chart`: dependency arrows line up with `compact` and grouped rows;
+  each chart has its own arrowhead marker; `.tasks` survives a move; `src`
+  loads when set before connect; progress `75` means 75%, not 7500%.
+- `risk-register`: Severity is computed as Likelihood × Impact. The table's
+  product rollup multiplied every number in the row, so a title like "2FA
+  rollout" or a mitigation like "3 vendor quotes" changed the score. Mid
+  scores (3) now sit on the low side of the quadrant line.
+- `review-surface`: pins survive a move and pre-connect `.pins`; Resolve and
+  Reply work on pins loaded from `src` or `.pins`; a property-set adapter is
+  no longer replaced.
+- `kanban-board`, `story-map`, `impact-effort`: JSON-mode `<user-story>`
+  cards get slotted content (they rendered empty). `.columns` keeps existing
+  cards. impact-effort's `.items` getter reflects drags and HTML-authored
+  cards are not duplicated by the first `.items` assignment.
+- `story-map`: assigning `.activities` no longer stacks listeners (events
+  fired N+1 times).
+- `quadrant-grid`: clusters recompute after a drag; read-only pins no longer
+  leave empty chips.
+- `user-persona`: the `name` and `quote` attributes work; `src`/`.data`
+  render bio, goals, frustrations and behaviors; a second `.data` updates.
+- `empathy-map`: an edited quadrant no longer resurrects cleared slotted
+  items; `closeQuadrant()` only acts on an open editor.
+- `user-story`: each story has its own detail dialog, removed on close.
+- `traceability-matrix`: links resolve via `story-id`/`item-id` (new
+  `match-attr` picks one); rows and columns without ids can be highlighted;
+  highlights are cleared when the matrix is removed.
+
+### Accessibility
+- `review-surface`: pins are exposed as buttons (the overlay was
+  `role="img"`, hiding them); focus moves into the popover and back; Escape
+  works; announcements are no longer wiped by re-renders.
+- Keyboard support: `product-roadmap` bars (select; in editable mode arrows
+  move, Shift+arrows resize, Alt+Up/Down changes lane), `gantt-chart` bars
+  (`role="button"`), `traceability-matrix` cells (buttons with
+  `aria-pressed`), `user-story`'s minimal card (a real button with
+  `aria-haspopup="dialog"`).
+- Status is no longer colour-only in gantt-chart and product-roadmap.
+- `quadrant-grid` DOM order matches the visual order (SWOT reads Strengths
+  first).
+- Live regions announce card and column labels, not generated ids.
+- `user-persona`, `user-story`, `empathy-map` section titles are real
+  headings; `empathy-map` returns focus to the edit button after Done/Escape.
+- `work-item` and `adr-wc` minimal cards are no longer empty tab stops.
+- `copy-init` announces through one body-level live region instead of
+  changing the button's accessible name.
+
+### Changed
+- `copy-init`: the synthetic `copy` / `paste` CustomEvents are now
+  `vb:copy` / `vb:paste` (native-named events broke page handlers reading
+  `clipboardData`). **Breaking for listeners on the old names.**
+- `*:ready` (and `persona-ready`, `story-ready`, `journey-ready`) fire once
+  per element; attribute changes and moves no longer re-fire them.
+- New `<tag>:upgraded` events on review-surface and the six record cards;
+  `*:upgraded` fires on every connect for VBElement components (as before;
+  the docs used to say once).
+- `review-surface`: adapter `update(id, changes, pin)` receives the full pin
+  and inserts it if missing; `.pins` set before connect wins over the
+  adapter's first load.
+- `risk-register`: the Severity `<th>` carries `data-severity` instead of
+  `data-rollup`; severity cells carry `data-sort-value`; dots carry
+  `data-quadrant`; dot coordinates use `(v-1)/4`.
+- `traceability-matrix`: cells contain buttons.
+- `gantt-chart`: bar role is `button`; `ready`'s `dateRange` is `YYYY-MM-DD`;
+  assigning `.tasks` replaces the authored table with a generated one; an
+  empty chart now upgrades.
+- `product-roadmap`: bars are one day wider (inclusive end); drags write the
+  inclusive end date; native `draggable` is gone.
+- `burndown-chart`: `start`, `end`, `total`, `unit`, `label` and `weekends`
+  re-render live.
+- `quadrant-grid`: a pin dragged to another quadrant drops its coordinates
+  and joins that quadrant's stack.
+- `impact-effort`: entries read `{ id, quadrant, label }` (`text` still
+  accepted).
+- `user-story` minimal card is a `<button>`; its points badge reads "8 story
+  points" to assistive tech.
+
+### Removed
+- Documented-but-nonexistent API: `title`/`summary` attributes on
+  user-journey and empathy-map, `role`/`age`/`location` slots on
+  user-persona, and the never-fired `risk-register:change` event.
+- Dead code: `registerEffect` (and its load-time `matchMedia`),
+  `portraitByIndex`, `defaultFormulaText`, quality-target's envelope and
+  abbreviation helpers, and unused `_resolve()` / slot caches.
+
+### Documentation
+- Every component's `api.json` lists the events it dispatches; doc pages
+  render attribute and event tables from it; broken examples fixed
+  (story-map `.activities` shape, impact-effort `label`, review-surface's
+  hanging `await …:upgraded` and percentage coordinates, adr-wc's README tag
+  name).
+- `schemas/api.schema.json` now exists, and a unit test checks every
+  manifest against it and against the component's code.
+
+### Internal
+- Specs now test the freshly built `dist/` bundle (they silently used the
+  bundle the last docs publish copied). `VB_TEST_PORT` allows parallel runs.
+- CI and the release workflow run `npm run typecheck` (tsc over JSDoc) and
+  unit tests in `America/Los_Angeles`.
+- Shared helpers: `src/lib/dates.js`, `escape.js`, `hash.js`,
+  `board-surface.js`, and a `UXShadowElement` base in `_ux-base.js`.
+- 196 component specs (was 103) plus 88 unit checks.
+- Docs site: vanilla-breeze 0.5, cook-ssg 2.4, pagefind 1.6; the published
+  Lucide icon set is pruned to referenced icons (docs/ 15 MB → 8 MB).
+- @playwright/test 1.64, esbuild 0.28 (identical dist output).
+
 ## [0.2.1] - 2026-11-02
 
 ### Fixed
@@ -132,7 +269,8 @@ Initial release, decomposed out of `vanilla-breeze` core.
 - `gantt-chart` dependency arrows now render (an invalid `%` unit in the SVG
   path data was silently dropping them).
 
-[Unreleased]: https://github.com/ProfPowell/vb-project-planning/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/ProfPowell/vb-project-planning/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/ProfPowell/vb-project-planning/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/ProfPowell/vb-project-planning/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/ProfPowell/vb-project-planning/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ProfPowell/vb-project-planning/releases/tag/v0.1.0
