@@ -361,6 +361,11 @@ traceability-matrix {
   color: var(--color-text, #1a1a1a);
 }
 @scope (traceability-matrix) {
+  :scope > data-table {
+    display: block;
+    max-inline-size: 100%;
+    overflow-x: auto;
+  }
   .tm-label {
     display: block;
     font-size: var(--font-size-xs, 0.75rem);

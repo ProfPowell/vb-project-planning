@@ -2274,7 +2274,10 @@ function viewTransitionSwap(host, swap, prefix = "vb-vt") {
   const name = `${prefix}-${++counter}`;
   host.style.viewTransitionName = name;
   const tx = document.startViewTransition(swap);
-  tx.finished.finally(() => {
+  tx.ready.catch(() => {
+  });
+  tx.finished.catch(() => {
+  }).finally(() => {
     if (host.style.viewTransitionName === name) {
       host.style.viewTransitionName = "";
     }

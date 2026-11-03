@@ -11,6 +11,14 @@ traceability-matrix {
 }
 
 @scope (traceability-matrix) {
+  /* Wide matrices scroll inside their own box instead of pushing the page
+     sideways on narrow screens. */
+  :scope > data-table {
+    display: block;
+    max-inline-size: 100%;
+    overflow-x: auto;
+  }
+
   .tm-label {
     display: block;
     font-size: var(--font-size-xs, 0.75rem);
