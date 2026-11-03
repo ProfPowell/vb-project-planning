@@ -54,10 +54,12 @@ const styles = `
     --_tint-row-pain: color-mix(in oklch, var(--color-error,   #ef4444) 8%,  var(--_card));
     --_tint-row-opp:  color-mix(in oklch, var(--color-success, #22c55e) 8%,  var(--_card));
     --_chip-type-bg:  color-mix(in oklch, var(--_accent)  18%, var(--_card));
-    --_chip-type-fg:  var(--color-accent-text, var(--_accent));
+    /* Chip text = the hue pulled toward the theme text colour, so it stays
+       >= 4.5:1 on its tint in light and dark themes (the raw accent does not). */
+    --_chip-type-fg:  color-mix(in oklab, var(--_accent) 55%, var(--_text));
     --_chip-story-bg: color-mix(in oklch, var(--_link)    18%, var(--_card));
     --_chip-story-bg-hover: color-mix(in oklch, var(--_link) 28%, var(--_card));
-    --_chip-story-fg: var(--_link);
+    --_chip-story-fg: color-mix(in oklab, var(--_link) 50%, var(--_text));
     --_grid-head-bg:  color-mix(in oklch, var(--_primary) 85%, var(--color-text, #000));
   }
 
@@ -219,7 +221,6 @@ const styles = `
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    opacity: 0.55;
     text-align: left;
     white-space: nowrap;
     min-width: 100px;

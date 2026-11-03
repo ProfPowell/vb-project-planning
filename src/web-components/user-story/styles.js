@@ -86,8 +86,13 @@ const styles = `
   gap: var(--_space-xs);
 }
 
+/* --_hue is the badge colour, set inline per priority / status. The text is
+   that hue pulled toward the theme text colour, over a 12% tint of it, so it
+   stays >= 4.5:1 in light and dark themes while keeping its hue family. */
 .priority-badge,
 .status-badge {
+  color: color-mix(in oklab, var(--_hue, var(--_muted)) 55%, var(--_text));
+  background: color-mix(in oklab, var(--_hue, var(--_muted)) 12%, transparent);
   font-size: 11px;
   padding: 4px 10px;
   border-radius: var(--_radius-full);

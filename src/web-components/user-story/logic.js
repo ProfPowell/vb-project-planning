@@ -459,10 +459,10 @@ class UserStory extends UXShadowElement {
             </div>
             <div class="story-badges">
               <span class="priority-badge" part="priority"
-                style="color: ${priorityInfo.color}; background: ${priorityInfo.bg};"
+                style="--_hue: ${priorityInfo.color}"
               >${esc(priorityInfo.label)}</span>
               <span class="status-badge" part="status"
-                style="color: ${statusInfo.color}; background: ${statusInfo.bg};"
+                style="--_hue: ${statusInfo.color}"
               >${esc(statusInfo.label)}</span>
               ${this.points ? `<span class="points-badge" part="points">${esc(this.points)}<span class="visually-hidden"> story points</span></span>` : ''}
             </div>

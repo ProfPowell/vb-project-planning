@@ -35,14 +35,16 @@ export function initials(name) {
 }
 
 /**
- * Generate a deterministic HSL color from a name string.
+ * Generate a deterministic avatar background colour from a name string.
+ * The hue varies with the name; OKLCH lightness is fixed low enough that
+ * white initials on it meet WCAG AA (>= 4.5:1) at every hue.
  * @param {string} name
- * @returns {string} HSL color string
+ * @returns {string} oklch() colour string
  */
 export function hashColor(name) {
   const hash = stringHash(name);
   const hue = ((hash % 360) + 360) % 360;
-  return `hsl(${hue}, 65%, 55%)`;
+  return `oklch(48% 0.13 ${hue})`;
 }
 
 /**

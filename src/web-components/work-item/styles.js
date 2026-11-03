@@ -91,6 +91,11 @@ const styles = `
   padding: 3px 8px;
   border-radius: var(--_radius-s);
   text-transform: capitalize;
+  /* --_hue comes from a VB theme token per type (below). The text is the
+     hue pulled toward the theme text colour, over a 12% tint of it, so it
+     stays >= 4.5:1 in light and dark themes. */
+  color: color-mix(in oklab, var(--_hue, var(--_muted)) 55%, var(--_text));
+  background: color-mix(in oklab, var(--_hue, var(--_muted)) 12%, transparent);
 }
 
 .wi-type svg {
@@ -98,13 +103,12 @@ const styles = `
   height: 12px;
 }
 
-/* Type colors — driven by VB theme tokens, with color-mix surfaces so the
-   pill background shifts with the active theme. */
-.wi-type[data-type="task"]    { color: var(--color-info,    #3b82f6); background: color-mix(in oklch, var(--color-info,    #3b82f6) 12%, transparent); }
-.wi-type[data-type="bug"]     { color: var(--color-error,   #dc2626); background: color-mix(in oklch, var(--color-error,   #dc2626) 12%, transparent); }
-.wi-type[data-type="chore"]   { color: var(--color-text-muted, #6b7280); background: color-mix(in oklch, var(--color-text-muted, #6b7280) 12%, transparent); }
-.wi-type[data-type="spike"]   { color: var(--color-accent,  #8b5cf6); background: color-mix(in oklch, var(--color-accent,  #8b5cf6) 12%, transparent); }
-.wi-type[data-type="feature"] { color: var(--color-success, #059669); background: color-mix(in oklch, var(--color-success, #059669) 12%, transparent); }
+/* Type hues — VB theme tokens, so the pills follow the active theme. */
+.wi-type[data-type="task"]    { --_hue: var(--color-info, #3b82f6); }
+.wi-type[data-type="bug"]     { --_hue: var(--color-error, #dc2626); }
+.wi-type[data-type="chore"]   { --_hue: var(--color-text-muted, #6b7280); }
+.wi-type[data-type="spike"]   { --_hue: var(--color-accent, #8b5cf6); }
+.wi-type[data-type="feature"] { --_hue: var(--color-success, #059669); }
 
 /* ── Badges ────────────────────────────────────────── */
 .wi-badges {
@@ -113,8 +117,13 @@ const styles = `
   gap: var(--_space-xs);
 }
 
+/* --_hue is the badge colour, set inline per priority / status. The text is
+   that hue pulled toward the theme text colour, over a 12% tint of it, so it
+   stays >= 4.5:1 in light and dark themes while keeping its hue family. */
 .wi-priority,
 .wi-status {
+  color: color-mix(in oklab, var(--_hue, var(--_muted)) 55%, var(--_text));
+  background: color-mix(in oklab, var(--_hue, var(--_muted)) 12%, transparent);
   font-size: 11px;
   padding: 4px 10px;
   border-radius: var(--_radius-full);
@@ -187,7 +196,8 @@ const styles = `
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-inverted, #fff);
+  /* Fixed white: hashColor() backgrounds are dark at every hue and in every theme. */
+  color: #fff;
   flex-shrink: 0;
 }
 
