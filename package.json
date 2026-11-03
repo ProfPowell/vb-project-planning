@@ -1,6 +1,6 @@
 {
   "name": "@profpowell/vb-project-planning",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Project- and UX-planning Web Components for Vanilla Breeze: personas, stories, journeys, empathy maps, impact/effort and quadrant grids, risk and traceability matrices, burndown, roadmap, kanban, story map, gantt, review surface, work items, ADRs, iron triangle, capacity plans, quality targets, and requirement cards.",
   "license": "MIT",
   "author": "Thomas A. Powell",

@@ -6,6 +6,98 @@ the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-03
+
+An accessibility release. A full axe-core audit (WCAG 2.2 AA + best practice)
+of every docs page and demo now passes for this package's components and site
+markup, in light and dark mode, and stays enforced by new specs. Clears the
+known limitations from 0.2.3. Breaking changes are listed first.
+
+### Breaking
+- `user-persona`: the job-title attribute is now `job-title` (property
+  `jobTitle`, `.data.jobTitle`). The old `role` attribute collided with ARIA
+  `role` and gave every persona an invalid ARIA role. Legacy markup still
+  works for 0.3.x: a non-ARIA `role` value is moved to `job-title`, the `role`
+  attribute is removed from the host, and a one-time console warning is shown.
+  `.data` now returns `jobTitle`; JSON `role` is still accepted.
+- Badge, chip and avatar colours changed to meet WCAG AA (user-story,
+  work-item, adr-wc, user-journey, empathy-map, requirement-card).
+  `hashColor()` now returns `oklch(48% 0.13 h)` (also used by review-surface
+  avatars). Badges set a `--_hue` custom property instead of inline
+  `color`/`background`.
+- `product-roadmap`: bars are `<div role="button">` instead of `<article>`;
+  their accessible name is "Title, Status — dates in Lane".
+- `kanban-board`: column headings follow the page outline instead of always
+  being `<h3>` (style hook `.kb-column-heading`; CSS aimed at
+  `.kb-column-header h3` needs updating). Untitled boards are named
+  "Kanban board", "Kanban board 2", …
+- `story-map`: activity headings follow the page outline (style hook
+  `.sm-activity-heading` instead of `.sm-activity-header h3`).
+- Board surfaces (`<drag-surface>` in kanban-board, story-map, impact-effort,
+  quadrant-grid) become a labelled `role="group"` when their cards are
+  `<article>` or the column is empty, and VB's status region now sits after
+  the surface instead of inside it.
+- `traceability-matrix`: the table is a `role="grid"` with a single Tab stop
+  (see Accessibility).
+- `requirement-card`: "not relevant" no longer dims the card with opacity; it
+  uses a dashed border and a muted name.
+
+### Deprecated (removed in 0.4.0)
+- `<user-persona role="…">` and `.data.role` input; `personaRole` getter; the
+  ready detail's `role` field.
+- Un-namespaced events, which still fire after their replacements:
+  `persona-ready` → `user-persona:ready`, `story-ready` → `user-story:ready`,
+  `journey-ready` → `user-journey:ready`, `status-changed` →
+  `user-story:status-changed`, `priority-changed` →
+  `user-story:priority-changed`.
+
+### Accessibility
+- `traceability-matrix`: WAI-ARIA grid keyboard model: one Tab stop, arrow
+  keys between cells (including sortable headers), Home/End, Ctrl+Home/End,
+  Enter/Space toggle highlight. Filtered rows are skipped.
+- `copy-init`: announcements land inside the open modal dialog that contains
+  the button (or the top-most modal), so they're heard while a dialog is open.
+- Accessible names contain the visible text (WCAG 2.5.3) for iron-triangle's
+  corners and centre, quality-target's axes and centre, and product-roadmap
+  bars.
+- Headings rendered by components never skip a level: kanban-board,
+  story-map, user-story sections and burndown-chart's "Scope changes" take
+  their level from the page outline, with a new `heading-level` attribute to
+  override (`src/lib/headings.js`).
+- Contrast fixes: roadmap bars and quadrant / risk pins keep white text at
+  4.5:1; requirement-card pills and conflict notes; record-card badges,
+  chips and avatars; user-journey's table corner.
+- Valid list semantics on every board (no more `aria-required-children` /
+  `aria-allowed-role` failures).
+
+### Documentation
+- Docs site passes axe in light and dark mode: labelled navigation toggle,
+  24px sidebar targets, `<main>` landmarks and level-one headings on every
+  demo, unique landmark names, AA-contrast syntax highlighting (code token
+  colours mixed toward the text colour), every code example labelled.
+- `heading-level` documented on kanban-board, story-map, user-story and
+  burndown-chart.
+
+### Internal
+- New specs: `a11y-records`, `a11y-interactive`, `a11y-site`, `a11y-outline`
+  (axe-core via `@axe-core/playwright`). Upstream exclusions are listed and
+  commented in the specs: `@profpowell/browser-window` (iframe title,
+  12px window controls) and vanilla-breeze `chart-wc` (focusable content in
+  `aria-hidden`).
+- `schemas/api.schema.json` requires `<element>:<event>` names again.
+- 290 component specs (was 221) plus 95 unit checks.
+
+### Upstream issues found (not fixable here)
+- vanilla-breeze `<drag-surface>`: prepends its `role="status"` region inside
+  its `role="list"`, sets `role="listitem"` on `<article>` children, and only
+  applies roles/tabindex in `setup()`. This package works around it; the
+  raw-VB recipe demos still show it.
+- vanilla-breeze `code-block` mapping (`--cb-string/tag/number/meta` →
+  `--color-accent`, 3.5:1), `chart-wc` `aria-hidden-focus`, the 8bit theme's
+  `--cb-comment` (1.36:1), and `data-table` heat-map cells in dark mode.
+- `@profpowell/browser-window`: iframes need a `title`, and the window
+  controls a 24px hit area.
+
 ## [0.2.3] - 2026-11-03
 
 ### Fixed
@@ -323,7 +415,8 @@ Initial release, decomposed out of `vanilla-breeze` core.
 - `gantt-chart` dependency arrows now render (an invalid `%` unit in the SVG
   path data was silently dropping them).
 
-[Unreleased]: https://github.com/ProfPowell/vb-project-planning/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/ProfPowell/vb-project-planning/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/ProfPowell/vb-project-planning/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/ProfPowell/vb-project-planning/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/ProfPowell/vb-project-planning/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/ProfPowell/vb-project-planning/compare/v0.2.0...v0.2.1
