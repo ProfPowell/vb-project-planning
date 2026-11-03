@@ -18,8 +18,10 @@
  *
  * @fires kanban-board:transfer - Item moved between columns
  * @fires kanban-board:reorder - Item reordered within a column
- * @fires kanban-board:ready - Fired after component initializes
- * @fires kanban-board:wip-exceeded - Fired when a column exceeds its WIP limit
+ * @fires kanban-board:ready - Once after the first render (with src: after the JSON renders)
+ * @fires kanban-board:wip-exceeded - Fired when a drop takes a column over its WIP limit
+ * @fires kanban-board:items-changed - { items, source: 'api' | 'drag' }
+ * @fires kanban-board:upgraded - Each time the board connects and upgrades
  *
  * @example
  * <kanban-board>
@@ -36,6 +38,9 @@ import { registerComponent } from '../../lib/bundle-registry.js';
 import { VBElement } from '../../lib/vb-element.js';
 import { VBCollection } from '../../lib/vb-collection.js';
 import { viewTransitionSwap } from '../../lib/vb-view-transition.js';
+import {
+  SrcLoader, announce, createLiveRegion, createStoryCard, isStoryRecord, itemLabel, syncPlaceholder, titleCase,
+} from '../../lib/board-surface.js';
 
 class KanbanBoard extends VBCollection(VBElement) {
   static get observedAttributes() { return ['src', 'compact', 'title']; }
@@ -51,237 +56,174 @@ class KanbanBoard extends VBCollection(VBElement) {
   #columnEls = {};
   /** @type {HTMLDivElement | null} */
   #liveRegion = null;
+  /** @type {HTMLHeadingElement | null} */
+  #titleEl = null;
   /** @type {string} */
   #groupId = '';
-  /** @type {Array<{ id: string, label: string, wip: number | null, color: string | null, children: HTMLElement[] }>} */
+  /** @type {Array<{ id: string, label: string, wip: number | null, color: string | null }>} */
   #columns = [];
   /** @type {((item: any) => Element) | null} */
   #renderItem = null;
+  /** Shell built (survives disconnect so a moved board keeps its cards). */
+  #built = false;
+  /** Listeners attached for the current connection. */
+  #wired = false;
+  #readyFired = false;
+  #loader = new SrcLoader();
 
   setup() {
-    this.#groupId = `kb-${++KanbanBoard.#instanceCount}`;
+    if (!this.#groupId) this.#groupId = `kb-${++KanbanBoard.#instanceCount}`;
 
-    // 1. Snapshot <section data-column> children
+    if (!this.#built) {
+      this.#built = true;
+      this.#buildFromSections();
+    }
+
+    if (!this.#wired) {
+      this.#wired = true;
+      this.listen(this, 'drag-surface:reorder', this.#onReorder);
+      this.listen(this, 'drag-surface:transfer', this.#onTransfer);
+    }
+
+    // Data mode: fetch once per src value; ready fires after it renders.
+    const src = this.getAttribute('src');
+    if (src) {
+      if (src !== this.#loader.url) this._loadSrc(src);
+      return;
+    }
+
+    if (!this.#readyFired) this.#dispatchReady();
+  }
+
+  /**
+   * First build: parse the authored `<section data-column>` children,
+   * move their cards into drag-surfaces, and add the title + live region.
+   */
+  #buildFromSections() {
     const sections = /** @type {HTMLElement[]} */ ([
       ...this.querySelectorAll(':scope > section[data-column]')
     ]);
+    const parsed = sections.map(section => this.#parseSection(section));
+    for (const section of sections) section.remove();
 
-    this.#columns = sections.map(section => {
-      const id = section.getAttribute('data-column') || '';
-      const rawLabel = section.getAttribute('data-column-label') || '';
-      const label = rawLabel || this.#titleCase(id);
-      const wipAttr = section.getAttribute('data-wip');
-      const wip = wipAttr ? parseInt(wipAttr, 10) : null;
-      const color = section.getAttribute('data-column-color') || null;
-      const children = /** @type {HTMLElement[]} */ ([...section.children]);
-      return { id, label, wip, color, children };
-    });
+    this.#syncTitle();
 
-    // 2. Remove original sections (children already captured)
-    for (const section of sections) {
-      section.remove();
-    }
+    this.#liveRegion = createLiveRegion('kb-live-region');
+    this.#columns = parsed.map(p => p.meta);
+    this.#columnsEl = this.#assembleShell(parsed.map(p => p.children));
+    this.append(this.#columnsEl, this.#liveRegion);
+    this._postRender();
+    this.#seedFromDom();
+  }
 
-    // 3. Build columns container
-    this.#columnsEl = document.createElement('div');
-    this.#columnsEl.className = 'kb-columns';
-    this.#columnsEl.setAttribute('role', 'region');
-    this.#columnsEl.setAttribute('aria-label', 'Kanban board');
+  /**
+   * @param {HTMLElement} section
+   * @returns {{ meta: { id: string, label: string, wip: number | null, color: string | null }, children: HTMLElement[] }}
+   */
+  #parseSection(section) {
+    const id = section.getAttribute('data-column') || '';
+    const label = section.getAttribute('data-column-label') || titleCase(id);
+    const wipAttr = section.getAttribute('data-wip');
+    const wip = wipAttr ? parseInt(wipAttr, 10) : null;
+    const color = section.getAttribute('data-column-color') || null;
+    const children = /** @type {HTMLElement[]} */ ([...section.children]);
+    return { meta: { id, label, wip: wip !== null && isNaN(wip) ? null : wip, color }, children };
+  }
 
-    // 4. Build each column
-    let totalItems = 0;
-
-    for (const col of this.#columns) {
-      const column = document.createElement('section');
-      column.className = 'kb-column';
-      column.setAttribute('data-column-id', col.id);
-      if (col.color) column.setAttribute('data-column-tint', col.color);
-
-      // Header with count badge and optional WIP
-      const header = document.createElement('header');
-      header.className = 'kb-column-header';
-
-      const h3 = document.createElement('h3');
-      h3.textContent = col.label;
-
-      const countBadge = document.createElement('output');
-      countBadge.className = 'kb-count';
-      countBadge.textContent = String(col.children.length);
-      h3.appendChild(countBadge);
-
-      if (col.wip !== null && !isNaN(col.wip)) {
-        const wipBadge = document.createElement('span');
-        wipBadge.className = 'kb-wip';
-        wipBadge.textContent = `/ ${col.wip}`;
-        wipBadge.setAttribute('aria-label', `WIP limit ${col.wip}`);
-        h3.appendChild(wipBadge);
-      }
-
-      header.appendChild(h3);
-      column.appendChild(header);
-
-      // Drag surface
-      const surface = document.createElement('drag-surface');
-      surface.setAttribute('group', this.#groupId);
-      surface.setAttribute('aria-label', `${col.label} items`);
-      surface.setAttribute('data-layout', 'stack');
-      surface.setAttribute('data-layout-gap', 'xs');
-
-      // Move captured children into the drag-surface
-      if (col.children.length > 0) {
-        for (const child of col.children) {
-          if (!child.hasAttribute('draggable')) {
-            child.setAttribute('draggable', 'true');
-          }
-          if (!child.hasAttribute('data-id')) {
-            child.dataset.id = `kb-item-${totalItems}`;
-          }
-          surface.appendChild(child);
-        }
-        totalItems += col.children.length;
-      } else {
-        const placeholder = document.createElement('p');
-        placeholder.className = 'kb-empty';
-        placeholder.textContent = 'No items';
-        surface.appendChild(placeholder);
-      }
-
-      column.appendChild(surface);
-      this.#columnsEl.appendChild(column);
-      this.#surfaces[col.id] = surface;
-      this.#columnEls[col.id] = column;
-
-      // Check initial WIP state
-      if (col.wip !== null && col.children.length > col.wip) {
-        column.setAttribute('data-wip-exceeded', '');
-      }
-    }
-
-    // 5. Assemble: title + columns, append to host
+  /** Create, update, or remove the optional heading from the title attribute. */
+  #syncTitle() {
     const title = this.getAttribute('title');
     if (title) {
-      const heading = document.createElement('h2');
-      heading.className = 'kb-title';
-      heading.textContent = title;
-      this.appendChild(heading);
+      if (!this.#titleEl) {
+        this.#titleEl = document.createElement('h2');
+        this.#titleEl.className = 'kb-title';
+        this.prepend(this.#titleEl);
+      }
+      this.#titleEl.textContent = title;
+    } else if (this.#titleEl) {
+      this.#titleEl.remove();
+      this.#titleEl = null;
     }
+    this.#columnsEl?.setAttribute('aria-label', title || 'Kanban board');
+  }
 
-    this.appendChild(this.#columnsEl);
-
-    // 6. Create live region
-    this.#liveRegion = document.createElement('div');
-    this.#liveRegion.className = 'kb-live-region';
-    this.#liveRegion.setAttribute('role', 'status');
-    this.#liveRegion.setAttribute('aria-live', 'polite');
-    this.#liveRegion.setAttribute('aria-atomic', 'true');
-    this.appendChild(this.#liveRegion);
-
-    // 7. Listen for drag-surface:reorder
-    this.listen(this, 'drag-surface:reorder', (e) => {
-      const detail = /** @type {CustomEvent} */ (e).detail;
-      const surface = /** @type {HTMLElement | null} */ (/** @type {HTMLElement} */ (e.target).closest('drag-surface'));
-      const columnId = this.#findColumnForSurface(surface);
-      if (!columnId) return;
-
-      this.#updateCount(columnId);
-      this.#syncItemsFromDom('drag');
-
-      this.dispatchEvent(new CustomEvent('kanban-board:reorder', {
-        bubbles: true,
-        detail: {
-          itemId: detail.itemId,
-          column: columnId,
-          oldIndex: detail.oldIndex,
-          newIndex: detail.newIndex,
-        },
-      }));
-    });
-
-    // 8. Listen for drag-surface:transfer
-    this.listen(this, 'drag-surface:transfer', (e) => {
-      const detail = /** @type {CustomEvent} */ (e).detail;
-      const fromSurface = detail.fromSurface;
-      const toSurface = detail.toSurface;
-      const fromColumn = this.#findColumnForSurface(fromSurface);
-      const toColumn = this.#findColumnForSurface(toSurface);
-      if (!fromColumn || !toColumn) return;
-
-      // Update data-column attribute on the transferred item
-      if (detail.item) {
-        detail.item.setAttribute('data-column', toColumn);
-      }
-
-      // Update count badges and WIP state
-      this.#updateCount(fromColumn);
-      this.#updateCount(toColumn);
-
-      // Remove placeholder from receiving column if it had one
-      const toPlaceholder = toSurface.querySelector('.kb-empty');
-      if (toPlaceholder) toPlaceholder.remove();
-
-      // Add placeholder to sending column if now empty
-      const fromDraggables = fromSurface.querySelectorAll(':scope > [draggable="true"]');
-      if (fromDraggables.length === 0 && !fromSurface.querySelector('.kb-empty')) {
-        const placeholder = document.createElement('p');
-        placeholder.className = 'kb-empty';
-        placeholder.textContent = 'No items';
-        fromSurface.appendChild(placeholder);
-      }
-
-      // Announce via live region
-      const itemLabel = this.#itemLabel(detail.item);
-      const fromLabel = this.#columnLabel(fromColumn);
-      const toLabel = this.#columnLabel(toColumn);
-      this.#announce(`${itemLabel} moved from ${fromLabel} to ${toLabel}`);
-
-      this.#syncItemsFromDom('drag');
-
-      this.dispatchEvent(new CustomEvent('kanban-board:transfer', {
-        bubbles: true,
-        detail: {
-          itemId: detail.itemId,
-          fromColumn,
-          toColumn,
-          newIndex: detail.newIndex,
-          item: detail.item,
-        },
-      }));
-
-      // Check WIP limit on receiving column
-      const toCount = toSurface.querySelectorAll(':scope > [draggable="true"]').length;
-      const toColMeta = this.#columns.find(c => c.id === toColumn);
-      if (toColMeta?.wip !== null && toColMeta?.wip !== undefined && toCount > toColMeta.wip) {
-        this.dispatchEvent(new CustomEvent('kanban-board:wip-exceeded', {
-          bubbles: true,
-          detail: {
-            column: toColumn,
-            limit: toColMeta.wip,
-            count: toCount,
-          },
-        }));
-      }
-    });
-
-    // 9. Seed VBCollection state from existing rendered children so future
-    //    .items assignments diff against them instead of recreating.
-    this.#seedFromDom();
-
-    // 10. Handle src attribute for data mode
-    const src = this.getAttribute('src');
-    if (src) {
-      this._loadSrc(src);
-      return; // ready event fires after src loads
-    }
-
-    // 11. Dispatch ready event
+  #dispatchReady() {
+    this.#readyFired = true;
     this.dispatchEvent(new CustomEvent('kanban-board:ready', {
       bubbles: true,
       detail: {
         columnCount: this.#columns.length,
-        itemCount: totalItems,
+        itemCount: this.items.length,
       },
     }));
   }
+
+  /** @param {Event} e */
+  #onReorder = (e) => {
+    const detail = /** @type {CustomEvent} */ (e).detail;
+    const surface = /** @type {HTMLElement | null} */ (/** @type {HTMLElement} */ (e.target).closest('drag-surface'));
+    const columnId = this.#findColumnForSurface(surface);
+    if (!columnId) return;
+
+    this.#updateCount(columnId);
+    this.#syncItemsFromDom('drag');
+
+    this.dispatchEvent(new CustomEvent('kanban-board:reorder', {
+      bubbles: true,
+      detail: {
+        itemId: detail.itemId,
+        column: columnId,
+        oldIndex: detail.oldIndex,
+        newIndex: detail.newIndex,
+      },
+    }));
+  };
+
+  /** @param {Event} e */
+  #onTransfer = (e) => {
+    const detail = /** @type {CustomEvent} */ (e).detail;
+    const fromSurface = detail.fromSurface;
+    const toSurface = detail.toSurface;
+    const fromColumn = this.#findColumnForSurface(fromSurface);
+    const toColumn = this.#findColumnForSurface(toSurface);
+    if (!fromColumn || !toColumn) return;
+
+    if (detail.item) detail.item.setAttribute('data-column', toColumn);
+
+    this.#updateCount(fromColumn);
+    this.#updateCount(toColumn);
+    syncPlaceholder(toSurface, 'kb-empty', 'No items');
+    syncPlaceholder(fromSurface, 'kb-empty', 'No items');
+
+    announce(this.#liveRegion,
+      `${itemLabel(detail.item)} moved from ${this.#columnLabel(fromColumn)} to ${this.#columnLabel(toColumn)}`);
+
+    this.#syncItemsFromDom('drag');
+
+    this.dispatchEvent(new CustomEvent('kanban-board:transfer', {
+      bubbles: true,
+      detail: {
+        itemId: detail.itemId,
+        fromColumn,
+        toColumn,
+        newIndex: detail.newIndex,
+        item: detail.item,
+      },
+    }));
+
+    const toCount = toSurface.querySelectorAll(':scope > [draggable="true"]').length;
+    const toColMeta = this.#columns.find(c => c.id === toColumn);
+    if (toColMeta && toColMeta.wip != null && toCount > toColMeta.wip) {
+      this.dispatchEvent(new CustomEvent('kanban-board:wip-exceeded', {
+        bubbles: true,
+        detail: {
+          column: toColumn,
+          limit: toColMeta.wip,
+          count: toCount,
+        },
+      }));
+    }
+  };
 
   /**
    * Walk the rendered drag-surfaces and register each draggable child by
@@ -335,20 +277,10 @@ class KanbanBoard extends VBCollection(VBElement) {
   }
 
   teardown() {
-    // Remove title if we created one
-    const title = this.querySelector('.kb-title');
-    if (title) title.remove();
-    if (this.#columnsEl) {
-      this.#columnsEl.remove();
-      this.#columnsEl = null;
-    }
-    if (this.#liveRegion) {
-      this.#liveRegion.remove();
-      this.#liveRegion = null;
-    }
-    this.#surfaces = {};
-    this.#columnEls = {};
-    this.#columns = [];
+    // Listeners are removed by VBElement. The built shell and every card
+    // stay in place so a board that is moved in the DOM keeps its content;
+    // the next connect only re-attaches listeners.
+    this.#wired = false;
   }
 
   // ── Data API (HTML-first / JS-first dual contract) ──────────────
@@ -356,8 +288,10 @@ class KanbanBoard extends VBCollection(VBElement) {
   /**
    * The current column definitions. After upgrade this reflects the parsed
    * `<section data-column>` children. Setting replaces all columns and
-   * rebuilds the shell — items already in nodes get re-routed to the new
-   * surfaces; orphaned items (column id no longer present) are dropped.
+   * rebuilds the shell: existing cards whose `column` still exists are
+   * moved (same DOM nodes) into the new columns; cards whose column is
+   * gone are removed from the board and from `.items` (an
+   * `items-changed` event with source `api` reports the drop).
    */
   get columns() {
     return this.#columns.map(c => ({
@@ -367,23 +301,52 @@ class KanbanBoard extends VBCollection(VBElement) {
 
   set columns(value) {
     const next = (value || []).map(c => ({
-      id: c.id, label: c.label || this.#titleCase(c.id),
-      wip: c.wip ?? null, color: c.color ?? null, children: [],
+      id: c.id, label: c.label || titleCase(c.id),
+      wip: c.wip ?? null, color: c.color ?? null,
     }));
+    if (!this.#built) {
+      // JS-first: columns assigned before the board connected.
+      this.#built = true;
+      this.#liveRegion = createLiveRegion('kb-live-region');
+      this.appendChild(this.#liveRegion);
+    }
     const oldShell = this.#columnsEl;
     // Build the new shell off-DOM and update internal refs synchronously
-    // so a chained `.items = …` lookup sees the new surfaces immediately
-    // (the diff appends into the detached shell; both come together when
-    // the View Transition callback attaches the new shell to the host).
-    this.#surfaces = {};
-    this.#columnEls = {};
+    // so a chained `.items = …` sees the new surfaces immediately.
     this.#columns = next;
     const newShell = this.#assembleShell();
     this.#columnsEl = newShell;
+    this.#syncTitle();
+
+    // Re-route existing cards into the new surfaces (node identity kept).
+    const before = this.items;
+    /** @type {any[]} */
+    const kept = [];
+    /** @type {Map<unknown, Element>} */
+    const nodeMap = new Map();
+    for (const it of before) {
+      const key = KanbanBoard.keyOf(it);
+      const el = this._nodeFor(key);
+      const surface = this.#surfaces[it.column];
+      if (!el) continue;
+      if (surface) {
+        surface.appendChild(el);
+        kept.push(it);
+        nodeMap.set(key, el);
+      } else {
+        el.remove();
+      }
+    }
+    // Keep .items in the new column order (matching the DOM).
+    const order = new Map(next.map((c, i) => [c.id, i]));
+    kept.sort((a, b) => (order.get(a.column) ?? 0) - (order.get(b.column) ?? 0));
+    this._seedCollection(kept, nodeMap);
+    this._postRender();
+    if (kept.length !== before.length) this._emit('items-changed', { items: kept }, 'api');
 
     const swap = () => {
       if (oldShell) oldShell.remove();
-      this.appendChild(newShell);
+      this.#attachShell(newShell);
     };
     if (this.hasAttribute('data-upgraded') && oldShell) {
       viewTransitionSwap(this, swap, 'kb-vt');
@@ -442,19 +405,9 @@ class KanbanBoard extends VBCollection(VBElement) {
    * placeholders after every diff.
    */
   _postRender() {
-    for (const id of Object.keys(this.#surfaces)) {
+    for (const [id, surface] of Object.entries(this.#surfaces)) {
       this.#updateCount(id);
-      const surface = this.#surfaces[id];
-      const draggables = surface.querySelectorAll(':scope > [draggable="true"]');
-      const placeholder = surface.querySelector(':scope > .kb-empty');
-      if (draggables.length === 0 && !placeholder) {
-        const p = document.createElement('p');
-        p.className = 'kb-empty';
-        p.textContent = 'No items';
-        surface.appendChild(p);
-      } else if (draggables.length > 0 && placeholder) {
-        placeholder.remove();
-      }
+      syncPlaceholder(surface, 'kb-empty', 'No items');
     }
   }
 
@@ -489,17 +442,24 @@ class KanbanBoard extends VBCollection(VBElement) {
 
   /**
    * Build the kb-columns shell from the current `#columns` metas and
-   * populate `#surfaces` / `#columnEls`. Returns the detached shell so
-   * the caller decides when to attach it (sync, or inside a View
-   * Transition callback).
+   * populate `#surfaces` / `#columnEls`. `children[i]` (optional) are the
+   * authored cards for column i; they are moved into its drag-surface.
+   * Returns the detached shell so the caller decides when to attach it
+   * (sync, or inside a View Transition callback).
+   *
+   * @param {HTMLElement[][]} [children]
+   * @returns {HTMLDivElement}
    */
-  #assembleShell() {
+  #assembleShell(children = []) {
+    this.#surfaces = {};
+    this.#columnEls = {};
     const shell = document.createElement('div');
     shell.className = 'kb-columns';
     shell.setAttribute('role', 'region');
-    shell.setAttribute('aria-label', 'Kanban board');
+    shell.setAttribute('aria-label', this.getAttribute('title') || 'Kanban board');
 
-    for (const col of this.#columns) {
+    let seq = 0;
+    this.#columns.forEach((col, i) => {
       const column = document.createElement('section');
       column.className = 'kb-column';
       column.setAttribute('data-column-id', col.id);
@@ -513,7 +473,7 @@ class KanbanBoard extends VBCollection(VBElement) {
       countBadge.className = 'kb-count';
       countBadge.textContent = '0';
       h3.appendChild(countBadge);
-      if (col.wip != null && !isNaN(col.wip)) {
+      if (col.wip != null) {
         const wipBadge = document.createElement('span');
         wipBadge.className = 'kb-wip';
         wipBadge.textContent = `/ ${col.wip}`;
@@ -528,16 +488,18 @@ class KanbanBoard extends VBCollection(VBElement) {
       surface.setAttribute('aria-label', `${col.label} items`);
       surface.setAttribute('data-layout', 'stack');
       surface.setAttribute('data-layout-gap', 'xs');
-      const placeholder = document.createElement('p');
-      placeholder.className = 'kb-empty';
-      placeholder.textContent = 'No items';
-      surface.appendChild(placeholder);
+      for (const child of children[i] || []) {
+        if (!child.hasAttribute('draggable')) child.setAttribute('draggable', 'true');
+        if (!child.hasAttribute('data-id')) child.dataset.id = `kb-item-${seq}`;
+        seq += 1;
+        surface.appendChild(child);
+      }
 
       column.appendChild(surface);
       shell.appendChild(column);
       this.#surfaces[col.id] = surface;
       this.#columnEls[col.id] = column;
-    }
+    });
 
     return shell;
   }
@@ -545,71 +507,88 @@ class KanbanBoard extends VBCollection(VBElement) {
   // ── Attribute changes ────────────────────────────────
 
   attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue === newValue || !this.isConnected) return;
-    if (name === 'src') this._loadSrc(newValue);
+    if (oldValue === newValue || !this.#built) return;
+    if (name === 'src' && newValue && newValue !== this.#loader.url) this._loadSrc(newValue);
+    if (name === 'title') this.#syncTitle();
   }
 
   // ── JSON loading ────────────────────────────────────
 
+  /**
+   * Fetch `{ columns: [{ id, label?, wip?, color?, items: [...] }] }` and
+   * replace the board with it. One request per src value; a newer src
+   * aborts an older in-flight one. Fires `kanban-board:ready` once the
+   * data has rendered.
+   * @param {string} url
+   */
   async _loadSrc(url) {
     if (!url) return;
     try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const result = await this.#loader.fetchJson(url);
+      if (!result) return;
+      const { data, isCurrent } = result;
 
-      // Clear existing children
-      while (this.firstChild) this.firstChild.remove();
+      /** @type {HTMLElement[][]} */
+      const children = [];
+      const metas = (data.columns || []).map((/** @type {any} */ col) => {
+        children.push((col.items || []).map((/** @type {any} */ item) => this.#cardFromJson(item)));
+        const wip = col.wip != null ? parseInt(String(col.wip), 10) : null;
+        return {
+          id: String(col.id ?? ''),
+          label: col.label || titleCase(String(col.id ?? '')),
+          wip: wip !== null && isNaN(wip) ? null : wip,
+          color: col.color || null,
+        };
+      });
 
-      // Create sections from columns
-      for (const col of (data.columns || [])) {
-        const section = document.createElement('section');
-        section.setAttribute('data-column', col.id);
-        if (col.label) section.setAttribute('data-column-label', col.label);
-        if (col.wip != null) section.setAttribute('data-wip', String(col.wip));
-        if (col.color) section.setAttribute('data-column-color', col.color);
-
-        for (const item of (col.items || [])) {
-          let el;
-          if (item.persona || item.action || item.storyId) {
-            el = document.createElement('user-story');
-            el.setAttribute('detail', item.detail || 'minimal');
-            if (item.storyId) el.setAttribute('story-id', item.storyId);
-            if (item.persona) el.setAttribute('persona', item.persona);
-            if (item.action) el.setAttribute('action', item.action);
-            if (item.benefit) el.setAttribute('benefit', item.benefit);
-            if (item.priority) el.setAttribute('priority', item.priority);
-            if (item.status) el.setAttribute('status', item.status);
-            if (item.points) el.setAttribute('points', String(item.points));
-          } else {
-            el = document.createElement('article');
-            el.className = 'kb-card';
-            el.textContent = item.text || item.label || '';
-          }
-
-          el.setAttribute('draggable', 'true');
-          el.dataset.id = item.id || item.storyId || '';
-          section.appendChild(el);
-        }
-        this.appendChild(section);
-      }
-
-      const swap = () => {
-        this.teardown();
-        this.removeAttribute('data-upgraded');
-        this.setup();
+      const render = () => {
+        this.#columnsEl?.remove();
+        this.#columns = metas;
+        this.#columnsEl = this.#assembleShell(children);
+        this.#attachShell(this.#columnsEl);
+        this._postRender();
+        this.#seedFromDom();
       };
-      if (this.hasAttribute('data-upgraded') && this.#columnsEl) {
-        viewTransitionSwap(this, swap, 'kb-vt');
-      } else {
-        swap();
-      }
+      // viewTransitionSwap runs render synchronously when it can't animate.
+      const tx = viewTransitionSwap(this, render, 'kb-vt');
+      if (tx) await tx.updateCallbackDone;
+      if (isCurrent()) this.#dispatchReady();
     } catch (err) {
       console.warn(`[kanban-board] Failed to load src="${url}":`, err);
     }
   }
 
+  /**
+   * JSON item → card element. Story-shaped records become a `<user-story>`
+   * with slotted persona/action/benefit/title; anything else a plain card.
+   * @param {Record<string, any>} item
+   * @returns {HTMLElement}
+   */
+  #cardFromJson(item) {
+    let el;
+    if (isStoryRecord(item)) {
+      el = createStoryCard(item, 'minimal');
+    } else {
+      el = document.createElement('article');
+      el.className = 'kb-card';
+      el.textContent = item.text || item.label || item.title || '';
+    }
+    el.setAttribute('draggable', 'true');
+    const id = item.id || item.storyId;
+    if (id) el.dataset.id = String(id);
+    return el;
+  }
+
   // ── Helpers ──────────────────────────────────────────
+
+  /**
+   * Insert the columns shell just before the live region (after the title).
+   * @param {HTMLElement} shell
+   */
+  #attachShell(shell) {
+    const region = this.#liveRegion;
+    this.insertBefore(shell, region?.parentNode ? region : null);
+  }
 
   /**
    * Reverse-lookup: find the column id that owns a given drag-surface.
@@ -655,42 +634,7 @@ class KanbanBoard extends VBCollection(VBElement) {
    */
   #columnLabel(columnId) {
     const col = this.#columns.find(c => c.id === columnId);
-    return col?.label || this.#titleCase(columnId);
-  }
-
-  /**
-   * Announce a message via the live region.
-   * @param {string} msg
-   */
-  #announce(msg) {
-    if (!this.#liveRegion) return;
-    this.#liveRegion.textContent = '';
-    requestAnimationFrame(() => {
-      if (this.#liveRegion) this.#liveRegion.textContent = msg;
-    });
-  }
-
-  /**
-   * Get a human-readable label for a board item.
-   * @param {HTMLElement} item
-   * @returns {string}
-   */
-  #itemLabel(item) {
-    return item.getAttribute('story-id')
-      || item.getAttribute('data-id')
-      || item.textContent?.trim().slice(0, 40)
-      || 'item';
-  }
-
-  /**
-   * Convert a hyphenated or lowercase id to Title Case.
-   * @param {string} str
-   * @returns {string}
-   */
-  #titleCase(str) {
-    return str
-      .replace(/[-_]/g, ' ')
-      .replace(/\b\w/g, c => c.toUpperCase());
+    return col?.label || titleCase(columnId);
   }
 }
 
