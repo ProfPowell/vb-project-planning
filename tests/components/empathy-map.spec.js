@@ -109,6 +109,39 @@ test.describe('empathy-map — src, lifecycle and regressions', () => {
     expect(await read()).toEqual({ hasSlot: false, text: 'Add says items…', data: [] });
   });
 
+  test('a re-render while a quadrant editor is open keeps the unsaved text and focus', async ({ page }) => {
+    await openUpgradePage(page, { events: EVENTS, body: slotted });
+    await page.waitForSelector('#e1[data-upgraded]');
+
+    await page.locator('#e1 .quadrant--says .quadrant__edit-btn').click();
+    await page.locator('#e1 .quadrant--says .quadrant__editor').fill('Draft one\nDraft two');
+    await page.evaluate(() => { document.getElementById('e1').goals = ['Ship it']; });
+    await page.waitForFunction(() => document.getElementById('e1').shadowRoot.querySelector('.empathy-map__footer'));
+
+    const state = await page.evaluate(() => {
+      const sr = document.getElementById('e1').shadowRoot;
+      return {
+        value: sr.querySelector('.quadrant--says .quadrant__editor').value,
+        editing: sr.querySelector('.quadrant--says').hasAttribute('data-editing'),
+        focused: sr.activeElement?.className,
+      };
+    });
+    expect(state).toEqual({ value: 'Draft one\nDraft two', editing: true, focused: 'quadrant__editor' });
+  });
+
+  test('a re-render with a slotted-only quadrant editor open keeps its items, and Done keeps them', async ({ page }) => {
+    await openUpgradePage(page, { events: EVENTS, body: slotted });
+    await page.waitForSelector('#e1[data-upgraded]');
+
+    await page.evaluate(() => document.getElementById('e1').editQuadrant('says'));
+    await page.evaluate(() => document.getElementById('e1').setAttribute('compact', ''));
+    await page.waitForFunction(() => document.getElementById('e1').shadowRoot.querySelector('.empathy-map--compact'));
+    expect(await page.locator('#e1 .quadrant--says .quadrant__editor').inputValue()).toBe('Original one\nOriginal two');
+
+    await page.locator('#e1 .quadrant--says .quadrant__done-btn').click();
+    expect(await page.evaluate(() => document.getElementById('e1').quadrants.says)).toEqual(['Original one', 'Original two']);
+  });
+
   test('Done and Escape return focus to the quadrant edit button', async ({ page }) => {
     await openUpgradePage(page, { events: EVENTS, body: slotted });
     await page.waitForSelector('#e1[data-upgraded]');

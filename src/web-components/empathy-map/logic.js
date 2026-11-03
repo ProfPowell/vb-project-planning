@@ -235,8 +235,13 @@ class EmpathyMap extends UXShadowElement {
        swaps. Skip on the first render — nothing to fade from. */
     const swap = () => {
       if (!this.shadowRoot) return;
+      // An open editor's unsaved text (and focus) survives the re-render.
+      const drafts = this.#captureDrafts();
       this.shadowRoot.innerHTML = html;
-      if (editable) this._bindEditListeners();
+      if (editable) {
+        this._bindEditListeners();
+        this.#restoreDrafts(drafts);
+      }
     };
     if (this.shadowRoot?.querySelector('article')) {
       viewTransitionSwap(this, swap, 'em-vt');
@@ -256,7 +261,7 @@ class EmpathyMap extends UXShadowElement {
       ? this._quadrantItemsHtml(key)
       : `<slot name="${key}"><p class="placeholder">Add ${meta.label.toLowerCase()} items\u2026</p></slot>`;
 
-    const textareaValue = items?.length ? items.join('\n') : '';
+    const textareaValue = this.#editorSeed(key);
 
     return `
       <section class="quadrant quadrant--${key}"${isEditing ? ' data-editing' : ''}>
@@ -378,30 +383,61 @@ class EmpathyMap extends UXShadowElement {
 
     const textarea = /** @type {HTMLTextAreaElement | null} */ (section.querySelector('.quadrant__editor'));
     if (textarea) {
-      /* Pre-fill: prefer JSON data; fall back to slotted text */
-      const items = this.__quadrants?.[key];
-      if (items?.length) {
-        textarea.value = items.join('\n');
-      } else {
-        const slot = /** @type {HTMLSlotElement | null} */ (section.querySelector(`slot[name="${key}"]`));
-        if (slot) {
-          const assigned = slot.assignedElements();
-          if (assigned.length) {
-            /** @type {string[]} */
-            const lines = [];
-            assigned.forEach(el => {
-              const lis = el.querySelectorAll('li');
-              if (lis.length) {
-                lis.forEach(li => lines.push(li.textContent?.trim() ?? ''));
-              } else {
-                lines.push(el.textContent?.trim() ?? '');
-              }
-            });
-            textarea.value = lines.filter(Boolean).join('\n');
-          }
-        }
-      }
+      textarea.value = this.#editorSeed(key);
       textarea.focus();
+    }
+  }
+
+  /**
+   * Text an editor opens with: the saved items, else (for a quadrant never
+   * edited) its slotted light-DOM items, one per line.
+   * @param {string} key
+   * @returns {string}
+   */
+  #editorSeed(key) {
+    const items = this.__quadrants?.[key];
+    if (items?.length) return items.join('\n');
+    if (this._editedQuadrants.has(key)) return '';
+    /** @type {string[]} */
+    const lines = [];
+    for (const el of this.children) {
+      if (el.getAttribute('slot') !== key) continue;
+      const lis = el.querySelectorAll('li');
+      if (lis.length) lis.forEach(li => lines.push(li.textContent?.trim() ?? ''));
+      else lines.push(el.textContent?.trim() ?? '');
+    }
+    return lines.filter(Boolean).join('\n');
+  }
+
+  /**
+   * Snapshot open editors (value, selection, focus) before the shadow
+   * tree is replaced.
+   * @returns {Map<string, { value: string, start: number, end: number, focused: boolean }>}
+   */
+  #captureDrafts() {
+    const drafts = new Map();
+    const root = this.shadowRoot;
+    if (!root) return drafts;
+    for (const key of this._editingQuadrants) {
+      const ta = /** @type {HTMLTextAreaElement | null} */ (root.querySelector(`.quadrant__editor[data-quadrant="${key}"]`));
+      if (!ta) continue;
+      drafts.set(key, {
+        value: ta.value, start: ta.selectionStart, end: ta.selectionEnd, focused: root.activeElement === ta,
+      });
+    }
+    return drafts;
+  }
+
+  /** @param {Map<string, { value: string, start: number, end: number, focused: boolean }>} drafts */
+  #restoreDrafts(drafts) {
+    const root = this.shadowRoot;
+    if (!root) return;
+    for (const [key, d] of drafts) {
+      const ta = /** @type {HTMLTextAreaElement | null} */ (root.querySelector(`.quadrant__editor[data-quadrant="${key}"]`));
+      if (!ta) continue;
+      ta.value = d.value;
+      ta.setSelectionRange(d.start, d.end);
+      if (d.focused) ta.focus();
     }
   }
 
