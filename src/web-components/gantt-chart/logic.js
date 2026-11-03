@@ -8,7 +8,10 @@
  * With JS: visual timeline with bars, groups, milestones, and today line.
  *
  * Data sources, in order of precedence: the `.tasks` property, the `src`
- * JSON URL, then the child <table>. Dates are calendar days in local time
+ * JSON URL, then the child <table>. `.tasks` assigned before connect means
+ * the initial `src` is not fetched; assigning `.tasks` while a src request
+ * is in flight aborts it. A later change to `src` loads that URL (the most
+ * recent source wins). Dates are calendar days in local time
  * (src/lib/dates.js), so `2026-04-01` shows as Apr 1 in every time zone.
  *
  * Progress (`.tasks` and `src` JSON): a value greater than 1 is a
@@ -34,7 +37,7 @@
  * @attr {string} data-story-ids - Comma-separated linked user-story IDs
  * @attr {string} data-item-ids - Comma-separated linked work-item IDs
  *
- * @fires gantt-chart:ready - After the first render of a table or src load
+ * @fires gantt-chart:ready - Once per element: after the first connect render with tasks, or else the first src load
  * @fires gantt-chart:task-click - Task bar or milestone activated (click, Enter, Space)
  * @fires gantt-chart:tasks-changed - After `.tasks` assignment or a src load
  */
@@ -42,6 +45,7 @@
 import { registerComponent } from '../../lib/bundle-registry.js';
 import { VBElement } from '../../lib/vb-element.js';
 import { viewTransitionSwap } from '../../lib/vb-view-transition.js';
+import { SrcLoader } from '../../lib/src-loader.js';
 import {
   parseISODate, toISODate, addDays, addMonths, daysBetween,
   startOfDay, startOfMonth, startOfQuarter, formatDate,
@@ -159,9 +163,9 @@ class GanttChart extends VBElement {
    * @type {'table' | 'property' | 'src'}
    */
   #source = 'table';
-  /** URL whose data is loaded (or loading) — guards against refetching. */
-  #srcLoaded = /** @type {string|null} */ (null);
-  #srcToken = 0;
+  /** One in-flight src request; `url` guards against refetching on reconnect. */
+  #loader = new SrcLoader();
+  #readyFired = false;
   #internalAttr = false;
   /** Local-midnight Date of the first day in range. */
   #rangeStart = new Date(0);
@@ -191,9 +195,10 @@ class GanttChart extends VBElement {
     if (this.#tasks.length) this.#dispatchReady();
 
     /* src loads here as well as in attributeChangedCallback, so
-       createElement + setAttribute('src') + append fetches (once). */
+       createElement + setAttribute('src') + append fetches (once).
+       `.tasks` takes precedence: once assigned, the initial src is skipped. */
     const src = this.getAttribute('src');
-    if (src && src !== this.#srcLoaded) this.#loadSrc(src);
+    if (src && this.#source !== 'property' && src !== this.#loader.url) this.#loadSrc(src);
     return true;
   }
 
@@ -208,6 +213,7 @@ class GanttChart extends VBElement {
     if (!this.isConnected || !this.hasAttribute('data-upgraded')) return;   // setup() reads them
     if (name === 'src') {
       if (newValue) this.#loadSrc(newValue);
+      else this.#loader.cancel();
       return;
     }
     viewTransitionSwap(this, () => this.#render(), 'gc-vt');
@@ -227,6 +233,7 @@ class GanttChart extends VBElement {
    * The visually hidden table is regenerated from the new tasks.
    */
   set tasks(value) {
+    this.#loader.cancel();   // .tasks wins over a pending src response
     this.#tasks = normalizeTasks(value);
     this.#source = 'property';
     if (this.hasAttribute('data-upgraded')) this.#render();
@@ -308,7 +315,10 @@ class GanttChart extends VBElement {
     return (daysBetween(this.#rangeStart, d) / this.#rangeDays) * 100;
   }
 
+  /** `gantt-chart:ready`, at most once per element. */
   #dispatchReady() {
+    if (this.#readyFired) return;
+    this.#readyFired = true;
     this.dispatchEvent(new CustomEvent('gantt-chart:ready', {
       bubbles: true,
       detail: {
@@ -778,36 +788,37 @@ class GanttChart extends VBElement {
 
   /* ── JSON loading ──────────────────────────────── */
 
-  /** @param {string} url */
+  /**
+   * Fetch src JSON and replace the tasks. A newer src, a `.tasks`
+   * assignment or removing src aborts this request (SrcLoader).
+   * @param {string} url
+   */
   async #loadSrc(url) {
-    this.#srcLoaded = url;
-    const token = ++this.#srcToken;
+    let result;
     try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (token !== this.#srcToken) return;   // superseded by a newer src
-
-      this.#tasks = normalizeTasks(data.tasks || []);
-      this.#source = 'src';
-      if (data.title && data.title !== this.getAttribute('title')) {
-        this.#internalAttr = true;
-        this.setAttribute('title', data.title);
-        this.#internalAttr = false;
-      }
-      // Rendered synchronously so listeners of the events below see the new DOM.
-      if (this.hasAttribute('data-upgraded')) {
-        this.#render();
-        this.#dispatchReady();
-      }
-      this.dispatchEvent(new CustomEvent('gantt-chart:tasks-changed', {
-        detail: { tasks: this.#tasks, source: 'src' },
-        bubbles: true,
-      }));
+      result = await this.#loader.fetchJson(url);
     } catch (err) {
-      if (token === this.#srcToken) this.#srcLoaded = null;   // allow a retry
       console.warn(`[gantt-chart] Failed to load src="${url}":`, err);
+      return;
     }
+    if (!result) return;   // superseded, cancelled or aborted
+    const { data } = result;
+    this.#tasks = normalizeTasks(data?.tasks || []);
+    this.#source = 'src';
+    if (data?.title && data.title !== this.getAttribute('title')) {
+      this.#internalAttr = true;
+      this.setAttribute('title', data.title);
+      this.#internalAttr = false;
+    }
+    // Rendered synchronously so listeners of the events below see the new DOM.
+    if (this.hasAttribute('data-upgraded')) {
+      this.#render();
+      this.#dispatchReady();
+    }
+    this.dispatchEvent(new CustomEvent('gantt-chart:tasks-changed', {
+      detail: { tasks: this.#tasks, source: 'src' },
+      bubbles: true,
+    }));
   }
 
   /* ── Live region ───────────────────────────────── */

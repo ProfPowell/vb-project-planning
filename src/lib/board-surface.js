@@ -154,45 +154,5 @@ function slotted(tag, slot, text) {
   return el;
 }
 
-/**
- * Track one in-flight fetch per component so a newer `src` wins: calling
- * `start()` aborts the previous request and returns a signal plus an
- * `isCurrent()` check for the response handler.
- */
-export class SrcLoader {
-  /** @type {AbortController | null} */
-  #ctrl = null;
-  /** @type {string | null} */
-  url = null;
-
-  /**
-   * @param {string} url
-   * @returns {{ signal: AbortSignal, isCurrent: () => boolean }}
-   */
-  start(url) {
-    this.#ctrl?.abort();
-    const ctrl = new AbortController();
-    this.#ctrl = ctrl;
-    this.url = url;
-    return { signal: ctrl.signal, isCurrent: () => this.#ctrl === ctrl && !ctrl.signal.aborted };
-  }
-
-  /**
-   * Fetch JSON for `url`, aborting any earlier request. Resolves to
-   * `undefined` when superseded or aborted.
-   * @param {string} url
-   * @returns {Promise<{ data: any, isCurrent: () => boolean } | undefined>}
-   */
-  async fetchJson(url) {
-    const { signal, isCurrent } = this.start(url);
-    try {
-      const res = await fetch(url, { signal });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      return isCurrent() ? { data, isCurrent } : undefined;
-    } catch (err) {
-      if (/** @type {any} */ (err)?.name === 'AbortError' || !isCurrent()) return undefined;
-      throw err;
-    }
-  }
-}
+// SrcLoader lives in its own module; re-exported here for existing imports.
+export { SrcLoader } from './src-loader.js';

@@ -6,7 +6,7 @@
   "htmlvalidate": { "flow": true, "permittedContent": ["@flow"] },
   "attributes": [
     { "name": "title",             "kind": "host-api", "purpose": "config", "type": "string",  "description": "Chart heading (a src JSON \"title\" sets it)" },
-    { "name": "src",               "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL of JSON task data ({ title?, tasks: [...] }). Fetched once on connect or when the attribute changes; the fetched tasks replace the child table" },
+    { "name": "src",               "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL of JSON task data ({ title?, tasks: [...] }). Fetched once on connect or when the attribute changes; the fetched tasks replace the child table. A newer value aborts an older in-flight request. Skipped on connect when .tasks was already assigned, and an in-flight request is aborted when .tasks is assigned (.tasks takes precedence)" },
     { "name": "view",              "kind": "host-api", "purpose": "config", "type": "enum", "values": ["auto", "day", "week", "month", "quarter"], "default": "\"auto\"", "description": "Timeline granularity. auto picks day (≤ 3 weeks), week (≤ 90 days), month (≤ 1 year) or quarter" },
     { "name": "show-today",        "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Show vertical today marker line" },
     { "name": "show-progress",     "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Show progress fill inside bars" },
@@ -29,7 +29,7 @@
   ],
   "events": [
     { "name": "gantt-chart:upgraded",      "detail": "", "description": "Once per connect, in a microtask after setup; a safe signal for the first .tasks assignment (fires for an empty chart too)" },
-    { "name": "gantt-chart:ready",         "detail": "{ taskCount, dateRange: { start, end } }", "description": "After a render with tasks on connect, and after a src load. dateRange values are YYYY-MM-DD" },
+    { "name": "gantt-chart:ready",         "detail": "{ taskCount, dateRange: { start, end } }", "description": "Once per element: after the first connect render that has tasks (table or .tasks), or else after the first src load. Not re-fired on reconnect or by later src loads (those fire tasks-changed with source 'src'). dateRange values are YYYY-MM-DD" },
     { "name": "gantt-chart:task-click",    "detail": "{ task }", "description": "When a bar or milestone is clicked or activated with Enter/Space" },
     { "name": "gantt-chart:tasks-changed", "detail": "{ tasks, source: 'property' | 'src' }", "description": "After .tasks is assigned (source 'property') or src data loads (source 'src'), with the normalized tasks" }
   ]

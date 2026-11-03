@@ -45,6 +45,7 @@
 import { styles } from './styles.js';
 import { registerComponent } from '../../lib/bundle-registry.js';
 import { esc, initials, hashColor, lucideSvg, UX_ICONS } from '../_ux-base.js';
+import { SrcLoader } from '../../lib/src-loader.js';
 import { VBStore } from '../../lib/vb-store.js';
 import { copyText } from '../../utils/copy-init.js';
 
@@ -199,8 +200,10 @@ class ReviewSurface extends HTMLElement {
   #readyFired = false;
   /** Set when `.pins` is assigned; stops the first connect reloading from the adapter. */
   #pinsAssigned = false;
-  /** Bumped by every load and every `.pins` / importPins() so stale async loads are dropped. */
+  /** Bumped by every load and every `.pins` / importPins() so stale adapter loads are dropped. */
   #loadSeq = 0;
+  /** The src request; aborted by a newer src, src removal, `.pins`, importPins() or an adapter load. */
+  #loader = new SrcLoader();
 
   /** @type {HTMLElement} */ #overlay;
   /** @type {HTMLElement} */ #popoverHost;
@@ -264,6 +267,7 @@ class ReviewSurface extends HTMLElement {
     if (this.__pins === next) return;
     this.__pins = /** @type {any} */ (next);
     this.#pinsAssigned = true;
+    this.#loader.cancel();
     this.#loadSeq++;
     this.#loaded = true;
     if (this.#initialized) this._render();
@@ -321,7 +325,9 @@ class ReviewSurface extends HTMLElement {
   attributeChangedCallback(name) {
     if (!this.#initialized || !this.isConnected) return;
     if (name === 'src') {
-      this._loadSrc(this.getAttribute('src'));
+      const src = this.getAttribute('src');
+      if (src) this._loadSrc(src);
+      else if (this.#loader.cancel()) this._loadFromAdapter();   // src removed mid-load
     } else if (name === 'adapter' || name === 'endpoint' || name === 'storage-key') {
       this.#resolveAdapter();
       this._loadFromAdapter();
@@ -359,27 +365,34 @@ class ReviewSurface extends HTMLElement {
 
   /* ── Data loading ──────────────────────────────── */
 
+  /**
+   * Fetch pins from `src` (an array, or `{ pins }`). A newer src aborts the
+   * older request; `.pins`, importPins(), an adapter load or removing src
+   * abort it too.
+   * @param {string | null} src
+   */
   async _loadSrc(src) {
     if (!src) return;
-    const seq = ++this.#loadSeq;
+    this.#loadSeq++;
     this.#showStatus('Loading…');
+    let result;
     try {
-      const res = await fetch(src);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (seq !== this.#loadSeq) return;
-      this.__pins = Array.isArray(data) ? data : data.pins || [];
-      this.#loaded = true;
-      this._render();
+      result = await this.#loader.fetchJson(src);
     } catch (err) {
-      if (seq !== this.#loadSeq) return;
       const msg = err instanceof Error ? err.message : String(err);
       this.#showStatus(`Could not load pins: ${msg}`, true);
+      return;
     }
+    if (!result) return;
+    const { data } = result;
+    this.__pins = Array.isArray(data) ? data : data?.pins || [];
+    this.#loaded = true;
+    this._render();
   }
 
   async _loadFromAdapter() {
     if (!this.__adapter) return;
+    this.#loader.cancel();
     const seq = ++this.#loadSeq;
     let pins;
     try {
@@ -525,6 +538,7 @@ class ReviewSurface extends HTMLElement {
    */
   importPins(data) {
     this.__pins = Array.isArray(data) ? structuredClone(data) : [];
+    this.#loader.cancel();
     this.#loadSeq++;
     this.#loaded = true;
     this._activePin = null;

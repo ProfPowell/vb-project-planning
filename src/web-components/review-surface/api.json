@@ -5,7 +5,7 @@
   "description": "Pin-based annotation overlay for design review — wraps any content and adds interactive comment pins with pluggable persistence",
   "htmlvalidate": { "flow": true, "permittedContent": ["@flow"] },
   "attributes": [
-    { "name": "src",           "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL to JSON file containing pin data" },
+    { "name": "src",           "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL to JSON file containing pin data (an array, or { pins }). A newer value aborts an older in-flight request; removing it, or assigning .pins / importPins(), aborts a pending request (removing it mid-load falls back to the adapter)" },
     { "name": "editable",      "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Enables annotate mode toolbar and pin creation" },
     { "name": "adapter",       "kind": "host-api", "purpose": "config", "type": "string",  "description": "Persistence backend: memory | local | rest" },
     { "name": "endpoint",      "kind": "host-api", "purpose": "config", "type": "string",  "description": "REST endpoint URL (when adapter=rest)" },

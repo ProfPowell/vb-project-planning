@@ -14,6 +14,7 @@
  */
 
 import { stringHash } from '../lib/hash.js';
+import { SrcLoader } from '../lib/src-loader.js';
 
 import { esc } from '../lib/escape.js';
 
@@ -286,10 +287,18 @@ export function markEmptySections(root, sectionSelector) {
  *   going, so a card moved mid-load still fills in.
  * - Attribute changes before first setup are ignored (setup reads them).
  *   After setup, a `src` change refetches (aborting the earlier request and
- *   dropping its response); other changes call `_attributeChanged()`.
+ *   dropping its response, via SrcLoader); removing `src` aborts a pending
+ *   fetch and renders the authored content (firing ready if it has not
+ *   fired yet). Other changes call `_attributeEffects(name)` and then
+ *   `_attributeChanged(name)`.
+ * - A data record (`.data` or `src`) sets attributes without a render per
+ *   attribute; once it is applied, `_attributeEffects(name)` runs for each
+ *   attribute it changed, then the card renders once.
  *
  * Subclasses set `static readyEvent` and implement `_render()`,
- * `_readyDetail()` and, if they load JSON, `_applyData(data)`.
+ * `_readyDetail()` and, if they load JSON, `_applyData(data)`. Side effects
+ * of an attribute (observers, …) belong in `_attributeEffects()`, not in
+ * `_attributeChanged()`, so they also run when a data record sets it.
  */
 export class UXShadowElement extends HTMLElement {
   /** Ready event name, e.g. `story-ready`. */
@@ -300,10 +309,11 @@ export class UXShadowElement extends HTMLElement {
 
   #setUp = false;
   #readyFired = false;
-  #loadSeq = 0;
-  /** @type {AbortController | null} */
-  #abort = null;
+  #loader = new SrcLoader();
   #quiet = 0;
+  /** Attributes changed while quiet (a data record being applied). */
+  /** @type {Set<string>} */
+  #quietChanges = new Set();
 
   constructor() {
     super();
@@ -345,11 +355,16 @@ export class UXShadowElement extends HTMLElement {
    * @param {string | null} newValue
    */
   attributeChangedCallback(name, oldValue, newValue) {
-    if (!this.#setUp || this.#quiet || oldValue === newValue) return;
+    if (!this.#setUp || oldValue === newValue) return;
+    if (this.#quiet) {
+      if (name !== 'src') this.#quietChanges.add(name);
+      return;
+    }
     if (name === 'src') {
       this._loadSrc(newValue);
       return;
     }
+    this._attributeEffects(name);
     this._attributeChanged(name);
   }
 
@@ -361,6 +376,13 @@ export class UXShadowElement extends HTMLElement {
   _connect() {}
   /** Every disconnect: detach observers. */
   _disconnect() {}
+  /**
+   * Non-render side effects of an attribute change (e.g. re-pointing an
+   * observer). Runs before `_attributeChanged()`, and also after a data
+   * record that changed the attribute has been applied.
+   * @param {string} _name
+   */
+  _attributeEffects(_name) {}
   /** @param {string} _name */
   _attributeChanged(_name) { this._render(); }
   /** Render the full shadow tree. */
@@ -402,6 +424,11 @@ export class UXShadowElement extends HTMLElement {
   _quietly(fn) {
     this.#quiet++;
     try { fn(); } finally { this.#quiet--; }
+    if (this.#quiet === 0 && this.#quietChanges.size) {
+      const changed = [...this.#quietChanges];
+      this.#quietChanges.clear();
+      for (const name of changed) this._attributeEffects(name);
+    }
   }
 
   /**
@@ -435,31 +462,30 @@ export class UXShadowElement extends HTMLElement {
   /**
    * Fetch `url` as JSON and apply it. Each call supersedes the previous
    * one: the earlier request is aborted and its response, if it still
-   * arrives, is ignored.
+   * arrives, is ignored. A null/empty `url` (src removed) aborts any
+   * pending request and renders the authored content instead.
    * @param {string | null} url
    */
   async _loadSrc(url) {
-    this.#abort?.abort();
-    this.#abort = null;
-    const seq = ++this.#loadSeq;
-    if (!url) return;
-    const controller = new AbortController();
-    this.#abort = controller;
-    this._renderLoading();
-    try {
-      const res = await fetch(url, { signal: controller.signal });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (seq !== this.#loadSeq) return;
-      this._quietly(() => this._applyData(data && typeof data === 'object' ? data : {}));
-      this._cacheSlotValues();
+    if (!url) {
+      this.#loader.cancel();
       this._render();
       this._fireReady();
-    } catch (err) {
-      if (seq !== this.#loadSeq) return;
-      this._renderError(err instanceof Error ? err : new Error(String(err)));
-    } finally {
-      if (this.#abort === controller) this.#abort = null;
+      return;
     }
+    this._renderLoading();
+    let result;
+    try {
+      result = await this.#loader.fetchJson(url);
+    } catch (err) {
+      this._renderError(err instanceof Error ? err : new Error(String(err)));
+      return;
+    }
+    if (!result) return;
+    const { data } = result;
+    this._quietly(() => this._applyData(data && typeof data === 'object' ? data : {}));
+    this._cacheSlotValues();
+    this._render();
+    this._fireReady();
   }
 }

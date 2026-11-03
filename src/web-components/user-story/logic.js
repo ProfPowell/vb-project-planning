@@ -149,8 +149,8 @@ class UserStory extends UXShadowElement {
   }
 
   /** @param {string} name */
-  _attributeChanged(name) {
-    this._render();
+  _attributeEffects(name) {
+    // Also runs after a .data / src record sets persona-id.
     if (name === 'persona-id') this.#observeLinkedPersona();
   }
 

@@ -177,9 +177,9 @@ class UserPersona extends UXShadowElement {
   }
 
   /** @param {string} name */
-  _attributeChanged(name) {
+  _attributeEffects(name) {
+    // Also runs after a .data / src record sets one of these.
     if (name === 'data-list-stories' || name === 'id') this.#syncStoryObserver();
-    this._render();
   }
 
   _readyDetail() {

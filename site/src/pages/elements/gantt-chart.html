@@ -75,7 +75,8 @@ crumbLabel: Web Components
 
   <section>
     <h2>Data Mode</h2>
-    <p>Load task data from JSON via the <code>src</code> attribute. It is fetched once when the element connects (whether <code>src</code> was set before or after) and again only when <code>src</code> changes; moving the element in the DOM does not refetch. The loaded tasks replace any child table, and the component generates a visually hidden table from them for screen readers. A <code>"title"</code> in the JSON sets the <code>title</code> attribute.</p>
+    <p>Load task data from JSON via the <code>src</code> attribute. It is fetched once when the element connects (whether <code>src</code> was set before or after) and again only when <code>src</code> changes; moving the element in the DOM does not refetch. The loaded tasks replace any child table, and the component generates a visually hidden table from them for screen readers. A <code>"title"</code> in the JSON sets the <code>title</code> attribute. A newer <code>src</code> aborts an older in-flight request.</p>
+    <p><strong>Precedence:</strong> <code>.tasks</code> wins over <code>src</code>. If <code>.tasks</code> is assigned before the element connects, the initial <code>src</code> is not fetched, and assigning <code>.tasks</code> while a src request is in flight aborts it. Changing <code>src</code> afterwards loads that URL (the most recent source wins). <code>gantt-chart:ready</code> fires once per element; later src loads fire <code>gantt-chart:tasks-changed</code> with <code>source: 'src'</code>.</p>
 
     <code-block language="json" show-lines label="JSON schema">{
   "title": "Q2 Roadmap",
