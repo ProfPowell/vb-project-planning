@@ -86,9 +86,12 @@ This package was decomposed out of `vanilla-breeze` core so that framework stays
 ## Development
 
 ```bash
-npm run build   # bundle dist/ (esm + minified, js + css) via esbuild
-npm test        # Playwright component specs (serves the built docs/ on :4331)
+npm run build       # bundle dist/ (esm + minified, js + css) via esbuild
+npm run typecheck   # tsc checkJs over src/ (JSDoc types, no unused locals)
+npm test            # unit tests (src/lib, run with TZ=America/Los_Angeles) + Playwright specs
 ```
+
+The Playwright specs load the demo pages from the committed `docs/` site but serve the component bundle from `dist/`, so run `npm run build` first and they test your current `src/`. Set `VB_TEST_PORT` to run the suite in more than one checkout at once (default 4331).
 
 `dist/` is committed: it is what the npm tarball ships and what the docs site vendors. CI fails if `src/` changes without a rebuilt `dist/`.
 
