@@ -11,10 +11,14 @@
  * scheduling. Use roadmap for quarterly product roadmaps; gantt for
  * project plans.
  *
+ * Dates are calendar days in local time (src/lib/dates.js). Every end
+ * date — the host's `end` and each initiative's `data-end` — is
+ * INCLUSIVE: an initiative with data-start == data-end covers one day.
+ *
  * @attr {string} start         - First date in the range (ISO 8601 or "YYYY-Qn"; required)
  * @attr {string} end           - Last date in the range (ISO 8601 or "YYYY-Qn"; required, inclusive)
  * @attr {string} view          - "quarter" (default) or "month" axis granularity
- * @attr {boolean} editable     - Wires drag-to-reschedule, drag-to-resize, lane drop
+ * @attr {boolean} editable     - Wires pointer drag-to-reschedule / resize / lane move, and keyboard editing
  * @attr {boolean} today-marker - Render a vertical line at today's date if it falls in range
  *
  * Children:
@@ -25,36 +29,80 @@
  *     </article>
  *   </section>
  *
- * @fires roadmap:select     - { initiative, lane, start, end, status } on click
- * @fires roadmap:reschedule - { initiative, lane, start, end } when bar dragged along time
- * @fires roadmap:resize     - { initiative, lane, start, end } when right edge dragged
- * @fires roadmap:move       - { initiative, fromLane, toLane, start, end } when bar dropped on another lane
+ * Interaction (bars are role="button", focusable):
+ *   click / Enter / Space          → product-roadmap:select
+ *   editable, drag body            → product-roadmap:reschedule (snaps to the nearest period)
+ *   editable, drag right edge      → product-roadmap:resize
+ *   editable, drag onto other lane → product-roadmap:move
+ *   editable, ←/→                  → move one period (reschedule)
+ *   editable, Shift+←/→            → end date one period earlier/later (resize)
+ *   editable, Alt+↑/↓              → move to the previous/next lane (move)
+ *
+ * @fires product-roadmap:select     - { initiative, lane, start, end, status }
+ * @fires product-roadmap:reschedule - { initiative, lane, start, end }
+ * @fires product-roadmap:resize     - { initiative, lane, start, end }
+ * @fires product-roadmap:move       - { initiative, fromLane, toLane, start, end }
  */
 
 import { registerComponent } from '../../lib/bundle-registry.js';
 import { VBElement } from '../../lib/vb-element.js';
+import {
+  parseISODate, toISODate, addDays, addMonths, daysBetween,
+  startOfMonth, startOfQuarter, formatDate,
+} from '../../lib/dates.js';
 
-const MS_PER_DAY = 86_400_000;
+/** Pointer travel (px) before a press becomes a drag. Below it, it's a click. */
+const DRAG_THRESHOLD = 4;
+
+const STATUS_LABELS = {
+  planned: 'Planned',
+  'in-progress': 'In progress',
+  'at-risk': 'At risk',
+  shipped: 'Shipped',
+  blocked: 'Blocked',
+};
+
+/** @param {string} s */
+function statusLabel(s) {
+  return STATUS_LABELS[s] || (s.charAt(0).toUpperCase() + s.slice(1)).replace(/-/g, ' ');
+}
+
+let instanceCounter = 0;
 
 class Roadmap extends VBElement {
   static get observedAttributes() {
     return ['start', 'end', 'view', 'editable', 'today-marker'];
   }
 
+  #uid = `rm-${++instanceCounter}`;
+
   setup() {
     if (!this.#readConfig()) return false;
 
-    /* Snapshot original lane sections (auto-discovery) before we wipe
-       the host. We do not modify the original elements until/unless
-       drag interactions change their data-* attributes. */
+    /* The source lanes stay in the host (hidden) and are re-read on each
+       render, so author edits to data-start/data-end are picked up and a
+       reconnect re-renders from the same source of truth. */
     const lanes = [...this.querySelectorAll(':scope > section[data-lane]')];
     if (!lanes.length) {
       console.warn('product-roadmap: no <section data-lane> children found');
       return false;
     }
     this.#sourceLanes = lanes;
+
+    /* Delegated once per connection; listen() removes them on disconnect. */
+    this.listen(this, 'click', this.#onClick);
+    this.listen(this, 'keydown', this.#onKeyDown);
+    this.listen(this, 'pointerdown', this.#onPointerDown);
+    this.listen(this, 'pointermove', this.#onPointerMove);
+    this.listen(this, 'pointerup', this.#onPointerUp);
+    this.listen(this, 'pointercancel', this.#onPointerCancel);
+
     this.#render();
     return true;
+  }
+
+  teardown() {
+    this.#dragInfo = null;
   }
 
   /** Parse start/end/view/editable from attributes. Returns false when invalid. */
@@ -67,13 +115,13 @@ class Roadmap extends VBElement {
     }
     const start = Roadmap.#parseDate(startAttr, 'start');
     const end   = Roadmap.#parseDate(endAttr,   'end');
-    if (!start || !end || end <= start) {
+    if (!start || !end || end < start) {
       console.warn('product-roadmap: invalid start/end', startAttr, endAttr);
       return false;
     }
     this.#start = start;
-    this.#end = end;
-    this.#totalMs = end.getTime() - start.getTime();
+    this.#endExcl = addDays(end, 1);
+    this.#totalDays = daysBetween(start, this.#endExcl);
     this.#view = (this.getAttribute('view') === 'month') ? 'month' : 'quarter';
     this.#editable = this.hasAttribute('editable');
     return true;
@@ -81,30 +129,33 @@ class Roadmap extends VBElement {
 
   attributeChangedCallback(_name, oldValue, newValue) {
     if (oldValue === newValue) return;
-    if (!this.isConnected || !this.#sourceLanes.length) return;
+    if (!this.isConnected || !this.hasAttribute('data-upgraded')) return;
     if (this.#readConfig()) this.#render();
   }
 
+  get #periodMonths() { return this.#view === 'month' ? 1 : 3; }
+
   #render() {
-    /* Wipe everything except the source lanes (which we re-read on
-       each render so author edits to data-start/data-end are picked up). */
+    /* Remember which initiative had focus so keyboard edits keep it. */
+    const focused = /** @type {HTMLElement | null} */ (this.querySelector('.rm-bar:focus'));
+    const refocus = focused ? this.#initiativeFor.get(focused) : null;
+
     [...this.children].forEach((c) => {
       if (!this.#sourceLanes.includes(c)) c.remove();
     });
-    /* Move source lanes out of the host so they don't display directly. */
     this.#sourceLanes.forEach((lane) => { /** @type {HTMLElement} */ (lane).hidden = true; });
+    this.#initiativeFor = new WeakMap();
 
     const wrapper = document.createElement('div');
     wrapper.className = 'rm-wrapper';
 
-    /* --- time axis header --- */
-    const axis = this.#buildAxis();
-    wrapper.appendChild(axis);
+    wrapper.appendChild(this.#buildAxis());
 
-    /* --- lanes --- */
     const lanesEl = document.createElement('div');
     lanesEl.className = 'rm-lanes';
 
+    /** @type {HTMLElement | null} */
+    let refocusBar = null;
     for (const sourceLane of this.#sourceLanes) {
       const laneName = sourceLane.getAttribute('data-lane') || '';
       const laneEl = document.createElement('section');
@@ -120,16 +171,12 @@ class Roadmap extends VBElement {
       track.className = 'rm-track';
       track.dataset.lane = laneName;
 
-      /* For each <article> in the source lane, build a bar. */
       const initiatives = [...sourceLane.querySelectorAll(':scope > article[data-start][data-end]')];
       for (const init of initiatives) {
         const bar = this.#buildBar(init, laneName);
-        if (bar) track.appendChild(bar);
-      }
-
-      if (this.#editable) {
-        track.addEventListener('dragover', this.#onTrackDragOver);
-        track.addEventListener('drop', this.#onTrackDrop);
+        if (!bar) continue;
+        track.appendChild(bar);
+        if (init === refocus) refocusBar = bar;
       }
 
       laneEl.appendChild(track);
@@ -138,26 +185,41 @@ class Roadmap extends VBElement {
 
     wrapper.appendChild(lanesEl);
 
-    if (this.hasAttribute('today-marker') && this.#start && this.#end) {
-      const today = new Date();
-      if (today >= this.#start && today <= this.#end) {
+    if (this.hasAttribute('today-marker') && this.#start && this.#endExcl) {
+      const today = parseISODate(new Date());
+      if (today >= this.#start && today < this.#endExcl) {
         const marker = document.createElement('div');
         marker.className = 'rm-today';
         marker.style.setProperty('--rm-x', this.#fractionFor(today).toFixed(4));
-        marker.title = `Today: ${Roadmap.#toISO(today)}`;
+        marker.title = `Today: ${toISODate(today)}`;
         lanesEl.appendChild(marker);
       }
     }
 
+    if (this.#editable) {
+      const help = document.createElement('p');
+      help.id = `${this.#uid}-help`;
+      help.className = 'rm-sr-only';
+      const unit = this.#view === 'month' ? 'month' : 'quarter';
+      help.textContent = `Arrow keys move by one ${unit}. Shift plus arrow keys change the end date. Alt plus up or down arrow moves to another lane.`;
+      wrapper.appendChild(help);
+    }
+
+    const live = document.createElement('div');
+    live.className = 'rm-sr-only';
+    live.setAttribute('role', 'status');
+    live.setAttribute('aria-live', 'polite');
+    wrapper.appendChild(live);
+    this.#liveRegion = live;
+
     this.appendChild(wrapper);
-    this.#wrapper = wrapper;
+    if (refocusBar) refocusBar.focus();
   }
 
   #buildAxis() {
     const axis = document.createElement('header');
     axis.className = 'rm-axis';
-    const ticks = this.#enumerateTicks();
-    for (const tick of ticks) {
+    for (const tick of this.#enumerateTicks()) {
       const cell = document.createElement('div');
       cell.className = 'rm-tick';
       cell.style.setProperty('--rm-x', tick.startFraction.toFixed(4));
@@ -168,14 +230,20 @@ class Roadmap extends VBElement {
     return axis;
   }
 
+  /**
+   * @param {Element} initiative
+   * @param {string} laneName
+   */
   #buildBar(initiative, laneName) {
     const start = Roadmap.#parseDate(initiative.getAttribute('data-start'), 'start');
     const end   = Roadmap.#parseDate(initiative.getAttribute('data-end'),   'end');
-    if (!start || !end || !this.#start || !this.#end) return null;
+    if (!start || !end || end < start || !this.#start || !this.#endExcl) return null;
 
-    /* Clip to visible range. */
+    /* End is inclusive: geometry runs to the start of the following day.
+       Clip to the visible range. */
+    const endExcl = addDays(end, 1);
     const clipStart = start < this.#start ? this.#start : start;
-    const clipEnd   = end > this.#end ? this.#end : end;
+    const clipEnd   = endExcl > this.#endExcl ? this.#endExcl : endExcl;
     if (clipStart >= clipEnd) return null;
 
     const x = this.#fractionFor(clipStart);
@@ -186,285 +254,353 @@ class Roadmap extends VBElement {
     bar.style.setProperty('--rm-x', x.toFixed(4));
     bar.style.setProperty('--rm-w', w.toFixed(4));
     bar.dataset.lane = laneName;
-    bar.dataset.start = Roadmap.#toISO(start);
-    bar.dataset.end = Roadmap.#toISO(end);
-    if (initiative.dataset.status) bar.dataset.status = initiative.dataset.status;
+    bar.dataset.start = toISODate(start);
+    bar.dataset.end = toISODate(end);
+    const status = /** @type {HTMLElement} */ (initiative).dataset.status || '';
+    if (status) bar.dataset.status = status;
     if (initiative.id) bar.dataset.sourceId = initiative.id;
-    if (this.#editable) bar.setAttribute('draggable', 'true');
+    bar.tabIndex = 0;
+    bar.setAttribute('role', 'button');
+    this.#initiativeFor.set(bar, initiative);
 
-    /* Inner content: clone the title and details. */
     const title = initiative.querySelector('h1, h2, h3, h4, h5, h6');
     const heading = document.createElement('span');
     heading.className = 'rm-bar-title';
     heading.textContent = title ? title.textContent.trim() : (initiative.textContent || '').trim().split('\n')[0];
     bar.appendChild(heading);
 
-    bar.setAttribute('aria-label', `${heading.textContent} — ${bar.dataset.start} to ${bar.dataset.end} in ${laneName}`);
+    /* Status is shown as text as well as colour. */
+    if (status) {
+      const badge = document.createElement('span');
+      badge.className = 'rm-bar-status';
+      badge.textContent = statusLabel(status);
+      bar.appendChild(badge);
+    }
 
-    /* Click to select. */
-    bar.addEventListener('click', (e) => {
-      if (this.#dragInfo) return;
-      this.dispatchEvent(new CustomEvent('product-roadmap:select', {
-        bubbles: true,
-        detail: {
-          initiative: initiative,
-          lane: laneName,
-          start: bar.dataset.start,
-          end: bar.dataset.end,
-          status: bar.dataset.status || null,
-        },
-      }));
-    });
+    bar.setAttribute('aria-label',
+      `${heading.textContent} — ${formatDate(start)} to ${formatDate(end)} in ${laneName}` +
+      (status ? `, status: ${statusLabel(status).toLowerCase()}` : ''));
 
     if (this.#editable) {
-      /* Resize handle. */
+      bar.setAttribute('aria-describedby', `${this.#uid}-help`);
+      /* Pointer-only affordance; the keyboard equivalent is Shift+Arrow
+         on the bar itself, so the handle is hidden from assistive tech. */
       const handle = document.createElement('span');
       handle.className = 'rm-bar-handle';
-      handle.setAttribute('aria-label', 'Resize end date');
+      handle.setAttribute('aria-hidden', 'true');
+      handle.title = 'Drag to change the end date';
       bar.appendChild(handle);
-
-      handle.addEventListener('pointerdown', (e) => this.#startResize(e, bar, initiative));
-      bar.addEventListener('pointerdown', (e) => {
-        if (e.target === handle) return;
-        this.#startMove(e, bar, initiative);
-      });
-
-      /* HTML5 DnD for cross-lane drops. */
-      bar.addEventListener('dragstart', (e) => {
-        if (e.dataTransfer) {
-          e.dataTransfer.effectAllowed = 'move';
-          e.dataTransfer.setData('text/plain', initiative.id || bar.dataset.sourceId || '');
-        }
-        this.#draggingInitiative = initiative;
-        this.#draggingFromLane = laneName;
-      });
-      bar.addEventListener('dragend', () => {
-        this.#draggingInitiative = null;
-        this.#draggingFromLane = null;
-      });
     }
 
     return bar;
   }
 
-  /* --- pointer drag (move along time axis) --- */
-  #startMove(e, bar, initiative) {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    const trackRect = bar.parentElement.getBoundingClientRect();
-    const startX = e.clientX;
-    const startFraction = parseFloat(bar.style.getPropertyValue('--rm-x')) || 0;
-    const widthFraction = parseFloat(bar.style.getPropertyValue('--rm-w')) || 0;
+  /* --- selection --- */
 
-    this.#dragInfo = { kind: 'move', bar, initiative, trackRect, startX, startFraction, widthFraction };
-    bar.setPointerCapture(e.pointerId);
-    bar.addEventListener('pointermove', this.#onPointerMove);
-    bar.addEventListener('pointerup',   this.#onPointerUp);
-    bar.addEventListener('pointercancel', this.#onPointerUp);
-  }
-
-  #startResize(e, bar, initiative) {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const trackRect = bar.parentElement.getBoundingClientRect();
-    const startX = e.clientX;
-    const startFraction = parseFloat(bar.style.getPropertyValue('--rm-x')) || 0;
-    const widthFraction = parseFloat(bar.style.getPropertyValue('--rm-w')) || 0;
-
-    this.#dragInfo = { kind: 'resize', bar, initiative, trackRect, startX, startFraction, widthFraction };
-    bar.setPointerCapture(e.pointerId);
-    bar.addEventListener('pointermove', this.#onPointerMove);
-    bar.addEventListener('pointerup',   this.#onPointerUp);
-    bar.addEventListener('pointercancel', this.#onPointerUp);
-  }
-
-  #onPointerMove = (e) => {
-    if (!this.#dragInfo) return;
-    const { kind, bar, trackRect, startX, startFraction, widthFraction } = this.#dragInfo;
-    const dxFraction = (e.clientX - startX) / trackRect.width;
-
-    if (kind === 'move') {
-      const newStart = Math.max(0, Math.min(1 - widthFraction, startFraction + dxFraction));
-      bar.style.setProperty('--rm-x', newStart.toFixed(4));
-    } else if (kind === 'resize') {
-      const newWidth = Math.max(0.02, Math.min(1 - startFraction, widthFraction + dxFraction));
-      bar.style.setProperty('--rm-w', newWidth.toFixed(4));
-    }
-  };
-
-  #onPointerUp = (e) => {
-    if (!this.#dragInfo) return;
-    const { kind, bar, initiative } = this.#dragInfo;
-    bar.releasePointerCapture(e.pointerId);
-    bar.removeEventListener('pointermove', this.#onPointerMove);
-    bar.removeEventListener('pointerup',   this.#onPointerUp);
-    bar.removeEventListener('pointercancel', this.#onPointerUp);
-
-    /* Snap to grid (quarter or month boundary) and update dates. */
-    const xFrac = parseFloat(bar.style.getPropertyValue('--rm-x')) || 0;
-    const wFrac = parseFloat(bar.style.getPropertyValue('--rm-w')) || 0;
-    const snappedStart = this.#snapDate(this.#dateForFraction(xFrac));
-    const snappedEnd   = this.#snapDate(this.#dateForFraction(xFrac + wFrac));
-
-    bar.dataset.start = Roadmap.#toISO(snappedStart);
-    bar.dataset.end   = Roadmap.#toISO(snappedEnd);
-    /* Re-snap visual to grid after drag. */
-    const snappedX = this.#fractionFor(snappedStart);
-    const snappedW = this.#fractionFor(snappedEnd) - snappedX;
-    bar.style.setProperty('--rm-x', snappedX.toFixed(4));
-    bar.style.setProperty('--rm-w', snappedW.toFixed(4));
-
-    /* Mirror back to the source <article> so the author's data is updated. */
-    if (initiative) {
-      initiative.setAttribute('data-start', bar.dataset.start ?? '');
-      initiative.setAttribute('data-end',   bar.dataset.end ?? '');
-    }
-
-    this.dispatchEvent(new CustomEvent(kind === 'move' ? 'product-roadmap:reschedule' : 'product-roadmap:resize', {
+  /** @param {HTMLElement} bar */
+  #select(bar) {
+    const initiative = this.#initiativeFor.get(bar);
+    if (!initiative) return;
+    this.dispatchEvent(new CustomEvent('product-roadmap:select', {
       bubbles: true,
       detail: {
         initiative,
         lane: bar.dataset.lane,
         start: bar.dataset.start,
         end: bar.dataset.end,
+        status: bar.dataset.status || null,
       },
     }));
+  }
 
-    /* Clear dragInfo on next tick so any pending click event sees it
-       and skips select. */
-    setTimeout(() => { this.#dragInfo = null; }, 0);
+  /** @param {Event} e */
+  #barFromEvent(e) {
+    const t = /** @type {Element} */ (e.target);
+    const bar = /** @type {HTMLElement | null} */ (t?.closest?.('.rm-bar'));
+    return bar && this.contains(bar) ? bar : null;
+  }
+
+  #onClick = (e) => {
+    const bar = this.#barFromEvent(e);
+    if (!bar) return;
+    if (this.#suppressClick) return;
+    this.#select(bar);
   };
 
-  #onTrackDragOver = (e) => {
-    if (!this.#draggingInitiative) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+  #onKeyDown = (e) => {
+    const ke = /** @type {KeyboardEvent} */ (e);
+    const bar = this.#barFromEvent(ke);
+    if (!bar || ke.target !== bar) return;
+
+    if (ke.key === 'Enter' || ke.key === ' ') {
+      ke.preventDefault();
+      this.#select(bar);
+      return;
+    }
+    if (!this.#editable) return;
+
+    const initiative = this.#initiativeFor.get(bar);
+    if (!initiative) return;
+    const p = this.#periodMonths;
+
+    if (ke.altKey && (ke.key === 'ArrowUp' || ke.key === 'ArrowDown')) {
+      ke.preventDefault();
+      const names = this.#sourceLanes.map((l) => l.getAttribute('data-lane') || '');
+      const idx = names.indexOf(bar.dataset.lane || '');
+      const next = names[idx + (ke.key === 'ArrowUp' ? -1 : 1)];
+      if (idx === -1 || next === undefined) return;
+      this.#commit(initiative, bar.dataset.lane || '', next, null, null, 'move');
+      return;
+    }
+
+    if (ke.key !== 'ArrowLeft' && ke.key !== 'ArrowRight') return;
+    ke.preventDefault();
+    const dir = ke.key === 'ArrowLeft' ? -1 : 1;
+    const start = parseISODate(bar.dataset.start);
+    const endExcl = addDays(parseISODate(bar.dataset.end), 1);
+
+    if (ke.shiftKey) {
+      /* Resize: move the end by one period, keep at least one day. */
+      if (dir > 0 && endExcl >= this.#endExcl) return;
+      const nextEndExcl = addMonths(endExcl, dir * p);
+      if (nextEndExcl <= start) return;
+      this.#commit(initiative, bar.dataset.lane || '', null, start, addDays(nextEndExcl, -1), 'resize');
+    } else {
+      /* Move: shift both ends by one period; stop at the range edges. */
+      if (dir < 0 && start <= this.#start) return;
+      if (dir > 0 && endExcl >= this.#endExcl) return;
+      const nextStart = addMonths(start, dir * p);
+      const nextEndExcl = addMonths(endExcl, dir * p);
+      this.#commit(initiative, bar.dataset.lane || '', null, nextStart, addDays(nextEndExcl, -1), 'reschedule');
+    }
   };
 
-  #onTrackDrop = (e) => {
-    if (!this.#draggingInitiative) return;
-    e.preventDefault();
-    const targetLane = e.currentTarget.dataset.lane;
-    const initiative = this.#draggingInitiative;
-    const fromLane = this.#draggingFromLane;
-    if (targetLane === fromLane) return;
+  /* --- pointer drag (time axis + cross-lane) --- */
 
-    /* Move the source <article> to the new <section data-lane>. */
-    const newSourceLane = this.#sourceLanes.find((l) => l.getAttribute('data-lane') === targetLane);
-    if (newSourceLane) newSourceLane.appendChild(initiative);
+  #onPointerDown = (e) => {
+    const pe = /** @type {PointerEvent} */ (e);
+    if (!this.#editable || pe.button !== 0) return;
+    const bar = this.#barFromEvent(pe);
+    if (!bar) return;
+    const track = bar.parentElement;
+    if (!track) return;
+    const isHandle = /** @type {Element} */ (pe.target).classList?.contains('rm-bar-handle');
+    this.#dragInfo = {
+      kind: isHandle ? 'resize' : 'move',
+      pointerId: pe.pointerId,
+      bar,
+      trackRect: track.getBoundingClientRect(),
+      startX: pe.clientX,
+      startY: pe.clientY,
+      startFraction: parseFloat(bar.style.getPropertyValue('--rm-x')) || 0,
+      widthFraction: parseFloat(bar.style.getPropertyValue('--rm-w')) || 0,
+      moved: false,
+      targetLane: bar.dataset.lane || '',
+    };
+  };
 
-    this.dispatchEvent(new CustomEvent('product-roadmap:move', {
-      bubbles: true,
-      detail: {
-        initiative,
-        fromLane,
-        toLane: targetLane,
-        start: initiative.getAttribute('data-start'),
-        end: initiative.getAttribute('data-end'),
-      },
-    }));
+  #onPointerMove = (e) => {
+    const pe = /** @type {PointerEvent} */ (e);
+    const info = this.#dragInfo;
+    if (!info || pe.pointerId !== info.pointerId) return;
+    const dx = pe.clientX - info.startX;
+    const dy = pe.clientY - info.startY;
+
+    if (!info.moved) {
+      if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+      info.moved = true;
+      info.bar.setAttribute('data-dragging', '');
+      try { info.bar.setPointerCapture(pe.pointerId); } catch { /* synthetic pointer */ }
+    }
+
+    const dxFraction = dx / info.trackRect.width;
+    if (info.kind === 'move') {
+      const newStart = Math.max(0, Math.min(1 - info.widthFraction, info.startFraction + dxFraction));
+      info.bar.style.setProperty('--rm-x', newStart.toFixed(4));
+
+      /* Lane under the pointer (by vertical position over the tracks). */
+      let target = info.bar.dataset.lane || '';
+      for (const track of /** @type {NodeListOf<HTMLElement>} */ (this.querySelectorAll('.rm-track'))) {
+        const r = track.getBoundingClientRect();
+        if (pe.clientY >= r.top && pe.clientY <= r.bottom) { target = track.dataset.lane || ''; }
+        track.toggleAttribute('data-drop-target', false);
+      }
+      info.targetLane = target;
+      if (target !== info.bar.dataset.lane) {
+        this.querySelector(`.rm-track[data-lane="${CSS.escape(target)}"]`)?.setAttribute('data-drop-target', '');
+      }
+    } else {
+      const newWidth = Math.max(0.01, Math.min(1 - info.startFraction, info.widthFraction + dxFraction));
+      info.bar.style.setProperty('--rm-w', newWidth.toFixed(4));
+    }
+  };
+
+  #onPointerUp = (e) => {
+    const pe = /** @type {PointerEvent} */ (e);
+    const info = this.#dragInfo;
+    if (!info || pe.pointerId !== info.pointerId) return;
+    this.#dragInfo = null;
+    if (!info.moved) return;   // a plain press: let the click select
+
+    /* The click that follows a drag must not also select. */
+    this.#suppressClick = true;
+    setTimeout(() => { this.#suppressClick = false; }, 0);
+
+    const initiative = this.#initiativeFor.get(info.bar);
+    if (!initiative) return;
+    const xFrac = parseFloat(info.bar.style.getPropertyValue('--rm-x')) || 0;
+    const wFrac = parseFloat(info.bar.style.getPropertyValue('--rm-w')) || 0;
+
+    let start = parseISODate(info.bar.dataset.start);
+    let endExcl = addDays(parseISODate(info.bar.dataset.end), 1);
+    if (info.kind === 'move') {
+      start = this.#snapToBoundary(this.#dateForFraction(xFrac));
+      endExcl = this.#snapToBoundary(this.#dateForFraction(xFrac + wFrac));
+    } else {
+      endExcl = this.#snapToBoundary(this.#dateForFraction(xFrac + wFrac));
+    }
+    /* Never collapse a bar below one period. */
+    if (endExcl <= start) endExcl = addMonths(start, this.#periodMonths);
+
+    const fromLane = info.bar.dataset.lane || '';
+    const toLane = info.kind === 'move' && info.targetLane !== fromLane ? info.targetLane : null;
+    this.#commit(initiative, fromLane, toLane, start, addDays(endExcl, -1), info.kind === 'move' ? 'reschedule' : 'resize');
+  };
+
+  #onPointerCancel = (e) => {
+    const pe = /** @type {PointerEvent} */ (e);
+    if (!this.#dragInfo || pe.pointerId !== this.#dragInfo.pointerId) return;
+    this.#dragInfo = null;
+    this.#render();   // discard the uncommitted visual offset
+  };
+
+  /**
+   * Apply a date and/or lane change to the source <article>, fire the
+   * matching events, and re-render. Unchanged values fire nothing.
+   * @param {Element} initiative
+   * @param {string} fromLane
+   * @param {string | null} toLane - new lane, or null to stay
+   * @param {Date | null} start - new start, or null to keep
+   * @param {Date | null} end - new inclusive end, or null to keep
+   * @param {'reschedule' | 'resize' | 'move'} dateEvent - event to fire if the dates changed
+   */
+  #commit(initiative, fromLane, toLane, start, end, dateEvent) {
+    const oldStart = toISODate(Roadmap.#parseDate(initiative.getAttribute('data-start'), 'start'));
+    const oldEnd = toISODate(Roadmap.#parseDate(initiative.getAttribute('data-end'), 'end'));
+    const newStart = start ? toISODate(start) : oldStart;
+    const newEnd = end ? toISODate(end) : oldEnd;
+    const datesChanged = newStart !== oldStart || newEnd !== oldEnd;
+    const targetLane = toLane !== null && toLane !== fromLane
+      ? this.#sourceLanes.find((l) => l.getAttribute('data-lane') === toLane)
+      : null;
+    const laneChanged = !!targetLane;
+
+    if (datesChanged) {
+      initiative.setAttribute('data-start', newStart);
+      initiative.setAttribute('data-end', newEnd);
+    }
+    if (targetLane) targetLane.appendChild(initiative);
 
     this.#render();
-  };
+    if (!datesChanged && !laneChanged) return;
 
-  /* --- date math --- */
-  #fractionFor(date) {
-    if (!this.#start) return 0;
-    const ms = date.getTime() - this.#start.getTime();
-    return Math.max(0, Math.min(1, ms / this.#totalMs));
-  }
+    const lane = laneChanged ? toLane : fromLane;
+    const title = initiative.querySelector('h1, h2, h3, h4, h5, h6')?.textContent?.trim() || 'Initiative';
+    this.#announce(`${title}: ${formatDate(parseISODate(newStart))} to ${formatDate(parseISODate(newEnd))} in ${lane}`);
 
-  #dateForFraction(frac) {
-    const start = this.#start ?? new Date();
-    return new Date(start.getTime() + frac * this.#totalMs);
-  }
-
-  #snapDate(date) {
-    if (this.#view === 'month') {
-      return new Date(date.getFullYear(), date.getMonth(), 1);
+    if (datesChanged && dateEvent !== 'move') {
+      this.dispatchEvent(new CustomEvent(`product-roadmap:${dateEvent}`, {
+        bubbles: true,
+        detail: { initiative, lane, start: newStart, end: newEnd },
+      }));
     }
-    /* Quarter snap: round to nearest quarter boundary. */
-    const month = date.getMonth();
-    const qStartMonth = Math.floor(month / 3) * 3;
-    return new Date(date.getFullYear(), qStartMonth, 1);
+    if (laneChanged) {
+      this.dispatchEvent(new CustomEvent('product-roadmap:move', {
+        bubbles: true,
+        detail: { initiative, fromLane, toLane, start: newStart, end: newEnd },
+      }));
+    }
+  }
+
+  /** @param {string} msg */
+  #announce(msg) {
+    if (this.#liveRegion) this.#liveRegion.textContent = msg;
+  }
+
+  /* --- date math (calendar days, DST-safe) --- */
+
+  /** @param {Date} date */
+  #fractionFor(date) {
+    if (!this.#start || !this.#totalDays) return 0;
+    return Math.max(0, Math.min(1, daysBetween(this.#start, date) / this.#totalDays));
+  }
+
+  /** @param {number} frac */
+  #dateForFraction(frac) {
+    return addDays(this.#start ?? new Date(), Math.round(frac * this.#totalDays));
+  }
+
+  /** @param {Date} date */
+  #periodStart(date) {
+    return this.#view === 'month' ? startOfMonth(date) : startOfQuarter(date);
+  }
+
+  /** Round to the nearest period boundary (quarter or month start). @param {Date} date */
+  #snapToBoundary(date) {
+    const a = this.#periodStart(date);
+    const b = addMonths(a, this.#periodMonths);
+    return daysBetween(a, date) <= daysBetween(date, b) ? a : b;
   }
 
   #enumerateTicks() {
     const ticks = [];
     const start = this.#start;
-    const end = this.#end;
+    const end = this.#endExcl;
     if (!start || !end) return ticks;
-    if (this.#view === 'quarter') {
-      let cursor = this.#snapDate(start);
-      while (cursor < end) {
-        const next = new Date(cursor.getFullYear(), cursor.getMonth() + 3, 1);
-        const startFraction = this.#fractionFor(cursor < start ? start : cursor);
-        const endFraction   = this.#fractionFor(next > end ? end : next);
-        const q = Math.floor(cursor.getMonth() / 3) + 1;
-        ticks.push({ startFraction, endFraction, label: `Q${q} ${cursor.getFullYear()}` });
-        cursor = next;
-      }
-    } else {
-      let cursor = new Date(start.getFullYear(), start.getMonth(), 1);
-      while (cursor < end) {
-        const next = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-        const startFraction = this.#fractionFor(cursor < start ? start : cursor);
-        const endFraction   = this.#fractionFor(next > end ? end : next);
-        const m = cursor.toLocaleString(undefined, { month: 'short' });
-        ticks.push({ startFraction, endFraction, label: `${m} ${cursor.getFullYear()}` });
-        cursor = next;
-      }
+    const p = this.#periodMonths;
+    for (let cursor = this.#periodStart(start); cursor < end; cursor = addMonths(cursor, p)) {
+      const next = addMonths(cursor, p);
+      const startFraction = this.#fractionFor(cursor < start ? start : cursor);
+      const endFraction   = this.#fractionFor(next > end ? end : next);
+      const label = this.#view === 'quarter'
+        ? `Q${Math.floor(cursor.getMonth() / 3) + 1} ${cursor.getFullYear()}`
+        : `${cursor.toLocaleString(undefined, { month: 'short' })} ${cursor.getFullYear()}`;
+      ticks.push({ startFraction, endFraction, label });
     }
     return ticks;
   }
 
-  /** Parse "2026-Q3", "2026-Q3-end", or ISO date. `kind` decides how
-      "YYYY-Qn" without explicit position resolves: 'start' → first day
-      of the quarter; 'end' → last day. */
+  /** Parse "2026-Q3" or an ISO date. `kind` decides how "YYYY-Qn"
+      resolves: 'start' → first day of the quarter; 'end' → last day.
+      @param {string | null} value @param {'start' | 'end'} kind */
   static #parseDate(value, kind) {
     if (!value) return null;
-    const q = String(value).match(/^(\d{4})-Q([1-4])$/i);
+    const q = String(value).trim().match(/^(\d{4})-Q([1-4])$/i);
     if (q) {
       const year = Number(q[1]);
-      const quarter = Number(q[2]);
-      const monthStart = (quarter - 1) * 3;
-      if (kind === 'end') {
-        /* Last day of last month of the quarter */
-        return new Date(year, monthStart + 3, 0);
-      }
-      return new Date(year, monthStart, 1);
+      const monthStart = (Number(q[2]) - 1) * 3;
+      return kind === 'end' ? new Date(year, monthStart + 3, 0) : new Date(year, monthStart, 1);
     }
-    const iso = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
-    const d = new Date(value);
-    return isNaN(d.getTime()) ? null : d;
-  }
-
-  static #toISO(d) {
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${d.getFullYear()}-${m}-${day}`;
+    return parseISODate(value);
   }
 
   /** @type {Date | null} */
   #start = null;
-  /** @type {Date | null} */
-  #end = null;
-  #totalMs = 0;
+  /** @type {Date | null} first day AFTER the visible range */
+  #endExcl = null;
+  #totalDays = 0;
   /** @type {"quarter" | "month"} */
   #view = 'quarter';
   #editable = false;
+  #suppressClick = false;
   /** @type {Element[]} */
   #sourceLanes = [];
+  /** @type {WeakMap<HTMLElement, Element>} rendered bar → source <article> */
+  #initiativeFor = new WeakMap();
   /** @type {HTMLElement | null} */
-  #wrapper = null;
-  /** @type {{ kind: string, bar: HTMLElement, initiative?: Element, trackRect: DOMRect, startX: number, startFraction: number, widthFraction: number } | null} */
+  #liveRegion = null;
+  /** @type {{ kind: 'move' | 'resize', pointerId: number, bar: HTMLElement, trackRect: DOMRect, startX: number, startY: number, startFraction: number, widthFraction: number, moved: boolean, targetLane: string } | null} */
   #dragInfo = null;
-  /** @type {Element | null} */
-  #draggingInitiative = null;
-  /** @type {Element | null} */
-  #draggingFromLane = null;
 }
 
 registerComponent('product-roadmap', Roadmap);
