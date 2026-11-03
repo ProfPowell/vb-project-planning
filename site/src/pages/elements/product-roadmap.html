@@ -88,7 +88,7 @@ crumbLabel: Web Components
 <section>
   <h2>Accessibility</h2>
   <ul>
-    <li>Each bar is a focusable <code>role="button"</code> whose accessible name gives the title, dates, lane and status (e.g. “iOS rewrite — July 1, 2026 to March 31, 2027 in Mobile, status: at risk”). <kbd>Enter</kbd> or <kbd>Space</kbd> selects it.</li>
+    <li>Each bar is a focusable <code>role="button"</code> (a <code>&lt;div&gt;</code>, since <code>button</code> is not an allowed role on <code>&lt;article&gt;</code>). Its accessible name starts with the text shown on the bar — title, then status — and then adds the dates and lane (e.g. “iOS rewrite, At risk — July 1, 2026 to March 31, 2027 in Mobile”), so voice-control users can say what they see (WCAG 2.5.3). <kbd>Enter</kbd> or <kbd>Space</kbd> selects it.</li>
     <li>Status is shown as visible text, not by colour alone.</li>
     <li>In editable mode every pointer edit has a keyboard equivalent (see above); the bars reference a visually hidden description of the keys, and changes are announced through a polite live region. Focus stays on the edited bar.</li>
     <li>The resize handle is a pointer-only target and is hidden from assistive technology; <kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd> is its keyboard equivalent.</li>
