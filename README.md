@@ -108,7 +108,7 @@ npm version minor        # bumps package.json and tags vX.Y.Z
 git push --follow-tags
 ```
 
-The **Release** workflow builds, runs the tests, publishes to npm with provenance, and creates a GitHub release from the matching `CHANGELOG.md` section. It needs an `NPM_TOKEN` repository secret.
+The **Release** workflow builds, runs the tests, publishes to npm with provenance, and creates a GitHub release from the matching `CHANGELOG.md` section. CI publishing needs an `NPM_TOKEN` repository secret. Without one, publish from a logged-in terminal first (`npm publish --access public`) and then push the tag; the workflow sees the version is already on the registry, skips the publish, and still creates the GitHub release.
 
 ## License
 
