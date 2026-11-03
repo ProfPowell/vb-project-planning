@@ -12,6 +12,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { openUpgradePage, recordedEvents, moveElement } from './helpers/upgrade-page.js';
 
 const demoPage = 'demos/work-item-basic/';
 
@@ -118,7 +119,7 @@ test.describe('work-item', () => {
     expect(result.invalid).toEqual({ statusAttr: 'blocked', priorityAttr: 'low' });
   });
 
-  test('attribute changes re-render and re-fire work-item:ready with detail', async ({ page }) => {
+  test('attribute changes re-render without re-firing work-item:ready', async ({ page }) => {
     await page.goto(demoPage);
     await page.waitForSelector('work-item[data-upgraded]');
 
@@ -143,14 +144,8 @@ test.describe('work-item', () => {
       };
     });
 
-    expect(result.ready).toHaveLength(4);
-    expect(result.ready[3]).toEqual({
-      itemId: 'PROJ-44',
-      title: 'Upgrade Node to v22 LTS',
-      type: 'bug',
-      priority: 'low',
-      status: 'backlog',
-    });
+    // work-item:ready fires once, after the first render only.
+    expect(result.ready).toEqual([]);
     expect(result.typeData).toBe('bug');
     expect(result.assignee).toBe('PS Priya Sharma');
     // storyIds getter trims + drops empties
@@ -202,7 +197,8 @@ test.describe('work-item', () => {
     ]);
     expect(result.minimal.level).toBe('minimal');
     expect(result.minimal.isMinimal).toBe(true);
-    expect(result.minimal.tabindex).toBe('0');
+    // No action on the minimal card, so no tab stop.
+    expect(result.minimal.tabindex).toBeNull();
     expect(result.minimal.noSections).toBe(true);
     expect(result.minimal.itemId).toBe('PROJ-43');
     expect(result.minimal.titleAssigned).toBe(1);
@@ -285,5 +281,97 @@ test.describe('work-item', () => {
       detail: undefined,
       title: 'Ship the thing',
     });
+  });
+});
+
+test.describe('work-item — src, lifecycle and regressions', () => {
+  const EVENTS = ['work-item:ready', 'work-item:upgraded'];
+  const record = (title) => ({
+    itemId: 'SRC-9', type: 'bug', priority: 'high', status: 'in-progress',
+    title, description: 'Loaded from JSON.', checklist: ['Reproduce', 'Fix'],
+  });
+
+  test('src fetches exactly once and work-item:ready fires once, after the data renders', async ({ page }) => {
+    const { requests } = await openUpgradePage(page, {
+      events: EVENTS,
+      fixtures: { 'item.json': record('From src') },
+      body: '<work-item id="w1" src="item.json"></work-item>',
+    });
+    await page.waitForFunction(() => window.__events.some(e => e.type === 'work-item:ready'));
+    await page.waitForTimeout(100);
+
+    expect(requests['item.json']).toBe(1);
+    const ready = await recordedEvents(page, 'work-item:ready');
+    expect(ready).toEqual([{
+      type: 'work-item:ready', id: 'w1',
+      detail: { itemId: 'SRC-9', title: 'From src', type: 'bug', priority: 'high', status: 'in-progress' },
+    }]);
+    expect(await recordedEvents(page, 'work-item:upgraded')).toHaveLength(1);
+  });
+
+  test('moving the element (kanban drag) does not refetch, re-render, or re-fire ready', async ({ page }) => {
+    const { requests } = await openUpgradePage(page, {
+      events: EVENTS,
+      fixtures: { 'item.json': record('From src') },
+      body: '<work-item id="w1" src="item.json" detail="minimal"></work-item>',
+    });
+    await page.waitForFunction(() => window.__events.some(e => e.type === 'work-item:ready'));
+
+    const moved = await moveElement(page, '#w1');
+    expect(moved).toEqual({ connected: true, sameNode: true, sameHtml: true, upgraded: true });
+    expect(requests['item.json']).toBe(1);
+    expect(await recordedEvents(page, 'work-item:ready')).toHaveLength(1);
+  });
+
+  test('changing src aborts the earlier request and drops its late response', async ({ page }) => {
+    const { requests } = await openUpgradePage(page, {
+      events: EVENTS,
+      fixtures: {
+        'slow.json': { json: record('Stale'), delay: 400 },
+        'fast.json': record('Fresh'),
+      },
+      body: '<work-item id="w1" src="slow.json"></work-item>',
+    });
+    await page.waitForFunction(() => document.getElementById('w1')?.hasAttribute('data-upgraded'));
+    await page.evaluate(() => document.getElementById('w1').setAttribute('src', 'fast.json'));
+    await page.waitForFunction(() => window.__events.some(e => e.type === 'work-item:ready'));
+    await page.waitForTimeout(600);
+
+    const titles = await page.evaluate(() =>
+      [...document.getElementById('w1').querySelectorAll('[slot="title"]')].map(n => n.textContent));
+    expect(titles).toEqual(['Fresh']);
+    expect(requests['fast.json']).toBe(1);
+    const ready = await recordedEvents(page, 'work-item:ready');
+    expect(ready.map(e => e.detail.title)).toEqual(['Fresh']);
+  });
+
+  test('assignee initials are escaped', async ({ page }) => {
+    await openUpgradePage(page, {
+      events: EVENTS,
+      body: '<work-item id="w1"><h3 slot="title">XSS</h3></work-item>',
+    });
+    await page.waitForSelector('#w1[data-upgraded]');
+    const result = await page.evaluate(() => {
+      const el = document.getElementById('w1');
+      el.setAttribute('assignee', '<img src=x onerror=alert(1)>');
+      const avatar = el.shadowRoot.querySelector('.wi-assignee__avatar');
+      return { text: avatar.textContent, children: avatar.children.length, imgs: el.shadowRoot.querySelectorAll('img').length };
+    });
+    expect(result).toEqual({ text: '<S', children: 0, imgs: 0 });
+  });
+
+  test('minimal card is not a tab stop and still fires work-item:ready', async ({ page }) => {
+    await openUpgradePage(page, {
+      events: EVENTS,
+      body: '<work-item id="w1" item-id="MIN-1" detail="minimal"><h3 slot="title">Minimal</h3></work-item>',
+    });
+    await page.waitForSelector('#w1[data-upgraded]');
+    const card = await page.evaluate(() => {
+      const c = document.getElementById('w1').shadowRoot.querySelector('.wi-card');
+      return { minimal: c.classList.contains('wi-card--minimal'), tabindex: c.getAttribute('tabindex') };
+    });
+    expect(card).toEqual({ minimal: true, tabindex: null });
+    const ready = await recordedEvents(page, 'work-item:ready');
+    expect(ready.map(e => e.detail.itemId)).toEqual(['MIN-1']);
   });
 });

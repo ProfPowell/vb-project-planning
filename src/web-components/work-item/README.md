@@ -20,13 +20,13 @@ Part of the **UX Planning Pack**. Works as a child of `<kanban-board>`, `<story-
 ```html
 <work-item
   item-id="PROJ-42"
-  title="Implement search API"
   type="task"
   status="in-progress"
   priority="high"
   assignee="Sarah Chen"
   estimate="5"
   story-ids="PROJ-101,PROJ-102">
+  <h3 slot="title">Implement search API</h3>
   <p slot="description">Build the search endpoint.</p>
   <ul slot="checklist">
     <li>Schema design</li>
@@ -41,7 +41,6 @@ Part of the **UX Planning Pack**. Works as a child of `<kanban-board>`, `<story-
 | Attribute | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `item-id` | string | — | Unique identifier (also sets HTML `id`) |
-| `title` | string | — | Work item title |
 | `type` | string | `"task"` | `task`, `bug`, `chore`, `spike`, `feature` |
 | `priority` | string | `"medium"` | `critical`, `high`, `medium`, `low` |
 | `status` | string | `"backlog"` | `backlog`, `to-do`, `in-progress`, `review`, `done`, `blocked` |
@@ -56,6 +55,7 @@ Part of the **UX Planning Pack**. Works as a child of `<kanban-board>`, `<story-
 
 | Slot | Description |
 |------|-------------|
+| `title` | Work item heading (e.g. `<h3>`); there is no `title` attribute |
 | `description` | Work item description |
 | `checklist` | Subtasks or checklist |
 | `notes` | Additional notes |
@@ -64,7 +64,7 @@ Part of the **UX Planning Pack**. Works as a child of `<kanban-board>`, `<story-
 
 | Event | Detail |
 |-------|--------|
-| `work-item:ready` | `{ itemId, title, type, priority, status }` |
+| `work-item:ready` | `{ itemId, title, type, priority, status }` (once, after the first render) |
 | `work-item:status` | `{ status, itemId }` |
 | `work-item:priority` | `{ priority, itemId }` |
 

@@ -13,6 +13,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { openUpgradePage, recordedEvents, moveElement } from './helpers/upgrade-page.js';
 
 const basicDemo = 'demos/user-story-basic/';
 const variantsDemo = 'demos/user-story-variants/';
@@ -37,6 +38,7 @@ test.describe('user-story', () => {
         priority: text('.priority-badge'),
         status: text('.status-badge'),
         points: text('.points-badge'),
+        pointsHidden: sr.querySelector('.points-badge .visually-hidden')?.textContent,
         keywords: [...sr.querySelectorAll('.keyword')].map(k => k.textContent.trim()),
         hasBenefit: !!sr.querySelector('.benefit-text'),
         personaAssigned: sr.querySelector('slot[name="persona"]').assignedElements().length,
@@ -52,7 +54,9 @@ test.describe('user-story', () => {
     expect(state.epic).toBe('Dashboard Redesign');
     expect(state.priority).toBe('High');
     expect(state.status).toBe('In Progress');
-    expect(state.points).toBe('8');
+    // Visible number plus visually hidden unit for screen readers
+    expect(state.points).toBe('8 story points');
+    expect(state.pointsHidden).toBe(' story points');
     expect(state.keywords).toEqual(['As a', 'I want', 'so that']);
     expect(state.hasBenefit).toBe(true);
     expect(state.personaAssigned).toBe(1);
@@ -113,7 +117,7 @@ test.describe('user-story', () => {
     expect(result.invalid).toEqual({ statusAttr: 'done', priorityAttr: 'critical' });
   });
 
-  test('attribute changes re-render and re-fire story-ready with detail', async ({ page }) => {
+  test('attribute changes re-render without re-firing story-ready', async ({ page }) => {
     await page.goto(basicDemo);
     await page.waitForSelector('user-story[data-upgraded]');
 
@@ -137,17 +141,9 @@ test.describe('user-story', () => {
       };
     });
 
-    expect(result.ready).toHaveLength(3);
-    expect(result.ready[2]).toEqual({
-      id: 'PROJ-142',
-      persona: 'Product Manager',
-      action: 'view all project timelines in a unified dashboard',
-      benefit: 'I can quickly identify bottlenecks and reallocate resources across teams',
-      priority: 'high',
-      status: 'backlog',
-      points: '13',
-    });
-    expect(result.points).toBe('13');
+    // story-ready fires once, after the first render only.
+    expect(result.ready).toEqual([]);
+    expect(result.points).toBe('13 story points');
     expect(result.epic).toBe('Platform');
     expect(result.status).toBe('backlog');
     expect(result.statusBadge).toBe('Backlog');
@@ -170,7 +166,9 @@ test.describe('user-story', () => {
       // the shadow innerHTML, so queries must happen first).
       const minimalState = {
         isMinimal: !!minimalSr.querySelector('.story-card--minimal'),
-        tabindex: minimalSr.querySelector('.story-card')?.getAttribute('tabindex'),
+        tag: minimalSr.querySelector('.story-card')?.tagName,
+        haspopup: minimalSr.querySelector('.story-card')?.getAttribute('aria-haspopup'),
+        buttonLabel: minimalSr.querySelector('.story-card')?.getAttribute('aria-label'),
         storyId: minimalSr.querySelector('.story-id')?.textContent.trim(),
         // No title slot → truncated action as fallback label
         label: minimalSr.querySelector('.story-title-fallback')?.textContent.trim(),
@@ -202,7 +200,10 @@ test.describe('user-story', () => {
     });
 
     expect(result.minimal.isMinimal).toBe(true);
-    expect(result.minimal.tabindex).toBe('0');
+    // Minimal card is a real button that opens the detail dialog
+    expect(result.minimal.tag).toBe('BUTTON');
+    expect(result.minimal.haspopup).toBe('dialog');
+    expect(result.minimal.buttonLabel).toBe('PROJ-142: view all project timelines in one dashbo\u2026');
     expect(result.minimal.storyId).toBe('PROJ-142');
     // Action is > 40 chars → sliced to 40 + ellipsis
     expect(result.minimal.minimalLabel).toBe('view all project timelines in one dashbo…');
@@ -371,7 +372,9 @@ test.describe('user-story', () => {
       return {
         open: dialog?.open ?? false,
         size: dialog?.getAttribute('data-size'),
-        heading: dialog?.querySelector('header h3')?.textContent.trim(),
+        heading: dialog?.querySelector('header h2')?.textContent.trim(),
+        labelledBy: dialog?.getAttribute('aria-labelledby'),
+        headingId: dialog?.querySelector('header h2')?.id,
         cloneDetail: clone?.getAttribute('detail'),
         cloneStoryId: clone?.getAttribute('story-id'),
         cloneAc: clone?.querySelectorAll('[slot="acceptance-criteria"] li').length,
@@ -382,22 +385,17 @@ test.describe('user-story', () => {
     expect(result.open).toBe(true);
     expect(result.size).toBe('l');
     expect(result.heading).toBe('Unified timeline dashboard');
+    expect(result.labelledBy).toBe(result.headingId);
     expect(result.cloneDetail).toBe('full');
     expect(result.cloneStoryId).toBe('PROJ-101');
     expect(result.cloneAc).toBe(3);
     expect(result.cloneIsFull).toBe(true);
 
-    // Closing the dialog empties it (the `close` event is dispatched
-    // asynchronously, so wait for the once-listener to run)
+    // Closing the dialog removes it from the document (the `close` event
+    // is dispatched asynchronously, so wait for the listener to run)
     await page.evaluate(() => document.getElementById('story-dialog-PROJ-101').close());
-    await page.waitForFunction(() =>
-      document.getElementById('story-dialog-PROJ-101').innerHTML === ''
-    );
-    const dialogState = await page.evaluate(() => {
-      const dialog = document.getElementById('story-dialog-PROJ-101');
-      return { open: dialog.open, innerHTML: dialog.innerHTML };
-    });
-    expect(dialogState).toEqual({ open: false, innerHTML: '' });
+    await page.waitForFunction(() => !document.getElementById('story-dialog-PROJ-101'));
+    expect(await page.locator('dialog').count()).toBe(0);
   });
 
   // Regression guard: the dialog clone carries data-detail-clone so
@@ -418,5 +416,122 @@ test.describe('user-story', () => {
 
     expect(result.cloneId).not.toBe('PROJ-101');
     expect(result.matches).toBe(1);
+  });
+});
+
+test.describe('user-story — src, lifecycle and regressions', () => {
+  const EVENTS = ['story-ready', 'user-story:upgraded'];
+  const record = {
+    storyId: 'SRC-1', priority: 'high', status: 'review', points: 3,
+    persona: 'Researcher', action: 'tag clips', benefit: 'I can find them later',
+    acceptanceCriteria: ['Tags save', 'Tags search'],
+  };
+
+  test('src fetches exactly once and story-ready fires once, after the data renders', async ({ page }) => {
+    const { requests } = await openUpgradePage(page, {
+      events: EVENTS,
+      fixtures: { 'story.json': record },
+      body: '<user-story id="s1" src="story.json"></user-story>',
+    });
+    await page.waitForFunction(() => window.__events.some(e => e.type === 'story-ready'));
+    await page.waitForTimeout(100);
+
+    expect(requests['story.json']).toBe(1);
+    const ready = await recordedEvents(page, 'story-ready');
+    expect(ready).toHaveLength(1);
+    expect(ready[0].detail).toMatchObject({ id: 'SRC-1', action: 'tag clips', status: 'review' });
+    expect(await recordedEvents(page, 'user-story:upgraded')).toHaveLength(1);
+    const ac = await page.evaluate(() =>
+      document.getElementById('s1').shadowRoot.querySelector('slot[name="acceptance-criteria"]')
+        .assignedElements()[0]?.children.length);
+    expect(ac).toBe(2);
+  });
+
+  test('moving the element does not refetch, re-render, or re-fire story-ready', async ({ page }) => {
+    const { requests } = await openUpgradePage(page, {
+      events: EVENTS,
+      fixtures: { 'story.json': record },
+      body: '<user-story id="s1" src="story.json"></user-story>',
+    });
+    await page.waitForFunction(() => window.__events.some(e => e.type === 'story-ready'));
+
+    const moved = await moveElement(page, '#s1');
+    expect(moved).toEqual({ connected: true, sameNode: true, sameHtml: true, upgraded: true });
+    expect(requests['story.json']).toBe(1);
+    expect(await recordedEvents(page, 'story-ready')).toHaveLength(1);
+  });
+
+  test('minimal card is a named button that opens the dialog from the keyboard', async ({ page }) => {
+    await openUpgradePage(page, {
+      events: EVENTS,
+      body: `<user-story id="m1" story-id="M-1" detail="minimal">
+               <h3 slot="title">Keyboard story</h3><span slot="action">use the keyboard</span>
+             </user-story>`,
+    });
+    await page.waitForSelector('#m1[data-upgraded]');
+
+    const button = page.locator('#m1').getByRole('button', { name: 'M-1: Keyboard story' });
+    await expect(button).toHaveAttribute('aria-haspopup', 'dialog');
+    await button.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('dialog', { name: 'Keyboard story' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('dialog')).toHaveCount(0);
+
+    await button.focus();
+    await page.keyboard.press('Space');
+    await expect(page.getByRole('dialog', { name: 'Keyboard story' })).toBeVisible();
+  });
+
+  test('stories without ids get separate dialogs; a removed story removes its dialog', async ({ page }) => {
+    await openUpgradePage(page, {
+      events: EVENTS,
+      body: `<user-story class="a" detail="minimal"><h3 slot="title">Alpha</h3></user-story>
+             <user-story class="b" detail="minimal"><h3 slot="title">Beta</h3></user-story>`,
+    });
+    await page.waitForSelector('user-story.b[data-upgraded]');
+
+    const result = await page.evaluate(async () => {
+      const a = document.querySelector('user-story.a');
+      const b = document.querySelector('user-story.b');
+      a.showDetail();
+      const first = document.querySelector('dialog');
+      first.close();
+      b.showDetail();
+      a.showDetail();
+      const dialogs = [...document.querySelectorAll('dialog')];
+      const ids = dialogs.map(d => d.id);
+      const titles = dialogs.map(d => d.querySelector('h2').textContent);
+      // Showing again replaces this story's own dialog instead of adding one
+      a.showDetail();
+      const afterRepeat = document.querySelectorAll('dialog').length;
+      b.remove();
+      await new Promise(r => setTimeout(r, 0));
+      return {
+        firstRemoved: !first.isConnected,
+        ids, titles, afterRepeat,
+        remaining: [...document.querySelectorAll('dialog')].map(d => d.querySelector('h2').textContent),
+      };
+    });
+
+    expect(result.firstRemoved).toBe(true);
+    expect(new Set(result.ids).size).toBe(2);
+    expect(result.titles).toEqual(['Beta', 'Alpha']);
+    expect(result.afterRepeat).toBe(2);
+    expect(result.remaining).toEqual(['Alpha']);
+  });
+
+  test('points badge and sections are labelled for screen readers', async ({ page }) => {
+    await page.goto(basicDemo);
+    await page.waitForSelector('user-story[data-upgraded]');
+    const state = await page.evaluate(() => {
+      const sr = document.querySelector('user-story').shadowRoot;
+      return {
+        headings: [...sr.querySelectorAll('.section-title')].map(h => `${h.tagName}:${h.textContent.trim()}`),
+        hidden: sr.querySelector('.points-badge .visually-hidden')?.textContent,
+      };
+    });
+    expect(state.headings).toEqual(['H3:Acceptance Criteria', 'H3:Tasks', 'H3:Notes']);
+    expect(state.hidden).toBe(' story points');
   });
 });

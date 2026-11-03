@@ -37,20 +37,7 @@ crumbLabel: Web Components
   <section>
     <h2>Attributes</h2>
     <p>Attributes are for <strong>state and configuration</strong> &mdash; not content. The decision title and date are content and use slots instead.</p>
-    <table class="props-table">
-      <thead>
-        <tr><th>Attribute</th><th>Type</th><th>Default</th><th>Description</th></tr>
-      </thead>
-      <tbody>
-        <tr><td><code>adr-id</code></td><td>string</td><td>&mdash;</td><td>Identifier (e.g., "ADR-001"). Auto-sets HTML <code>id</code>.</td></tr>
-        <tr><td><code>status</code></td><td>string</td><td><code>"proposed"</code></td><td><code>proposed</code>, <code>accepted</code>, <code>deprecated</code>, <code>superseded</code></td></tr>
-        <tr><td><code>supersedes</code></td><td>string</td><td>&mdash;</td><td>Comma-separated ADR IDs this supersedes</td></tr>
-        <tr><td><code>superseded-by</code></td><td>string</td><td>&mdash;</td><td>Comma-separated ADR IDs that supersede this</td></tr>
-        <tr><td><code>detail</code></td><td>string</td><td><code>"full"</code></td><td><code>full</code>, <code>compact</code>, <code>minimal</code></td></tr>
-        <tr><td><code>compact</code></td><td>boolean</td><td>&mdash;</td><td>Alias for <code>detail="compact"</code></td></tr>
-        <tr><td><code>src</code></td><td>string (URL)</td><td>&mdash;</td><td>JSON data URL</td></tr>
-      </tbody>
-    </table>
+    {{ attributeTable("adr-wc", apiRegistry) }}
   </section>
 
   <section>
@@ -107,16 +94,7 @@ crumbLabel: Web Components
 
   <section>
     <h2>Events</h2>
-    <table class="props-table">
-      <thead>
-        <tr><th>Event</th><th>Detail</th><th>When</th></tr>
-      </thead>
-      <tbody>
-        <tr><td><code>adr-wc:upgraded</code></td><td>&mdash;</td><td>Once after first connect. Wait for this before assigning <code>.data</code> from a framework.</td></tr>
-        <tr><td><code>adr-wc:data-changed</code></td><td><code>{ data, source: 'property' }</code></td><td>After <code>.data</code> assignment.</td></tr>
-        <tr><td><code>adr-wc:ready</code></td><td><code>{ adrId, title, status }</code></td><td>After render.</td></tr>
-      </tbody>
-    </table>
+    {{ eventsTable("adr-wc", apiRegistry) }}
   </section>
 
   <section>
@@ -133,7 +111,7 @@ crumbLabel: Web Components
         <tr>
           <td><code>.data</code></td>
           <td><code>{ adrId?, title?, status?, date?, supersedes?, supersededBy?, context?, decision?, consequences? }</code></td>
-          <td>Whole-record assignment. Sets state attributes <em>and</em> creates slotted children for any text fields not already present. Idempotent.</td>
+          <td>Whole-record assignment. Sets state attributes <em>and</em> creates slotted children for any text fields not already present (authored content wins). A <code>YYYY-MM-DD</code> date is rendered as that calendar day in every time zone. Idempotent.</td>
         </tr>
       </tbody>
     </table>
@@ -154,6 +132,7 @@ adr.data = {
       <li>The date slot uses <code>&lt;time&gt;</code> for machine-readable dates</li>
       <li>Status badge uses colored background (not color-only)</li>
       <li>Supersedes/superseded-by links are real <code>&lt;a&gt;</code> elements</li>
+      <li>Minimal cards (<code>detail="minimal"</code>) are static summaries, not tab stops; wrap one in a link if it should navigate somewhere</li>
       <li>Respects <code>prefers-reduced-motion: reduce</code></li>
     </ul>
   </section>

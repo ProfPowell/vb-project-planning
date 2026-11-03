@@ -41,23 +41,7 @@ crumbLabel: Web Components
 
   <section>
     <h2>Attributes</h2>
-    <table class="props-table">
-      <thead>
-        <tr><th>Attribute</th><th>Type</th><th>Default</th><th>Description</th></tr>
-      </thead>
-      <tbody>
-        <tr><td><code>item-id</code></td><td>string</td><td>&mdash;</td><td>Unique identifier (also sets HTML <code>id</code> for cross-referencing)</td></tr>
-        <tr><td><code>type</code></td><td>string</td><td><code>"task"</code></td><td><code>task</code>, <code>bug</code>, <code>chore</code>, <code>spike</code>, or <code>feature</code></td></tr>
-        <tr><td><code>priority</code></td><td>string</td><td><code>"medium"</code></td><td><code>critical</code>, <code>high</code>, <code>medium</code>, or <code>low</code></td></tr>
-        <tr><td><code>status</code></td><td>string</td><td><code>"backlog"</code></td><td><code>backlog</code>, <code>to-do</code>, <code>in-progress</code>, <code>review</code>, <code>done</code>, or <code>blocked</code></td></tr>
-        <tr><td><code>estimate</code></td><td>string</td><td>&mdash;</td><td>Effort estimate (points, hours, t-shirt size)</td></tr>
-        <tr><td><code>assignee</code></td><td>string</td><td>&mdash;</td><td>Assignee name (shown with auto-generated avatar)</td></tr>
-        <tr><td><code>story-ids</code></td><td>string</td><td>&mdash;</td><td>Comma-separated linked <code>&lt;user-story&gt;</code> IDs</td></tr>
-        <tr><td><code>detail</code></td><td>string</td><td><code>"full"</code></td><td><code>full</code>, <code>compact</code>, or <code>minimal</code></td></tr>
-        <tr><td><code>compact</code></td><td>boolean</td><td>&mdash;</td><td>Alias for <code>detail="compact"</code></td></tr>
-        <tr><td><code>src</code></td><td>string (URL)</td><td>&mdash;</td><td>Path to JSON data file</td></tr>
-      </tbody>
-    </table>
+    {{ attributeTable("work-item", apiRegistry) }}
   </section>
 
   <section>
@@ -67,7 +51,7 @@ crumbLabel: Web Components
         <tr><th>Slot</th><th>Expected Content</th><th>Description</th></tr>
       </thead>
       <tbody>
-        <tr><td><code>title</code></td><td><code>&lt;h3&gt;</code> or text</td><td>Work item title displayed in the card header.</td></tr>
+        <tr><td><code>title</code></td><td><code>&lt;h3&gt;</code> or text</td><td>Work item title displayed in the card header. The title is content, so there is no <code>title</code> attribute.</td></tr>
         <tr><td><code>description</code></td><td><code>&lt;p&gt;</code></td><td>Work item description. Shows in the body section.</td></tr>
         <tr><td><code>checklist</code></td><td><code>&lt;ul&gt;</code> or <code>&lt;ol&gt;</code></td><td>Subtasks or checklist items.</td></tr>
         <tr><td><code>notes</code></td><td><code>&lt;p&gt;</code></td><td>Additional notes, context, or links.</td></tr>
@@ -115,17 +99,7 @@ crumbLabel: Web Components
 
   <section>
     <h2>Events</h2>
-    <table class="props-table">
-      <thead>
-        <tr><th>Event</th><th>Detail</th><th>When</th></tr>
-      </thead>
-      <tbody>
-        <tr><td><code>work-item:ready</code></td><td><code>{ itemId, title, type, priority, status }</code></td><td>After render</td></tr>
-        <tr><td><code>work-item:status</code></td><td><code>{ status, itemId }</code></td><td>When <code>updateStatus()</code> is called</td></tr>
-        <tr><td><code>work-item:priority</code></td><td><code>{ priority, itemId }</code></td><td>When <code>updatePriority()</code> is called</td></tr>
-        <tr><td><code>work-item:data-changed</code></td><td><code>{ data, source: 'property' }</code></td><td>After <code>.data</code> is assigned</td></tr>
-      </tbody>
-    </table>
+    {{ eventsTable("work-item", apiRegistry) }}
   </section>
 
   <section>
@@ -137,7 +111,7 @@ crumbLabel: Web Components
         <tr><th>Property</th><th>Type</th><th>Description</th></tr>
       </thead>
       <tbody>
-        <tr><td><code>.data</code></td><td><code>{ itemId?, type?, priority?, status?, estimate?, assignee?, storyIds?, detail?, title?, description?, checklist?, notes? }</code></td><td>Sets state attributes <em>and</em> creates slotted children for any text fields not already present. Idempotent.</td></tr>
+        <tr><td><code>.data</code></td><td><code>{ itemId?, type?, priority?, status?, estimate?, assignee?, storyIds?, detail?, title?, description?, checklist?, notes? }</code></td><td>Sets state attributes <em>and</em> creates slotted children for any text fields not already present (authored content wins). Idempotent.</td></tr>
       </tbody>
     </table>
 
@@ -157,22 +131,7 @@ document.body.appendChild(wi);</code-block>
 
     <p>Reading <code>.data</code> back returns the current shape — handy for persistence or logging. See the <a href="https://vanilla-breeze.com/docs/concepts/data-api/">Data API concepts guide</a>.</p>
 
-    <h3>Events</h3>
-    <table class="props-table">
-      <thead><tr><th>Event</th><th>Detail</th><th>When</th></tr></thead>
-      <tbody>
-        <tr>
-          <td><code>work-item:upgraded</code></td>
-          <td>&mdash;</td>
-          <td>Once after first connect. Wait for this before assigning <code>.data</code> from a framework.</td>
-        </tr>
-        <tr>
-          <td><code>work-item:data-changed</code></td>
-          <td><code>{ data, source: 'property' }</code></td>
-          <td>After <code>.data</code> assignment.</td>
-        </tr>
-      </tbody>
-    </table>
+    <p>Assigning <code>.data</code> fires <code>work-item:data-changed</code>; frameworks should wait for <code>work-item:upgraded</code> first. With <code>src</code>, the JSON record (same shape as <code>.data</code>) is fetched once per value &mdash; moving the card between kanban columns does not refetch &mdash; and <code>work-item:ready</code> fires after it renders.</p>
 
     <code-block language="javascript" label="Reactive consumer (e.g. Montane)" data-escape>const wi = document.querySelector('work-item');
 await new Promise(r =&gt; wi.addEventListener('work-item:upgraded', r, { once: true }));
@@ -198,7 +157,8 @@ wi.data = { itemId: 'PROJ-42', type: 'task', priority: 'high', title: 'Wire OAut
   <section>
     <h2>Accessibility</h2>
     <ul>
-      <li>Card is an <code>&lt;article&gt;</code> with <code>aria-label</code></li>
+      <li>Card is an <code>&lt;article&gt;</code> with <code>aria-label="Work item: [item-id]"</code></li>
+      <li>Minimal cards (<code>detail="minimal"</code>) are static summaries with no tab stop of their own; inside <code>&lt;kanban-board&gt;</code> the board makes the card itself focusable for keyboard moves</li>
       <li>Type badge uses colored background for visual distinction (not color-only)</li>
       <li>Story links are real <code>&lt;a&gt;</code> elements with fragment hrefs</li>
       <li>Respects <code>prefers-reduced-motion: reduce</code></li>

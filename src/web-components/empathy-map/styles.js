@@ -234,6 +234,7 @@ const styles = `
   .quadrant--feels  .quadrant__icon { background: var(--_feels-bg);  color: var(--_feels); }
 
   .quadrant__label {
+    margin: 0;
     font-size: 13px;
     font-weight: 700;
     text-transform: uppercase;

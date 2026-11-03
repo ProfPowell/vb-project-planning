@@ -210,6 +210,7 @@ const styles = `
 .section-icon.tasks      { background: var(--color-accent,  #8b5cf6); }
 
 .section-title {
+  margin: 0;
   font-size: var(--_font-xs);
   font-weight: 600;
   color: var(--_muted);
@@ -274,13 +275,39 @@ const styles = `
   margin: 0 !important;
 }
 
+.visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .story-title-fallback {
   font-size: var(--_font-sm);
   font-weight: 600;
   color: var(--_text);
 }
 
-/* Minimal detail level */
+/* Minimal detail level — the card is a <button> that opens the detail dialog */
+button.story-card--minimal {
+  display: block;
+  inline-size: 100%;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+}
+
+.story-card--minimal .story-body,
+.story-card--minimal .story-title-wrap {
+  display: block;
+}
+
 :host([detail="minimal"]) .story-card {
   padding: var(--_space-xs);
 }

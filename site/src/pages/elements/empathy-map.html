@@ -62,48 +62,7 @@ crumbLabel: Web Components
 
   <section>
     <h2>Attributes</h2>
-    <table class="props-table">
-      <thead>
-        <tr>
-          <th>Attribute</th>
-          <th>Type</th>
-          <th>Default</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>persona</code></td>
-          <td>string</td>
-          <td>&mdash;</td>
-          <td>Persona name displayed in the header</td>
-        </tr>
-        <tr>
-          <td><code>persona-id</code></td>
-          <td>string</td>
-          <td>&mdash;</td>
-          <td>ID of a <code>&lt;user-persona&gt;</code> element to link to (renders as an anchor)</td>
-        </tr>
-        <tr>
-          <td><code>src</code></td>
-          <td>string (URL)</td>
-          <td>&mdash;</td>
-          <td>Path to a JSON file containing quadrant data, goals, and pain points</td>
-        </tr>
-        <tr>
-          <td><code>editable</code></td>
-          <td>boolean</td>
-          <td>&mdash;</td>
-          <td>Enables flip-to-edit interaction on each quadrant</td>
-        </tr>
-        <tr>
-          <td><code>compact</code></td>
-          <td>boolean</td>
-          <td>&mdash;</td>
-          <td>Reduces padding, font sizes, and icon sizes for denser layouts</td>
-        </tr>
-      </tbody>
-    </table>
+    {{ attributeTable("empathy-map", apiRegistry) }}
   </section>
 
   <section>
@@ -159,7 +118,7 @@ crumbLabel: Web Components
         </tr>
       </tbody>
     </table>
-    <p>Content values (<code>title</code>, <code>summary</code>) are provided as named slots. State attributes (<code>persona</code>, <code>persona-id</code>) remain on the element.</p>
+    <p>Content values (<code>title</code>, <code>summary</code>) are provided as named slots (there are no <code>title</code> or <code>summary</code> attributes; a <code>title</code> attribute on the host would only add a native tooltip). State attributes (<code>persona</code>, <code>persona-id</code>) remain on the element. Once a quadrant has been edited, it renders from the edited items and its slotted content is no longer shown, even if the edit cleared it.</p>
   </section>
 
   <section>
@@ -179,7 +138,7 @@ crumbLabel: Web Components
   <h2 slot="title">Workshop Empathy Map</h2>
 </empathy-map></code-block>
 
-    <p>When a quadrant is opened for editing, the front face becomes <code>inert</code> and the textarea receives focus. On close, the component updates its internal <code>.quadrants</code> data, re-renders the front face content, and dispatches an <code>empathy-map:update</code> event with the changed quadrant name and items.</p>
+    <p>When a quadrant is opened for editing, the front face becomes <code>inert</code> and the textarea receives focus. On close, the component updates its internal <code>.quadrants</code> data, re-renders the front face content, returns focus to the quadrant's edit button, and dispatches an <code>empathy-map:update</code> event with the changed quadrant name and items.</p>
 
     <p>You can also control editing programmatically:</p>
 
@@ -188,13 +147,13 @@ crumbLabel: Web Components
 // Open the "thinks" quadrant for editing
 map.editQuadrant('thinks');
 
-// Close and save
+// Close and save (a no-op, with no update event, unless the editor is open)
 map.closeQuadrant('thinks');</code-block>
   </section>
 
   <section>
     <h2>Data Mode</h2>
-    <p>Load quadrant data from a JSON file via the <code>src</code> attribute, or set the <code>.quadrants</code> property programmatically. The JSON schema supports top-level metadata plus quadrant arrays, goals, and pain points.</p>
+    <p>Load quadrant data from a JSON file via the <code>src</code> attribute, or set the <code>.quadrants</code> property programmatically. The JSON schema supports top-level metadata plus quadrant arrays, goals, and pain points. The file is fetched once per <code>src</code> value (a new value aborts the previous request), and <code>empathy-map:ready</code> fires after it renders.</p>
 
     <code-block language="json" show-lines label="JSON schema">{
   "title": "Product Manager Empathy Map",
@@ -360,37 +319,7 @@ map.painPoints = ['Too many disconnected tools'];</code-block>
 
   <section>
     <h2>Events</h2>
-    <table class="props-table">
-      <thead>
-        <tr>
-          <th>Event</th>
-          <th>Detail</th>
-          <th>When</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>empathy-map:ready</code></td>
-          <td><code>{ title, persona }</code></td>
-          <td>Fires after the component finishes rendering (including after JSON load)</td>
-        </tr>
-        <tr>
-          <td><code>empathy-map:update</code></td>
-          <td><code>{ quadrant, items }</code></td>
-          <td>Fires when a quadrant is closed after editing, with the quadrant name and updated items array</td>
-        </tr>
-        <tr>
-          <td><code>empathy-map:upgraded</code></td>
-          <td>&mdash;</td>
-          <td>Once after first connect. Wait for this before assigning <code>.data</code> from a framework.</td>
-        </tr>
-        <tr>
-          <td><code>empathy-map:data-changed</code></td>
-          <td><code>{ data, source: 'property' }</code></td>
-          <td>After <code>.data</code> assignment.</td>
-        </tr>
-      </tbody>
-    </table>
+    {{ eventsTable("empathy-map", apiRegistry) }}
   </section>
 
   <section>
@@ -443,10 +372,10 @@ map.data = {
     <h2>Accessibility</h2>
     <ul>
       <li>The outer card renders as an <code>&lt;article&gt;</code> element for semantic grouping</li>
-      <li>Each quadrant is a <code>&lt;section&gt;</code> with a visible heading for screen reader navigation</li>
+      <li>Each quadrant is a <code>&lt;section&gt;</code> with a visible <code>&lt;h3&gt;</code> heading (Says, Thinks, Does, Feels) for screen reader navigation, under the map's <code>&lt;h2&gt;</code> title</li>
       <li>Decorative quadrant icons use <code>aria-hidden="true"</code></li>
       <li>In editable mode, the edit button has an <code>aria-label</code> of "Edit [quadrant name]"</li>
-      <li>When a quadrant flips to edit, the front face becomes <code>inert</code> and focus moves to the textarea</li>
+      <li>When a quadrant flips to edit, the front face becomes <code>inert</code> and focus moves to the textarea; Done or <kbd>Escape</kbd> flips it back and returns focus to the quadrant's edit button</li>
       <li>The textarea has an <code>aria-label</code> describing its purpose</li>
       <li>Respects <code>prefers-reduced-motion: reduce</code> by disabling flip transitions</li>
       <li>Uses <code>container-type: inline-size</code> and stacks to a single column at narrow viewports (&lt;500px)</li>

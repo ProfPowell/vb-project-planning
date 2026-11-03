@@ -1,14 +1,23 @@
 /**
- * Shared utilities for UX planning web components
- * (user-persona, user-story, user-journey, empathy-map, impact-effort, story-map)
+ * Shared utilities for the pack's planning web components.
  *
- * Shadow DOM components extend HTMLElement directly.
- * Light DOM components (impact-effort, story-map) extend VBElement.
+ * - Helpers (`esc`, `initials`, `hashColor`, `lucideSvg`, `UX_ICONS`,
+ *   `QUADRANT_META`, `EMOTION_META`) are used by user-persona, user-story,
+ *   user-journey, empathy-map, work-item, adr-wc, impact-effort, story-map
+ *   and review-surface.
+ * - `UXShadowElement` is the Shadow DOM base class for the six record cards
+ *   (user-persona, user-story, user-journey, empathy-map, work-item, adr-wc).
+ *   It owns the one-time setup / reconnect guard, the single-fetch `src`
+ *   loader, the once-only `*:ready` event and the `*:upgraded` event.
+ *   Light DOM components (impact-effort, story-map, kanban-board, …) extend
+ *   VBElement from src/lib/vb-element.js instead.
  */
 
 import { stringHash } from '../lib/hash.js';
 
-export { esc } from '../lib/escape.js';
+import { esc } from '../lib/escape.js';
+
+export { esc };
 
 /**
  * Extract up to 2 initials from a name.
@@ -35,10 +44,6 @@ export function hashColor(name) {
   return `hsl(${hue}, 65%, 55%)`;
 }
 
-/**
- * Emotion metadata used by user-journey (and potentially other planning components).
- * Maps emotion names to emoji, normalized score (0–1), and color.
- */
 /**
  * Build a Lucide-style inline SVG string (24x24, stroke-based).
  * @param {string} inner - SVG child elements (path, circle, line, etc.)
@@ -92,3 +97,369 @@ export const EMOTION_META = {
   frustrated: { emoji: '😤', score: 0.18, color: '#ef4444' },
   angry:      { emoji: '😠', score: 0.05, color: '#dc2626' },
 };
+
+/**
+ * Look up emotion metadata by name. Own-property lookup only, so data such
+ * as `"__proto__"` or `"constructor"` falls back to `neutral`.
+ * @param {unknown} name
+ * @returns {{ emoji: string, score: number, color: string }}
+ */
+export function emotionMeta(name) {
+  const key = String(name ?? '').toLowerCase().trim();
+  return Object.hasOwn(EMOTION_META, key) ? EMOTION_META[key] : EMOTION_META.neutral;
+}
+
+/**
+ * Whether `name` is a known emotion (own property of EMOTION_META).
+ * @param {unknown} name
+ * @returns {boolean}
+ */
+export function isEmotion(name) {
+  return Object.hasOwn(EMOTION_META, String(name ?? '').toLowerCase().trim());
+}
+
+/* ── Card status / priority vocabularies ─────────────────────────── */
+
+/** Priority badges shared by user-story and work-item. */
+export const PRIORITIES = Object.freeze({
+  critical: { label: 'Critical', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.1)' },
+  high:     { label: 'High',     color: '#ea580c', bg: 'rgba(234, 88, 12, 0.1)' },
+  medium:   { label: 'Medium',   color: '#ca8a04', bg: 'rgba(202, 138, 4, 0.1)' },
+  low:      { label: 'Low',      color: '#16a34a', bg: 'rgba(22, 163, 74, 0.1)' },
+});
+
+/** Workflow statuses shared by user-story and work-item (work-item adds `blocked`). */
+export const STATUSES = Object.freeze({
+  backlog:       { label: 'Backlog',     color: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)' },
+  'to-do':       { label: 'To Do',       color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
+  'in-progress': { label: 'In Progress', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
+  review:        { label: 'Review',      color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
+  done:          { label: 'Done',        color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' },
+});
+
+/**
+ * Own-property lookup in a vocabulary table, with a fallback key.
+ * @template T
+ * @param {Record<string, T>} table
+ * @param {string} key
+ * @param {string} fallback
+ * @returns {T}
+ */
+export function lookup(table, key, fallback) {
+  return Object.hasOwn(table, key) ? table[key] : table[fallback];
+}
+
+/* ── Small DOM / data helpers ────────────────────────────────────── */
+
+/**
+ * `href` value for an in-page fragment link to an element id, escaped for
+ * an attribute position in an innerHTML template.
+ * @param {unknown} id
+ * @returns {string}
+ */
+export function fragmentHref(id) {
+  return esc(`#${encodeURIComponent(String(id ?? ''))}`);
+}
+
+/**
+ * Split a comma-separated attribute value into trimmed, non-empty parts.
+ * @param {string | null} raw
+ * @returns {string[]}
+ */
+export function splitList(raw) {
+  return raw ? raw.split(',').map(s => s.trim()).filter(Boolean) : [];
+}
+
+/**
+ * Normalise a data field to an array of strings: arrays are kept, a single
+ * scalar becomes a one-item array, null/undefined/'' become [].
+ * @param {unknown} value
+ * @returns {string[]}
+ */
+export function asList(value) {
+  if (Array.isArray(value)) return value.map(v => String(v ?? ''));
+  if (value == null || value === '') return [];
+  return [String(value)];
+}
+
+/**
+ * The light-DOM child assigned to `slot`, if any (direct children only:
+ * nothing deeper can be slotted).
+ * @param {Element} host
+ * @param {string} slot
+ * @returns {Element | undefined}
+ */
+export function slottedChild(host, slot) {
+  return [...host.children].find(c => c.getAttribute('slot') === slot);
+}
+
+/**
+ * Create (or, with `replace`, update) the light-DOM child for a slot from a
+ * data value. Arrays become a `<ul>` of `<li>`s; anything else becomes
+ * `tag` with the value as text. Text is set with textContent, never parsed.
+ *
+ * @param {Element} host
+ * @param {string} slot
+ * @param {unknown} value
+ * @param {{ tag?: string, list?: boolean, replace?: boolean }} [opts]
+ *   tag: element for scalar values (default `p`); list: always render a
+ *   list (wrapping a scalar); replace: update an existing child instead of
+ *   leaving it alone.
+ */
+export function fillSlot(host, slot, value, { tag = 'p', list = false, replace = false } = {}) {
+  if (value == null || value === '') return;
+  const existing = slottedChild(host, slot);
+  if (existing && !replace) return;
+  const wantList = list || Array.isArray(value);
+  const isList = (/** @type {Element} */ el) => el.tagName === 'UL' || el.tagName === 'OL';
+  let el = existing;
+  if (!el || wantList !== isList(el)) {
+    const fresh = document.createElement(wantList ? 'ul' : tag);
+    fresh.slot = slot;
+    if (el) el.replaceWith(fresh); else host.appendChild(fresh);
+    el = fresh;
+  }
+  if (wantList) {
+    el.replaceChildren(...asList(value).map(item => {
+      const li = document.createElement('li');
+      li.textContent = item;
+      return li;
+    }));
+  } else {
+    el.textContent = String(value);
+  }
+}
+
+/**
+ * Read a slotted child back as data: list items as a string array, any
+ * other element as its trimmed text. Returns undefined when absent/empty.
+ * @param {Element} host
+ * @param {string} slot
+ * @returns {string | string[] | undefined}
+ */
+export function readSlot(host, slot) {
+  const el = slottedChild(host, slot);
+  if (!el) return undefined;
+  if (el.tagName === 'UL' || el.tagName === 'OL') {
+    const items = [...el.querySelectorAll('li')].map(li => li.textContent?.trim() ?? '').filter(Boolean);
+    return items.length ? items : undefined;
+  }
+  return el.textContent?.trim() || undefined;
+}
+
+/**
+ * Detail level from the `detail` / `compact` attributes.
+ * @param {Element} host
+ * @returns {string} full | compact | minimal
+ */
+export function detailLevel(host) {
+  return host.getAttribute('detail') || (host.hasAttribute('compact') ? 'compact' : 'full');
+}
+
+/**
+ * Mark every section whose first `<slot>` has no assigned nodes with
+ * `data-empty` (compact cards hide those).
+ * @param {ParentNode} root
+ * @param {string} sectionSelector
+ */
+export function markEmptySections(root, sectionSelector) {
+  for (const section of root.querySelectorAll(sectionSelector)) {
+    const slot = section.querySelector('slot');
+    if (slot && slot.assignedNodes().length === 0) section.setAttribute('data-empty', '');
+  }
+}
+
+/* ── Base class for the Shadow DOM record cards ──────────────────── */
+
+/**
+ * Shadow DOM base for user-persona, user-story, user-journey, empathy-map,
+ * work-item and adr-wc.
+ *
+ * Lifecycle contract:
+ * - First connect runs `_setup()`, then either renders and fires the ready
+ *   event, or (with `src`) fetches once and fires ready after the fetched
+ *   data renders. Then `_connect()` runs, `data-upgraded` is set and
+ *   `<tag>:upgraded` is dispatched in a microtask.
+ * - Reconnects (e.g. a kanban drag moving the card) only run `_connect()`:
+ *   no re-fetch, no re-render, no second ready event.
+ * - Disconnect runs `_disconnect()` (stop observers). A pending fetch keeps
+ *   going, so a card moved mid-load still fills in.
+ * - Attribute changes before first setup are ignored (setup reads them).
+ *   After setup, a `src` change refetches (aborting the earlier request and
+ *   dropping its response); other changes call `_attributeChanged()`.
+ *
+ * Subclasses set `static readyEvent` and implement `_render()`,
+ * `_readyDetail()` and, if they load JSON, `_applyData(data)`.
+ */
+export class UXShadowElement extends HTMLElement {
+  /** Ready event name, e.g. `story-ready`. */
+  static readyEvent = '';
+
+  /** Fallback text for slots whose light-DOM child was removed after setup. */
+  _slotCache = new Map();
+
+  #setUp = false;
+  #readyFired = false;
+  #loadSeq = 0;
+  /** @type {AbortController | null} */
+  #abort = null;
+  #quiet = 0;
+
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+  }
+
+  /** True once first-connect setup has run. */
+  get _isSetUp() { return this.#setUp; }
+
+  connectedCallback() {
+    if (this.#setUp) {
+      this._connect();
+      return;
+    }
+    this.#setUp = true;
+    this._cacheSlotValues();
+    this._setup();
+    const src = this.getAttribute('src');
+    if (src) {
+      this._loadSrc(src);
+    } else {
+      this._render();
+      this._fireReady();
+    }
+    this._connect();
+    this.setAttribute('data-upgraded', '');
+    queueMicrotask(() => {
+      this.dispatchEvent(new CustomEvent(`${this.localName}:upgraded`, { bubbles: true }));
+    });
+  }
+
+  disconnectedCallback() {
+    this._disconnect();
+  }
+
+  /**
+   * @param {string} name
+   * @param {string | null} oldValue
+   * @param {string | null} newValue
+   */
+  attributeChangedCallback(name, oldValue, newValue) {
+    if (!this.#setUp || this.#quiet || oldValue === newValue) return;
+    if (name === 'src') {
+      this._loadSrc(newValue);
+      return;
+    }
+    this._attributeChanged(name);
+  }
+
+  /* ── Hooks (override as needed) ─────────────────── */
+
+  /** One-time setup before the first render (e.g. id from story-id). */
+  _setup() {}
+  /** Every connect, after setup on the first: (re)attach observers. */
+  _connect() {}
+  /** Every disconnect: detach observers. */
+  _disconnect() {}
+  /** @param {string} _name */
+  _attributeChanged(_name) { this._render(); }
+  /** Render the full shadow tree. */
+  _render() {}
+  /** @returns {object} detail for the ready event */
+  _readyDetail() { return {}; }
+  /** @param {Record<string, any>} _data apply a JSON record to attributes/slots/properties */
+  _applyData(_data) {}
+  /** Shown while `src` loads. Default: render what is already known. */
+  _renderLoading() { this._render(); }
+  /** @param {Error} err shown when `src` fails. Default: a console warning. */
+  _renderError(err) {
+    console.warn(`[${this.localName}] Failed to load src="${this.getAttribute('src')}":`, err);
+  }
+
+  /* ── Shared behaviour ───────────────────────────── */
+
+  _cacheSlotValues() {
+    for (const child of this.children) {
+      const slot = child.getAttribute('slot');
+      if (slot) this._slotCache.set(slot, child.textContent?.trim() ?? '');
+    }
+  }
+
+  /**
+   * Trimmed text of the slotted child for `slot`, else the cached value.
+   * @param {string} slot
+   * @returns {string}
+   */
+  _slotText(slot) {
+    return slottedChild(this, slot)?.textContent?.trim() || this._slotCache.get(slot) || '';
+  }
+
+  /**
+   * Run `fn` without attribute changes triggering re-renders (used while a
+   * data record sets several attributes; the caller renders once after).
+   * @param {() => void} fn
+   */
+  _quietly(fn) {
+    this.#quiet++;
+    try { fn(); } finally { this.#quiet--; }
+  }
+
+  /**
+   * Apply a record assigned to `.data`, re-render, and emit
+   * `<tag>:data-changed` { data, source: 'property' }.
+   * @param {unknown} value
+   */
+  _setData(value) {
+    if (!value || typeof value !== 'object') return;
+    this._quietly(() => this._applyData(/** @type {Record<string, any>} */ (value)));
+    this._cacheSlotValues();
+    this._render();
+    this.dispatchEvent(new CustomEvent(`${this.localName}:data-changed`, {
+      detail: { data: /** @type {any} */ (this).data, source: 'property' },
+      bubbles: true, composed: true,
+    }));
+  }
+
+  /** Dispatch the ready event, at most once per element. */
+  _fireReady() {
+    if (this.#readyFired) return;
+    const type = /** @type {typeof UXShadowElement} */ (this.constructor).readyEvent;
+    if (!type) return;
+    this.#readyFired = true;
+    this.dispatchEvent(new CustomEvent(type, {
+      detail: this._readyDetail(),
+      bubbles: true, composed: true,
+    }));
+  }
+
+  /**
+   * Fetch `url` as JSON and apply it. Each call supersedes the previous
+   * one: the earlier request is aborted and its response, if it still
+   * arrives, is ignored.
+   * @param {string | null} url
+   */
+  async _loadSrc(url) {
+    this.#abort?.abort();
+    this.#abort = null;
+    const seq = ++this.#loadSeq;
+    if (!url) return;
+    const controller = new AbortController();
+    this.#abort = controller;
+    this._renderLoading();
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (seq !== this.#loadSeq) return;
+      this._quietly(() => this._applyData(data && typeof data === 'object' ? data : {}));
+      this._cacheSlotValues();
+      this._render();
+      this._fireReady();
+    } catch (err) {
+      if (seq !== this.#loadSeq) return;
+      this._renderError(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      if (this.#abort === controller) this.#abort = null;
+    }
+  }
+}

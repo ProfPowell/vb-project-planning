@@ -24,11 +24,13 @@
  * @attr {string}  story-id   - Ticket or story identifier
  * @attr {string}  detail     - full | compact | minimal
  * @attr {boolean} compact    - Alias for detail="compact"
- * @attr {string}  src        - URL to JSON data
+ * @attr {string}  src        - URL to JSON data (fetched once per value)
  *
- * @fires story-ready      - Fired after render
- * @fires status-changed   - Fired when updateStatus() is called
- * @fires priority-changed - Fired when updatePriority() is called
+ * @fires story-ready             - Once, after the first render (after the src data renders when src is set)
+ * @fires status-changed          - Fired when updateStatus() is called
+ * @fires priority-changed        - Fired when updatePriority() is called
+ * @fires user-story:upgraded     - Once, after first connect
+ * @fires user-story:data-changed - After .data assignment, detail: { data, source: 'property' }
  *
  * @example
  * <user-story
@@ -49,9 +51,16 @@
 
 import { styles } from './styles.js';
 import { registerComponent } from '../../lib/bundle-registry.js';
-import { esc, lucideSvg, UX_ICONS } from '../_ux-base.js';
+import {
+  esc, lucideSvg, UX_ICONS, UXShadowElement, PRIORITIES, STATUSES, lookup,
+  fillSlot, slottedChild, detailLevel, markEmptySections,
+} from '../_ux-base.js';
 
-class UserStory extends HTMLElement {
+let dialogSeq = 0;
+
+class UserStory extends UXShadowElement {
+  static readyEvent = 'story-ready';
+
   static get observedAttributes() {
     return [
       'persona-id', 'priority', 'points',
@@ -59,43 +68,14 @@ class UserStory extends HTMLElement {
     ];
   }
 
-  static PRIORITIES = {
-    critical: { label: 'Critical', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.1)' },
-    high:     { label: 'High',     color: '#ea580c', bg: 'rgba(234, 88, 12, 0.1)' },
-    medium:   { label: 'Medium',   color: '#ca8a04', bg: 'rgba(202, 138, 4, 0.1)' },
-    low:      { label: 'Low',      color: '#16a34a', bg: 'rgba(22, 163, 74, 0.1)' }
-  };
-
-  static STATUSES = {
-    backlog:       { label: 'Backlog',     color: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)' },
-    'to-do':       { label: 'To Do',       color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
-    'in-progress': { label: 'In Progress', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
-    review:        { label: 'Review',      color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
-    done:          { label: 'Done',        color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' }
-  };
-
-  #slotCache = new Map();
+  static PRIORITIES = PRIORITIES;
+  static STATUSES = STATUSES;
 
   /** @type {MutationObserver | null} */
   #personaObserver = null;
 
-  constructor() {
-    super();
-    this.attachShadow({ mode: 'open' });
-  }
-
-  #cacheSlotValues() {
-    for (const child of [...this.children]) {
-      const slotName = child.getAttribute('slot');
-      if (slotName) {
-        this.#slotCache.set(slotName, child.textContent.trim());
-      }
-    }
-  }
-
-  _resolve(attr) {
-    return this.getAttribute(attr) || this.#slotCache.get(attr) || '';
-  }
+  /** @type {HTMLDialogElement | null} */
+  #dialog = null;
 
   /* ── Data API ──────────────────────────────────── */
 
@@ -125,19 +105,12 @@ class UserStory extends HTMLElement {
    * Idempotent for repeat calls.
    */
   set data(value) {
-    if (!value || typeof value !== 'object') return;
-    this._applyData(value);
-    this.#cacheSlotValues();
-    if (this.shadowRoot) this.#render();
-    this.dispatchEvent(new CustomEvent('user-story:data-changed', {
-      detail: { data: this.data, source: 'property' },
-      bubbles: true, composed: true,
-    }));
+    this._setData(value);
   }
 
   /**
    * Apply a data record to attributes + slotted children. Used by both the
-   * .data setter and async _loadSrc. No render or cache update — caller decides.
+   * .data setter and the src loader. Slotted children are created only when absent (authored content wins). No render — caller decides.
    * @param {Record<string, unknown>} data
    */
   _applyData(data) {
@@ -148,92 +121,49 @@ class UserStory extends HTMLElement {
       if (data[jsonKey] != null) this.setAttribute(attr, String(data[jsonKey]));
     }
 
-    if (data.persona && !this.querySelector('[slot="persona"]')) {
-      const el = document.createElement('span');
-      el.slot = 'persona';
-      el.textContent = String(data.persona);
-      this.appendChild(el);
-    }
-    if (data.action && !this.querySelector('[slot="action"]')) {
-      const el = document.createElement('span');
-      el.slot = 'action';
-      el.textContent = String(data.action);
-      this.appendChild(el);
-    }
-    if (data.benefit && !this.querySelector('[slot="benefit"]')) {
-      const el = document.createElement('span');
-      el.slot = 'benefit';
-      el.textContent = String(data.benefit);
-      this.appendChild(el);
-    }
-    if (data.title && !this.querySelector('[slot="title"]')) {
-      const el = document.createElement('h3');
-      el.slot = 'title';
-      el.textContent = String(data.title);
-      this.appendChild(el);
-    }
-    for (const key of ['acceptance-criteria', 'tasks', 'notes']) {
-      const jsonKey = key === 'acceptance-criteria' ? 'acceptanceCriteria' : key;
-      if (data[jsonKey] && !this.querySelector(`[slot="${key}"]`)) {
-        if (Array.isArray(data[jsonKey])) {
-          const ul = document.createElement('ul');
-          ul.slot = key;
-          for (const item of data[jsonKey]) {
-            const li = document.createElement('li');
-            li.textContent = String(item);
-            ul.appendChild(li);
-          }
-          this.appendChild(ul);
-        } else {
-          const p = document.createElement('p');
-          p.slot = key;
-          p.textContent = String(data[jsonKey]);
-          this.appendChild(p);
-        }
-      }
-    }
+    fillSlot(this, 'persona', data.persona, { tag: 'span' });
+    fillSlot(this, 'action', data.action, { tag: 'span' });
+    fillSlot(this, 'benefit', data.benefit, { tag: 'span' });
+    fillSlot(this, 'title', data.title, { tag: 'h3' });
+    fillSlot(this, 'acceptance-criteria', data.acceptanceCriteria);
+    fillSlot(this, 'tasks', data.tasks);
+    fillSlot(this, 'notes', data.notes);
   }
 
-  async _loadSrc(url) {
-    if (!url) return;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      this._applyData(data);
-      this.#cacheSlotValues();
-      this.#render();
-    } catch (err) {
-      console.warn(`[user-story] Failed to load src="${url}":`, err);
-    }
-  }
+  /* ── Lifecycle (see UXShadowElement) ──────────── */
 
-  connectedCallback() {
-    this.#cacheSlotValues();
+  _setup() {
     if (this.storyId && !this.id && !this.hasAttribute('data-detail-clone')) this.id = this.storyId;
-    if (this.hasAttribute('src')) {
-      this._loadSrc(this.getAttribute('src'));
-    }
-    this.#render();
-    this.#observeLinkedPersona();
-    this.setAttribute('data-upgraded', '');
   }
 
-  disconnectedCallback() {
-    this.removeAttribute('data-upgraded');
+  _connect() {
+    this.#observeLinkedPersona();
+  }
+
+  _disconnect() {
     this.#personaObserver?.disconnect();
     this.#personaObserver = null;
+    // A move (disconnect + connect in one task) keeps the open dialog;
+    // a real removal closes and removes it.
+    queueMicrotask(() => { if (!this.isConnected) this.#removeDialog(); });
   }
 
-  attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue !== newValue && this.shadowRoot) {
-      if (name === 'src' && this.isConnected) {
-        this._loadSrc(newValue);
-      } else {
-        this.#render();
-        if (name === 'persona-id') this.#observeLinkedPersona();
-      }
-    }
+  /** @param {string} name */
+  _attributeChanged(name) {
+    this._render();
+    if (name === 'persona-id') this.#observeLinkedPersona();
+  }
+
+  _readyDetail() {
+    return {
+      id: this.storyId,
+      persona: this.persona,
+      action: this.action,
+      benefit: this.benefit,
+      priority: this.priority,
+      status: this.status,
+      points: this.points,
+    };
   }
 
   /**
@@ -249,7 +179,7 @@ class UserStory extends HTMLElement {
     const scope = root && typeof root.getElementById === 'function' ? root : document;
     const persona = scope.getElementById(this.personaId);
     if (!persona || persona.tagName !== 'USER-PERSONA') return;
-    this.#personaObserver = new MutationObserver(() => this.#render());
+    this.#personaObserver = new MutationObserver(() => this._render());
     this.#personaObserver.observe(persona, { attributes: true, attributeFilter: ['role'] });
   }
 
@@ -271,8 +201,7 @@ class UserStory extends HTMLElement {
 
   /** Persona text the author supplied directly via slot or .data (no link resolution). */
   #explicitPersona() {
-    const slotted = this.querySelector('[slot="persona"]');
-    return slotted?.textContent?.trim() || this.#slotCache.get('persona') || '';
+    return this._slotText('persona');
   }
 
   /**
@@ -302,14 +231,12 @@ class UserStory extends HTMLElement {
 
   /** Read action from slotted element or cache */
   get action() {
-    const slotted = this.querySelector('[slot="action"]');
-    return slotted?.textContent?.trim() || this.#slotCache.get('action') || '';
+    return this._slotText('action');
   }
 
   /** Read benefit from slotted element or cache */
   get benefit() {
-    const slotted = this.querySelector('[slot="benefit"]');
-    return slotted?.textContent?.trim() || this.#slotCache.get('benefit') || '';
+    return this._slotText('benefit');
   }
 
   get priority() {
@@ -334,8 +261,7 @@ class UserStory extends HTMLElement {
 
   /** Read title from slotted heading or cache */
   get storyTitle() {
-    const slotted = this.querySelector('[slot="title"]');
-    return slotted?.textContent?.trim() || this.#slotCache.get('title') || '';
+    return this._slotText('title');
   }
 
   /** Label for minimal mode: title if set, otherwise truncated action */
@@ -350,15 +276,13 @@ class UserStory extends HTMLElement {
   }
 
   get _detailLevel() {
-    if (this.getAttribute('detail')) return this.getAttribute('detail');
-    if (this.hasAttribute('compact')) return 'compact';
-    return 'full';
+    return detailLevel(this);
   }
 
   // ── Public API ───────────────────────────────────────────────────
 
   updateStatus(newStatus) {
-    if (UserStory.STATUSES[newStatus]) {
+    if (Object.hasOwn(STATUSES, newStatus)) {
       this.setAttribute('status', newStatus);
       this.dispatchEvent(new CustomEvent('status-changed', {
         detail: { status: newStatus, storyId: this.storyId },
@@ -369,7 +293,7 @@ class UserStory extends HTMLElement {
   }
 
   updatePriority(newPriority) {
-    if (UserStory.PRIORITIES[newPriority]) {
+    if (Object.hasOwn(PRIORITIES, newPriority)) {
       this.setAttribute('priority', newPriority);
       this.dispatchEvent(new CustomEvent('priority-changed', {
         detail: { priority: newPriority, storyId: this.storyId },
@@ -379,21 +303,24 @@ class UserStory extends HTMLElement {
     }
   }
 
+  /**
+   * Open a modal <dialog> showing this story at full detail. Each story
+   * owns at most one dialog; it is removed from the document when it
+   * closes or when the story is removed.
+   */
   showDetail() {
-    const dialogId = `story-dialog-${this.storyId || this.id || 'detail'}`;
-    let dialog = /** @type {HTMLDialogElement | null} */ (document.getElementById(dialogId));
-    if (!dialog) {
-      dialog = document.createElement('dialog');
-      dialog.id = dialogId;
-      dialog.setAttribute('data-size', 'l');
-      document.body.appendChild(dialog);
-    }
+    this.#removeDialog();
+    const dialog = document.createElement('dialog');
+    dialog.id = this.#dialogId();
+    dialog.setAttribute('data-size', 'l');
 
     const form = document.createElement('form');
     form.method = 'dialog';
     const header = document.createElement('header');
-    const title = document.createElement('h3');
+    const title = document.createElement('h2');
+    title.id = `${dialog.id}-title`;
     title.textContent = this.storyTitle || this.storyId || 'Story Detail';
+    dialog.setAttribute('aria-labelledby', title.id);
     const closeBtn = document.createElement('button');
     closeBtn.type = 'submit';
     closeBtn.setAttribute('aria-label', 'Close');
@@ -407,29 +334,46 @@ class UserStory extends HTMLElement {
       if (attr === 'detail' || attr === 'compact' || attr === 'data-upgraded' || attr === 'draggable' || attr === 'data-id' || attr === 'data-quadrant') continue;
       full.setAttribute(attr, this.getAttribute(attr) ?? '');
     }
-    const hasSlottedContent = [...this.children].some(c => c.getAttribute('slot') && c.tagName !== 'DIALOG');
+    const hasSlottedContent = [...this.children].some(c => c.getAttribute('slot'));
     full.setAttribute('detail', hasSlottedContent ? 'full' : 'compact');
     full.removeAttribute('id');
     full.setAttribute('data-detail-clone', ''); // keep the clone out of id/persona lookups
-    for (const child of [...this.children]) {
-      if (child.tagName === 'DIALOG') continue;
-      full.appendChild(child.cloneNode(true));
-    }
+    for (const child of [...this.children]) full.appendChild(child.cloneNode(true));
     section.appendChild(full);
 
     form.appendChild(header);
     form.appendChild(section);
-    dialog.innerHTML = '';
     dialog.appendChild(form);
-    dialog.addEventListener('close', () => { dialog.innerHTML = ''; }, { once: true });
+    dialog.addEventListener('close', () => {
+      if (this.#dialog === dialog) this.#dialog = null;
+      dialog.remove();
+    }, { once: true });
+    document.body.appendChild(dialog);
+    this.#dialog = dialog;
     dialog.showModal();
+  }
+
+  /** `story-dialog-<story-id>`, made unique if another dialog already uses it. */
+  #dialogId() {
+    const base = `story-dialog-${this.storyId || this.id || 'story'}`;
+    let id = base;
+    while (document.getElementById(id)) id = `${base}-${++dialogSeq}`;
+    return id;
+  }
+
+  #removeDialog() {
+    const dialog = this.#dialog;
+    if (!dialog) return;
+    this.#dialog = null;
+    if (dialog.open) dialog.close();
+    dialog.remove();
   }
 
   // ── Private ──────────────────────────────────────────────────────
 
-  #render() {
-    const priorityInfo = UserStory.PRIORITIES[this.priority] || UserStory.PRIORITIES.medium;
-    const statusInfo = UserStory.STATUSES[this.status] || UserStory.STATUSES.backlog;
+  _render() {
+    const priorityInfo = lookup(PRIORITIES, this.priority, 'medium');
+    const statusInfo = lookup(STATUSES, this.status, 'backlog');
     const level = this._detailLevel;
     const ariaLabel = this.storyId
       ? `User story: ${esc(this.storyId)}`
@@ -437,25 +381,23 @@ class UserStory extends HTMLElement {
 
     if (!this.shadowRoot) return;
     if (level === 'minimal') {
+      const label = this._minimalLabel || 'Untitled story';
+      const buttonLabel = this.storyId ? `${this.storyId}: ${label}` : label;
+      // A real button: focusable, Enter/Space activate it natively, and
+      // aria-haspopup tells screen readers it opens a dialog.
       this.shadowRoot.innerHTML = `
         <style>${styles}</style>
-        <article class="story-card story-card--minimal" role="article" aria-label="${ariaLabel}"
-          tabindex="0">
-          <div class="story-body">
+        <button type="button" class="story-card story-card--minimal" part="card"
+          aria-haspopup="dialog" aria-label="${esc(buttonLabel)}">
+          <span class="story-body">
             ${this.storyId ? `<span class="story-id">${esc(this.storyId)}</span>` : ''}
-            <div class="story-title-wrap">
+            <span class="story-title-wrap">
               <slot name="title"><span class="story-title-fallback">${esc(this._minimalLabel || '[describe the action]')}</span></slot>
-            </div>
-          </div>
-        </article>
+            </span>
+          </span>
+        </button>
       `;
-      const card = this.shadowRoot.querySelector('.story-card--minimal');
-      if (!card) return;
-      card.addEventListener('click', () => this.showDetail());
-      card.addEventListener('keydown', (/** @type {Event} */ e) => {
-        const ke = /** @type {KeyboardEvent} */ (e);
-        if (ke.key === 'Enter' || ke.key === ' ') { ke.preventDefault(); this.showDetail(); }
-      });
+      this.shadowRoot.querySelector('.story-card--minimal')?.addEventListener('click', () => this.showDetail());
     } else {
       this.shadowRoot.innerHTML = `
         <style>${styles}</style>
@@ -473,7 +415,7 @@ class UserStory extends HTMLElement {
               <span class="status-badge" part="status"
                 style="color: ${statusInfo.color}; background: ${statusInfo.bg};"
               >${esc(statusInfo.label)}</span>
-              ${this.points ? `<span class="points-badge" part="points">${esc(this.points)}</span>` : ''}
+              ${this.points ? `<span class="points-badge" part="points">${esc(this.points)}<span class="visually-hidden"> story points</span></span>` : ''}
             </div>
           </header>
 
@@ -484,7 +426,7 @@ class UserStory extends HTMLElement {
                 ? `<a class="persona-text persona-text--link" href="#${esc(this.personaId)}">${lucideSvg(UX_ICONS.user)} <slot name="persona"><span>${esc(this.#linkedPersonaRole() || 'user')}</span></slot></a>`
                 : `<span class="persona-text"><slot name="persona"><span>user</span></slot></span>`},
               <span class="keyword">I want</span>
-              <span class="action-text"><slot name="action"><span>[describe the action]</span></slot></span>${this.benefit || this.querySelector('[slot="benefit"]') ? `
+              <span class="action-text"><slot name="action"><span>[describe the action]</span></slot></span>${this.benefit || slottedChild(this, 'benefit') ? `
               <span class="keyword">so that</span>
               <span class="benefit-text"><slot name="benefit"></slot></span>` : ''}
             </p>
@@ -496,7 +438,7 @@ class UserStory extends HTMLElement {
                 <div class="section-icon acceptance">
                   <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                 </div>
-                <span class="section-title">Acceptance Criteria</span>
+                <h3 class="section-title">Acceptance Criteria</h3>
               </div>
               <div class="section-content">
                 <slot name="acceptance-criteria">
@@ -510,7 +452,7 @@ class UserStory extends HTMLElement {
                 <div class="section-icon tasks">
                   <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
                 </div>
-                <span class="section-title">Tasks</span>
+                <h3 class="section-title">Tasks</h3>
               </div>
               <div class="section-content">
                 <slot name="tasks">
@@ -524,7 +466,7 @@ class UserStory extends HTMLElement {
                 <div class="section-icon notes">
                   <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                 </div>
-                <span class="section-title">Notes</span>
+                <h3 class="section-title">Notes</h3>
               </div>
               <div class="section-content">
                 <slot name="notes">
@@ -536,30 +478,8 @@ class UserStory extends HTMLElement {
         </article>
       `;
 
-      if (level === 'compact') {
-        const sections = this.shadowRoot.querySelectorAll('.section');
-        sections.forEach(section => {
-          const slot = section.querySelector('slot');
-          if (slot && slot.assignedNodes().length === 0) {
-            section.setAttribute('data-empty', '');
-          }
-        });
-      }
+      if (level === 'compact') markEmptySections(this.shadowRoot, '.section');
     }
-
-    this.dispatchEvent(new CustomEvent('story-ready', {
-      detail: {
-        id: this.storyId,
-        persona: this.persona,
-        action: this.action,
-        benefit: this.benefit,
-        priority: this.priority,
-        status: this.status,
-        points: this.points
-      },
-      bubbles: true,
-      composed: true
-    }));
   }
 }
 

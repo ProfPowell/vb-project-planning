@@ -247,6 +247,7 @@ const styles = `
   }
 
   .section-title {
+    margin: 0;
     font-size: var(--_font-sm);
     font-weight: 600;
     color: var(--_text);

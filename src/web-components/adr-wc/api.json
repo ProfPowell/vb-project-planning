@@ -5,13 +5,13 @@
   "description": "MADR-format Architectural Decision Record card with status, context, decision, consequences, and cross-referencing via supersedes chains",
   "htmlvalidate": { "flow": true, "permittedContent": ["@flow"] },
   "attributes": [
-    { "name": "adr-id",        "kind": "host-api", "purpose": "config", "type": "string",  "description": "ADR identifier (e.g., ADR-001), auto-sets HTML id" },
-    { "name": "status",        "kind": "host-api", "purpose": "config", "type": "string",  "description": "Status: proposed | accepted | deprecated | superseded" },
+    { "name": "adr-id",        "kind": "host-api", "purpose": "config", "type": "string",  "description": "ADR identifier (e.g., ADR-001); sets the HTML id on first connect when none is set" },
+    { "name": "status",        "kind": "host-api", "purpose": "config", "type": "enum", "values": ["proposed", "accepted", "deprecated", "superseded"], "default": "proposed", "description": "Decision status" },
     { "name": "supersedes",    "kind": "host-api", "purpose": "config", "type": "string",  "description": "Comma-separated ADR IDs this supersedes" },
     { "name": "superseded-by", "kind": "host-api", "purpose": "config", "type": "string",  "description": "Comma-separated ADR IDs that supersede this" },
-    { "name": "detail",        "kind": "host-api", "purpose": "config", "type": "string",  "description": "Detail level: full | compact | minimal" },
+    { "name": "detail",        "kind": "host-api", "purpose": "config", "type": "enum", "values": ["full", "compact", "minimal"], "default": "full", "description": "Detail level. minimal shows id, status and title only." },
     { "name": "compact",       "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Alias for detail=compact" },
-    { "name": "src",           "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL to JSON data" }
+    { "name": "src",           "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL of a JSON ADR record. Fetched once per value; a newer value aborts the older request. A YYYY-MM-DD date is shown as that calendar day in every time zone." }
   ],
   "slots": [
     { "name": "title",        "description": "Decision heading (e.g., <h2>)" },
@@ -21,6 +21,8 @@
     { "name": "consequences", "description": "Outcomes (positive and negative)" }
   ],
   "events": [
-    { "name": "adr-wc:ready", "detail": "{ adrId, title, status }", "description": "Fired after render" }
+    { "name": "adr-wc:ready", "detail": "{ adrId, title, status }", "description": "Once per element, after the first render at any detail level. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by attribute changes or moves." },
+    { "name": "adr-wc:upgraded", "detail": "", "description": "Once, in a microtask after first connect. Wait for this before assigning .data from a framework." },
+    { "name": "adr-wc:data-changed", "detail": "{ data, source: 'property' }", "description": "After .data is assigned" }
   ]
 }
