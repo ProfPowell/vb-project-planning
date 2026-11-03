@@ -3,8 +3,8 @@
  *
  * Verifies the composing preset contract: rows parsed from the inline
  * <template> render into BOTH a <data-table> (with a computed Severity
- * rollup) and a <quadrant-grid> (one dot per risk at likelihood/5,
- * impact/5), `risk-register:ready` carries { count }, and the `.rows`
+ * column) and a <quadrant-grid> (one dot per risk at (likelihood-1)/4,
+ * (impact-1)/4), `risk-register:ready` carries { count }, and the `.rows`
  * setter re-renders both views from one source.
  *
  * The live, HTML-first `<risk-register>` upgrades on this pack's demo
@@ -40,8 +40,8 @@ test.describe('risk-register', () => {
         templateKept: !!rr.querySelector(':scope > template'),
         headers: [...table.querySelectorAll('thead th')].map(th => th.textContent.trim()),
         severityTh: {
-          rollup: table.querySelector('thead th[data-rollup]')?.getAttribute('data-rollup'),
-          heatmap: table.querySelector('thead th[data-rollup]')?.getAttribute('data-heatmap'),
+          rollup: table.querySelectorAll('thead th[data-rollup]').length,
+          heatmap: table.querySelector('thead th[data-severity]')?.getAttribute('data-heatmap'),
         },
         rows: [...table.querySelectorAll('tbody tr')].map(tr => [
           tr.getAttribute('data-id'),
@@ -66,7 +66,7 @@ test.describe('risk-register', () => {
     expect(state.label).toBe('Q3 project risks');
     expect(state.templateKept).toBe(true);
     expect(state.headers).toEqual(['Title', 'Likelihood', 'Impact', 'Severity', 'Owner', 'Mitigation']);
-    expect(state.severityTh).toEqual({ rollup: 'product', heatmap: 'low-good' });
+    expect(state.severityTh).toEqual({ rollup: 0, heatmap: 'low-good' });
 
     expect(state.rows).toEqual([
       ['vendor-delay', 'Vendor delay', '4', '3'],
@@ -78,11 +78,11 @@ test.describe('risk-register', () => {
     ]);
 
     expect(state.dots).toHaveLength(6);
-    expect(state.dots[0]).toEqual({
+    expect(state.dots.find(d => d.id === 'vendor-delay')).toEqual({
       id: 'vendor-delay',
-      x: '0.800',
-      y: '0.600',
-      title: 'Vendor delay — likelihood 4, impact 3',
+      x: '0.750',
+      y: '0.500',
+      title: 'Vendor delay — likelihood 4, impact 3, severity 12',
       text: 'Vendor delay',
     });
     // <quadrant-grid> re-parents dots into its quadrant zones, so DOM
@@ -95,24 +95,20 @@ test.describe('risk-register', () => {
   // <data-table> is a Vanilla Breeze core element used as a runtime peer; the
   // demo page loads /assets/vendor/data-table.js so the composed rollup,
   // heatmap and sorting activate. (They were silently inert before.)
-  test('composed <data-table> computes the Severity rollup (likelihood × impact)', async ({ page }) => {
+  test('Severity column is likelihood × impact, computed by the component', async ({ page }) => {
     await page.goto(demoPage);
     await page.waitForSelector('risk-register[data-upgraded]');
-
-    // The rollup is computed by the vendored <data-table> once it
-    // upgrades; wait for it to stamp data-rollup-value on the cells.
-    await page.waitForFunction(() =>
-      document.querySelectorAll('risk-register tbody td[data-rollup-value]').length === 6
-    );
+    await page.waitForSelector('risk-register data-table[data-upgraded]');
 
     const severities = await page.evaluate(() =>
       [...document.querySelectorAll('risk-register tbody tr')].map(tr => [
         tr.getAttribute('data-id'),
-        tr.children[3].getAttribute('data-rollup-value'),
+        tr.children[3].textContent,
+        tr.children[3].getAttribute('data-sort-value'),
       ])
     );
 
-    expect(severities).toEqual(DEMO_ROWS.map(([id, l, i]) => [id, String(l * i)]));
+    expect(severities).toEqual(DEMO_ROWS.map(([id, l, i]) => [id, String(l * i), String(l * i)]));
   });
 
   // Sorting is <data-table> behaviour, so this also depends on the peer above.

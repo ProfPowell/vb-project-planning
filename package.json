@@ -1,6 +1,6 @@
 {
   "name": "@profpowell/vb-project-planning",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Project- and UX-planning Web Components for Vanilla Breeze: personas, stories, journeys, empathy maps, impact/effort and quadrant grids, risk and traceability matrices, burndown, roadmap, kanban, story map, gantt, review surface, work items, ADRs, iron triangle, capacity plans, quality targets, and requirement cards.",
   "license": "MIT",
   "author": "Thomas A. Powell",
@@ -63,8 +63,10 @@
     "build:js": "esbuild src/index.js --bundle --format=esm --outfile=dist/vb-project-planning.js && esbuild src/index.js --bundle --format=esm --minify --outfile=dist/vb-project-planning.min.js",
     "build:css": "esbuild src/index.css --bundle --outfile=dist/vb-project-planning.css && esbuild src/index.css --bundle --minify --outfile=dist/vb-project-planning.min.css",
     "prepublishOnly": "npm run build",
+    "typecheck": "tsc -p tsconfig.json",
+    "test:unit": "TZ=America/Los_Angeles node --test 'tests/unit/*.test.mjs'",
     "test:components": "playwright test",
-    "test": "playwright test"
+    "test": "npm run test:unit && playwright test"
   },
   "peerDependencies": {
     "vanilla-breeze": ">=0.3.0"
@@ -75,7 +77,8 @@
     }
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
-    "esbuild": "^0.27.0"
+    "@playwright/test": "^1.64.1",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.3"
   }
 }

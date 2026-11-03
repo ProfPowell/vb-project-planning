@@ -201,7 +201,7 @@ var styles = `
   .section-icon.behaviors { background: var(--_behaviors); }
   .section-icon.stories { background: var(--_stories); }
 
-  /* Stories section \u2014 auto-rendered list of related user-story elements */
+  /* Stories section \u2014 auto-rendered list of related <user-story> elements */
   .section-count {
     margin-inline-start: var(--_space-2xs);
     padding: 0.05em 0.5ch;
@@ -248,6 +248,7 @@ var styles = `
   }
 
   .section-title {
+    margin: 0;
     font-size: var(--_font-sm);
     font-weight: 600;
     color: var(--_text);
@@ -298,7 +299,6 @@ var styles = `
 `;
 
 // src/lib/bundle-registry.js
-var reducedMotionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
 var components = /* @__PURE__ */ new Map();
 function registerComponent(tag, impl, opts = {}) {
   const priority = opts.priority ?? 10;
@@ -330,19 +330,102 @@ function registerComponent(tag, impl, opts = {}) {
   customElements.define(tag, impl);
 }
 
-// src/web-components/_ux-base.js
-function esc(s) {
-  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+// src/lib/escape.js
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => ESCAPES[c]);
 }
+var ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+function cssUrl(value) {
+  const s = String(value ?? "").trim();
+  if (!s) return "none";
+  if (/^[a-z][a-z0-9+.-]*:/i.test(s) && !/^(https?:|data:image\/)/i.test(s)) return "none";
+  const escaped = s.replace(/["\\\n\r\f]/g, (c) => `\\${c.charCodeAt(0).toString(16)} `);
+  return esc(`url("${escaped}")`);
+}
+
+// src/lib/hash.js
+function stringHash(str) {
+  let h = 0;
+  const s = String(str ?? "");
+  for (let i = 0; i < s.length; i++) {
+    h = s.charCodeAt(i) + ((h << 5) - h);
+  }
+  return h;
+}
+
+// src/lib/src-loader.js
+var SrcLoader = class {
+  /** @type {AbortController | null} */
+  #ctrl = null;
+  /** @type {string | null} */
+  url = null;
+  /** True while a fetchJson() request is in flight (not settled or cancelled). */
+  #busy = false;
+  get pending() {
+    return this.#busy;
+  }
+  /**
+   * Abort any earlier request and begin tracking a new one.
+   * @param {string} url
+   * @returns {{ signal: AbortSignal, isCurrent: () => boolean }}
+   */
+  start(url) {
+    this.#ctrl?.abort();
+    const ctrl = new AbortController();
+    this.#ctrl = ctrl;
+    this.#busy = false;
+    this.url = url;
+    return { signal: ctrl.signal, isCurrent: () => this.#ctrl === ctrl && !ctrl.signal.aborted };
+  }
+  /**
+   * Abort the in-flight request (if any) and forget the URL. Returns true
+   * when a request was actually in flight.
+   * @returns {boolean}
+   */
+  cancel() {
+    const wasPending = this.pending;
+    this.#ctrl?.abort();
+    this.#ctrl = null;
+    this.#busy = false;
+    this.url = null;
+    return wasPending;
+  }
+  /**
+   * Fetch JSON for `url`, aborting any earlier request. Resolves to
+   * `undefined` when superseded, cancelled or aborted; rejects (only while
+   * still current) on a network error, a non-2xx status or invalid JSON.
+   * @param {string} url
+   * @returns {Promise<{ data: any, isCurrent: () => boolean } | undefined>}
+   */
+  async fetchJson(url) {
+    const { signal, isCurrent } = this.start(url);
+    this.#busy = true;
+    try {
+      const res = await fetch(url, { signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (!isCurrent()) return void 0;
+      this.#busy = false;
+      return { data, isCurrent };
+    } catch (err) {
+      if (
+        /** @type {any} */
+        err?.name === "AbortError" || !isCurrent()
+      ) return void 0;
+      this.#busy = false;
+      this.url = null;
+      throw err;
+    }
+  }
+};
+
+// src/web-components/_ux-base.js
 function initials(name) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 }
 function hashColor(name) {
-  let hash3 = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash3 = name.charCodeAt(i) + ((hash3 << 5) - hash3);
-  }
-  const hue = (hash3 % 360 + 360) % 360;
+  const hash = stringHash(name);
+  const hue = (hash % 360 + 360) % 360;
   return `hsl(${hue}, 65%, 55%)`;
 }
 function lucideSvg(inner) {
@@ -381,17 +464,291 @@ var EMOTION_META = {
   frustrated: { emoji: "\u{1F624}", score: 0.18, color: "#ef4444" },
   angry: { emoji: "\u{1F620}", score: 0.05, color: "#dc2626" }
 };
+function emotionMeta(name) {
+  const key = String(name ?? "").toLowerCase().trim();
+  return Object.hasOwn(EMOTION_META, key) ? EMOTION_META[key] : EMOTION_META.neutral;
+}
+function isEmotion(name) {
+  return Object.hasOwn(EMOTION_META, String(name ?? "").toLowerCase().trim());
+}
+var PRIORITIES = Object.freeze({
+  critical: { label: "Critical", color: "#dc2626", bg: "rgba(220, 38, 38, 0.1)" },
+  high: { label: "High", color: "#ea580c", bg: "rgba(234, 88, 12, 0.1)" },
+  medium: { label: "Medium", color: "#ca8a04", bg: "rgba(202, 138, 4, 0.1)" },
+  low: { label: "Low", color: "#16a34a", bg: "rgba(22, 163, 74, 0.1)" }
+});
+var STATUSES = Object.freeze({
+  backlog: { label: "Backlog", color: "#6b7280", bg: "rgba(107, 114, 128, 0.1)" },
+  "to-do": { label: "To Do", color: "#3b82f6", bg: "rgba(59, 130, 246, 0.1)" },
+  "in-progress": { label: "In Progress", color: "#8b5cf6", bg: "rgba(139, 92, 246, 0.1)" },
+  review: { label: "Review", color: "#f59e0b", bg: "rgba(245, 158, 11, 0.1)" },
+  done: { label: "Done", color: "#22c55e", bg: "rgba(34, 197, 94, 0.1)" }
+});
+function lookup(table, key, fallback) {
+  return Object.hasOwn(table, key) ? table[key] : table[fallback];
+}
+function fragmentHref(id) {
+  return esc(`#${encodeURIComponent(String(id ?? ""))}`);
+}
+function splitList(raw) {
+  return raw ? raw.split(",").map((s) => s.trim()).filter(Boolean) : [];
+}
+function asList(value) {
+  if (Array.isArray(value)) return value.map((v) => String(v ?? ""));
+  if (value == null || value === "") return [];
+  return [String(value)];
+}
+function slottedChild(host, slot) {
+  return [...host.children].find((c) => c.getAttribute("slot") === slot);
+}
+function fillSlot(host, slot, value, { tag = "p", list = false, replace = false } = {}) {
+  if (value == null || value === "") return;
+  const existing = slottedChild(host, slot);
+  if (existing && !replace) return;
+  const wantList = list || Array.isArray(value);
+  const isList = (el2) => el2.tagName === "UL" || el2.tagName === "OL";
+  let el = existing;
+  if (!el || wantList !== isList(el)) {
+    const fresh = document.createElement(wantList ? "ul" : tag);
+    fresh.slot = slot;
+    if (el) el.replaceWith(fresh);
+    else host.appendChild(fresh);
+    el = fresh;
+  }
+  if (wantList) {
+    el.replaceChildren(...asList(value).map((item) => {
+      const li = document.createElement("li");
+      li.textContent = item;
+      return li;
+    }));
+  } else {
+    el.textContent = String(value);
+  }
+}
+function readSlot(host, slot) {
+  const el = slottedChild(host, slot);
+  if (!el) return void 0;
+  if (el.tagName === "UL" || el.tagName === "OL") {
+    const items = [...el.querySelectorAll("li")].map((li) => li.textContent?.trim() ?? "").filter(Boolean);
+    return items.length ? items : void 0;
+  }
+  return el.textContent?.trim() || void 0;
+}
+function detailLevel(host) {
+  return host.getAttribute("detail") || (host.hasAttribute("compact") ? "compact" : "full");
+}
+function markEmptySections(root, sectionSelector) {
+  for (const section of root.querySelectorAll(sectionSelector)) {
+    const slot = section.querySelector("slot");
+    if (slot && slot.assignedNodes().length === 0) section.setAttribute("data-empty", "");
+  }
+}
+var UXShadowElement = class extends HTMLElement {
+  /** Ready event name, e.g. `story-ready`. */
+  static readyEvent = "";
+  /** Fallback text for slots whose light-DOM child was removed after setup. */
+  _slotCache = /* @__PURE__ */ new Map();
+  #setUp = false;
+  #readyFired = false;
+  #loader = new SrcLoader();
+  #quiet = 0;
+  /** Attributes changed while quiet (a data record being applied). */
+  /** @type {Set<string>} */
+  #quietChanges = /* @__PURE__ */ new Set();
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" });
+  }
+  /** True once first-connect setup has run. */
+  get _isSetUp() {
+    return this.#setUp;
+  }
+  connectedCallback() {
+    if (this.#setUp) {
+      this._connect();
+      return;
+    }
+    this.#setUp = true;
+    this._cacheSlotValues();
+    this._setup();
+    const src = this.getAttribute("src");
+    if (src) {
+      this._loadSrc(src);
+    } else {
+      this._render();
+      this._fireReady();
+    }
+    this._connect();
+    this.setAttribute("data-upgraded", "");
+    queueMicrotask(() => {
+      this.dispatchEvent(new CustomEvent(`${this.localName}:upgraded`, { bubbles: true }));
+    });
+  }
+  disconnectedCallback() {
+    this._disconnect();
+  }
+  /**
+   * @param {string} name
+   * @param {string | null} oldValue
+   * @param {string | null} newValue
+   */
+  attributeChangedCallback(name, oldValue, newValue) {
+    if (!this.#setUp || oldValue === newValue) return;
+    if (this.#quiet) {
+      if (name !== "src") this.#quietChanges.add(name);
+      return;
+    }
+    if (name === "src") {
+      this._loadSrc(newValue);
+      return;
+    }
+    this._attributeEffects(name);
+    this._attributeChanged(name);
+  }
+  /* ── Hooks (override as needed) ─────────────────── */
+  /** One-time setup before the first render (e.g. id from story-id). */
+  _setup() {
+  }
+  /** Every connect, after setup on the first: (re)attach observers. */
+  _connect() {
+  }
+  /** Every disconnect: detach observers. */
+  _disconnect() {
+  }
+  /**
+   * Non-render side effects of an attribute change (e.g. re-pointing an
+   * observer). Runs before `_attributeChanged()`, and also after a data
+   * record that changed the attribute has been applied.
+   * @param {string} _name
+   */
+  _attributeEffects(_name) {
+  }
+  /** @param {string} _name */
+  _attributeChanged(_name) {
+    this._render();
+  }
+  /** Render the full shadow tree. */
+  _render() {
+  }
+  /** @returns {object} detail for the ready event */
+  _readyDetail() {
+    return {};
+  }
+  /** @param {Record<string, any>} _data apply a JSON record to attributes/slots/properties */
+  _applyData(_data) {
+  }
+  /** Shown while `src` loads. Default: render what is already known. */
+  _renderLoading() {
+    this._render();
+  }
+  /** @param {Error} err shown when `src` fails. Default: a console warning. */
+  _renderError(err) {
+    console.warn(`[${this.localName}] Failed to load src="${this.getAttribute("src")}":`, err);
+  }
+  /* ── Shared behaviour ───────────────────────────── */
+  _cacheSlotValues() {
+    for (const child of this.children) {
+      const slot = child.getAttribute("slot");
+      if (slot) this._slotCache.set(slot, child.textContent?.trim() ?? "");
+    }
+  }
+  /**
+   * Trimmed text of the slotted child for `slot`, else the cached value.
+   * @param {string} slot
+   * @returns {string}
+   */
+  _slotText(slot) {
+    return slottedChild(this, slot)?.textContent?.trim() || this._slotCache.get(slot) || "";
+  }
+  /**
+   * Run `fn` without attribute changes triggering re-renders (used while a
+   * data record sets several attributes; the caller renders once after).
+   * @param {() => void} fn
+   */
+  _quietly(fn) {
+    this.#quiet++;
+    try {
+      fn();
+    } finally {
+      this.#quiet--;
+    }
+    if (this.#quiet === 0 && this.#quietChanges.size) {
+      const changed = [...this.#quietChanges];
+      this.#quietChanges.clear();
+      for (const name of changed) this._attributeEffects(name);
+    }
+  }
+  /**
+   * Apply a record assigned to `.data`, re-render, and emit
+   * `<tag>:data-changed` { data, source: 'property' }.
+   * @param {unknown} value
+   */
+  _setData(value) {
+    if (!value || typeof value !== "object") return;
+    this._quietly(() => this._applyData(
+      /** @type {Record<string, any>} */
+      value
+    ));
+    this._cacheSlotValues();
+    this._render();
+    this.dispatchEvent(new CustomEvent(`${this.localName}:data-changed`, {
+      detail: { data: (
+        /** @type {any} */
+        this.data
+      ), source: "property" },
+      bubbles: true,
+      composed: true
+    }));
+  }
+  /** Dispatch the ready event, at most once per element. */
+  _fireReady() {
+    if (this.#readyFired) return;
+    const type = (
+      /** @type {typeof UXShadowElement} */
+      this.constructor.readyEvent
+    );
+    if (!type) return;
+    this.#readyFired = true;
+    this.dispatchEvent(new CustomEvent(type, {
+      detail: this._readyDetail(),
+      bubbles: true,
+      composed: true
+    }));
+  }
+  /**
+   * Fetch `url` as JSON and apply it. Each call supersedes the previous
+   * one: the earlier request is aborted and its response, if it still
+   * arrives, is ignored. A null/empty `url` (src removed) aborts any
+   * pending request and renders the authored content instead.
+   * @param {string | null} url
+   */
+  async _loadSrc(url) {
+    if (!url) {
+      this.#loader.cancel();
+      this._render();
+      this._fireReady();
+      return;
+    }
+    this._renderLoading();
+    let result;
+    try {
+      result = await this.#loader.fetchJson(url);
+    } catch (err) {
+      this._renderError(err instanceof Error ? err : new Error(String(err)));
+      return;
+    }
+    if (!result) return;
+    const { data } = result;
+    this._quietly(() => this._applyData(data && typeof data === "object" ? data : {}));
+    this._cacheSlotValues();
+    this._render();
+    this._fireReady();
+  }
+};
 
 // src/lib/portrait-url.js
 var CDN = "https://cdn.jsdelivr.net/gh/faker-js/assets-person-portrait";
 var SIZES = [32, 64, 128, 256, 512];
-function hash(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) {
-    h = str.charCodeAt(i) + ((h << 5) - h);
-  }
-  return h;
-}
 function snapSize(px) {
   let best = SIZES[0];
   let bestDist = Math.abs(px - best);
@@ -405,7 +762,7 @@ function snapSize(px) {
   return best;
 }
 function portraitUrl(seed, size = 128) {
-  const h = hash(String(seed));
+  const h = stringHash(String(seed));
   const index = (h % 100 + 100) % 100;
   const sex = (h >>> 16 & 1) === 0 ? "female" : "male";
   const snapped = snapSize(size);
@@ -413,11 +770,6 @@ function portraitUrl(seed, size = 128) {
 }
 
 // src/web-components/user-persona/logic.js
-function hash2(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
-  return h;
-}
 var MOCK_NAMES = [
   "Sarah Chen",
   "Marcus Johnson",
@@ -500,19 +852,16 @@ var MOCK_BEHAVIORS = [
   "Bookmarks frequently used reports",
   "Uses dark mode exclusively"
 ];
-var UserPersona = class extends HTMLElement {
+var SECTION_SLOTS = ["bio", "goals", "frustrations", "behaviors"];
+var UserPersona = class extends UXShadowElement {
+  static readyEvent = "persona-ready";
   static get observedAttributes() {
-    return ["role", "age", "location", "avatar", "compact", "src", "data-list-stories", "id"];
+    return ["name", "role", "age", "location", "avatar", "quote", "compact", "src", "data-list-stories", "id"];
   }
-  #slotCache = /* @__PURE__ */ new Map();
   /** @type {MutationObserver | null} */
   #storyObserver = null;
-  constructor() {
-    super();
-    this.attachShadow({ mode: "open" });
-  }
   /**
-   * Find every user-story in the document whose `persona-id` matches
+   * Find every <user-story> in the document whose `persona-id` matches
    * this persona's id. Returns elements in document order.
    * @returns {Element[]}
    */
@@ -529,21 +878,11 @@ var UserPersona = class extends HTMLElement {
     );
     return Array.from(scope.querySelectorAll(`user-story[persona-id="${cssEscape(this.id)}"]:not([data-detail-clone])`));
   }
-  #cacheSlotValues() {
-    for (const child of [...this.children]) {
-      const slotName = child.getAttribute("slot");
-      if (slotName && !this.getAttribute(slotName)) {
-        this.#slotCache.set(slotName, child.textContent.trim());
-      }
-    }
-  }
-  _resolve(attr) {
-    return this.getAttribute(attr) || this.#slotCache.get(attr) || "";
-  }
   /* ── Data API ──────────────────────────────────── */
   /**
    * Read the persona as a plain data object. Mirrors what a consumer
-   * would assign to .data — useful for diffing or persistence.
+   * would assign to .data — useful for diffing or persistence. List
+   * sections (`<ul>`/`<ol>`) read back as string arrays, others as text.
    */
   get data() {
     return {
@@ -553,86 +892,58 @@ var UserPersona = class extends HTMLElement {
       location: this.location || void 0,
       avatar: this.avatar || void 0,
       quote: this.quote || void 0,
-      bio: this.#slotCache.get("bio") || void 0,
-      goals: this.#slotCache.get("goals") || void 0,
-      frustrations: this.#slotCache.get("frustrations") || void 0,
-      behaviors: this.#slotCache.get("behaviors") || void 0
+      bio: readSlot(this, "bio"),
+      goals: readSlot(this, "goals"),
+      frustrations: readSlot(this, "frustrations"),
+      behaviors: readSlot(this, "behaviors")
     };
   }
   /**
    * Set state attributes and slotted content from a plain object in one
-   * call. Idempotent for repeat calls.
+   * call. Fields present in the object replace the current value (slotted
+   * children are updated in place); absent fields are left alone.
+   * Emits user-persona:data-changed { data, source: 'property' }.
    */
   set data(value) {
-    if (!value || typeof value !== "object") return;
-    this._applyData(value);
-    if (this.shadowRoot) this.#render();
-    this.dispatchEvent(new CustomEvent("user-persona:data-changed", {
-      detail: { data: this.data, source: "property" },
-      bubbles: true,
-      composed: true
-    }));
+    this._setData(value);
   }
   /**
    * Apply a data record to attributes + slotted children. Used by both
-   * the .data setter and async _loadSrc.
-   * @param {Recordstring, unknown} data
+   * the .data setter and the src loader. String fields become `<p>`
+   * children, arrays become `<ul>` lists; the name is an `<h2>`.
+   * @param {Record<string, unknown>} data
    */
   _applyData(data) {
     for (const key of ["role", "age", "location", "avatar"]) {
-      if (data[key]) this.setAttribute(key, String(data[key]));
+      if (data[key] != null && data[key] !== "") this.setAttribute(key, String(data[key]));
     }
-    if (data.name && !this.querySelector('[slot="name"]')) {
-      const el = document.createElement("h2");
-      el.slot = "name";
-      el.textContent = String(data.name);
-      this.appendChild(el);
-    }
-    if (data.quote && !this.querySelector('[slot="quote"]')) {
-      const el = document.createElement("p");
-      el.slot = "quote";
-      el.textContent = String(data.quote);
-      this.appendChild(el);
-    }
-    for (const key of ["bio", "goals", "frustrations", "behaviors"]) {
-      if (data[key]) this.#slotCache.set(key, String(data[key]));
+    fillSlot(this, "name", data.name, { tag: "h2", replace: true });
+    fillSlot(this, "quote", data.quote, { tag: "p", replace: true });
+    for (const key of SECTION_SLOTS) {
+      fillSlot(this, key, data[key], { tag: "p", replace: true });
     }
   }
-  async _loadSrc(url) {
-    if (!url) return;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      this._applyData(data);
-      this.#render();
-    } catch (err) {
-      console.warn(`[user-persona] Failed to load src="${url}":`, err);
-    }
+  /* ── Lifecycle (see UXShadowElement) ──────────── */
+  _setup() {
+    if (this.hasAttribute("data-mock")) this.#applyMock();
   }
-  connectedCallback() {
-    this.#cacheSlotValues();
-    if (this.hasAttribute("data-mock")) {
-      this.#applyMock();
-    } else if (this.hasAttribute("src")) {
-      this._loadSrc(this.getAttribute("src"));
-    }
-    this.#render();
+  _connect() {
     this.#syncStoryObserver();
-    this.setAttribute("data-upgraded", "");
-    this.dispatchEvent(new CustomEvent("persona-ready", {
-      bubbles: true,
-      composed: true,
-      detail: { name: this.personaName, role: this.personaRole }
-    }));
+    this.#renderStoriesSection();
   }
-  disconnectedCallback() {
-    this.removeAttribute("data-upgraded");
+  _disconnect() {
     this.#storyObserver?.disconnect();
     this.#storyObserver = null;
   }
+  /** @param {string} name */
+  _attributeEffects(name) {
+    if (name === "data-list-stories" || name === "id") this.#syncStoryObserver();
+  }
+  _readyDetail() {
+    return { name: this.personaName, role: this.personaRole };
+  }
   /**
-   * Watch the document for added/removed/relabeled user-story elements
+   * Watch the document for added/removed/relabeled <user-story> elements
    * so the auto-rendered Stories section stays current. Only runs when
    * data-list-stories is present.
    */
@@ -671,7 +982,7 @@ var UserPersona = class extends HTMLElement {
           <div class="section-icon stories" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
           </div>
-          <span class="section-title">Stories <span class="section-count">${stories.length}</span></span>
+          <h3 class="section-title">Stories <span class="section-count">${stories.length}</span></h3>
         </div>
         <div class="section-content">
           ${stories.length === 0 ? '<p class="empty-stories">No user stories reference this persona yet.</p>' : `<ul class="story-list">${stories.map((s) => {
@@ -685,22 +996,10 @@ var UserPersona = class extends HTMLElement {
       </section>
     `;
   }
-  attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue === newValue || !this.shadowRoot) return;
-    if (name === "src" && this.isConnected) {
-      this._loadSrc(newValue);
-      return;
-    }
-    if (name === "data-list-stories" || name === "id") {
-      this.#syncStoryObserver();
-    }
-    this.#render();
-  }
   // ── Attribute getters ──────────────────────────────────────────────
-  /** Read name from slotted heading or cache */
+  /** Name from the slotted heading, else the `name` attribute. */
   get personaName() {
-    const slotted = this.querySelector('[slot="name"]');
-    return slotted?.textContent?.trim() || this.#slotCache.get("name") || "Unnamed Persona";
+    return this._slotText("name") || this.getAttribute("name")?.trim() || "Unnamed Persona";
   }
   get personaRole() {
     return this.getAttribute("role") || "";
@@ -714,10 +1013,9 @@ var UserPersona = class extends HTMLElement {
   get avatar() {
     return this.getAttribute("avatar") || "";
   }
-  /** Read quote from slotted element or cache */
+  /** Quote from the slotted element, else the `quote` attribute. */
   get quote() {
-    const slotted = this.querySelector('[slot="quote"]');
-    return slotted?.textContent?.trim() || this.#slotCache.get("quote") || "";
+    return this._slotText("quote") || this.getAttribute("quote")?.trim() || "";
   }
   get compact() {
     return this.hasAttribute("compact");
@@ -725,35 +1023,35 @@ var UserPersona = class extends HTMLElement {
   // ── Mock data ──────────────────────────────────────────────────────
   #applyMock() {
     const seed = this.dataset.seed || this.dataset.mock || String(Date.now());
-    const pick = (arr) => arr[(hash2(seed + arr.length) % arr.length + arr.length) % arr.length];
+    const pick = (arr) => arr[(stringHash(seed + arr.length) % arr.length + arr.length) % arr.length];
     const pickN = (arr, n) => {
       const out = [];
       for (let i = 0; i < n; i++) {
-        out.push(arr[(hash2(seed + i + arr.length) % arr.length + arr.length) % arr.length]);
+        out.push(arr[(stringHash(seed + i + arr.length) % arr.length + arr.length) % arr.length]);
       }
       return [...new Set(out)];
     };
-    if (!this.querySelector('[slot="name"]')) {
+    if (!slottedChild(this, "name") && !this.getAttribute("name")) {
       const h2 = document.createElement("h2");
       h2.slot = "name";
       h2.textContent = pick(MOCK_NAMES);
       this.appendChild(h2);
     }
     if (!this.getAttribute("role")) this.setAttribute("role", pick(MOCK_ROLES));
-    if (!this.getAttribute("age")) this.setAttribute("age", String(25 + (hash2(seed) % 30 + 30) % 30));
+    if (!this.getAttribute("age")) this.setAttribute("age", String(25 + (stringHash(seed) % 30 + 30) % 30));
     if (!this.getAttribute("location")) this.setAttribute("location", pick(MOCK_LOCATIONS));
     if (!this.getAttribute("avatar")) {
-      const name = this.querySelector('[slot="name"]')?.textContent?.trim() || "Persona";
+      const name = this.personaName;
       this.setAttribute("avatar", portraitUrl(name, 256));
     }
-    if (!this.querySelector('[slot="quote"]')) {
+    if (!slottedChild(this, "quote") && !this.getAttribute("quote")) {
       const p = document.createElement("p");
       p.slot = "quote";
       p.textContent = pick(MOCK_QUOTES);
       this.appendChild(p);
     }
     const injectList = (slotName, items) => {
-      if (this.querySelector(`[slot="${slotName}"]`)) return;
+      if (slottedChild(this, slotName)) return;
       const ul = document.createElement("ul");
       ul.setAttribute("slot", slotName);
       for (const item of items) {
@@ -768,7 +1066,7 @@ var UserPersona = class extends HTMLElement {
     injectList("behaviors", pickN(MOCK_BEHAVIORS, 3));
   }
   // ── Render ─────────────────────────────────────────────────────────
-  #render() {
+  _render() {
     const name = this.personaName;
     const role = this.personaRole;
     const age = this.age;
@@ -776,7 +1074,7 @@ var UserPersona = class extends HTMLElement {
     const avatarUrl = this.avatar;
     const quote = this.quote;
     const avatarBg = hashColor(name);
-    const avatarStyle = avatarUrl ? `background:url(${esc(avatarUrl)}) center/cover` : `background:${avatarBg}`;
+    const avatarStyle = avatarUrl ? `background:${cssUrl(avatarUrl)} center/cover` : `background:${avatarBg}`;
     this.shadowRoot.innerHTML = `
       <style>${styles}</style>
 
@@ -810,7 +1108,7 @@ var UserPersona = class extends HTMLElement {
           </div>
         </header>
 
-        ${quote || this.querySelector('[slot="quote"]') ? `
+        ${quote || slottedChild(this, "quote") ? `
           <div class="persona-quote" part="quote">
             <span class="quote-mark" aria-hidden="true">&ldquo;</span>
             <div class="quote-text-wrap"><slot name="quote"><p class="quote-text">${esc(quote)}</p></slot></div>
@@ -823,7 +1121,7 @@ var UserPersona = class extends HTMLElement {
               <div class="section-icon bio" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
               </div>
-              <span class="section-title">Background</span>
+              <h3 class="section-title">Background</h3>
             </div>
             <div class="section-content">
               <slot name="bio">No background information provided.</slot>
@@ -835,7 +1133,7 @@ var UserPersona = class extends HTMLElement {
               <div class="section-icon goals" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
               </div>
-              <span class="section-title">Goals</span>
+              <h3 class="section-title">Goals</h3>
             </div>
             <div class="section-content">
               <slot name="goals">No goals specified.</slot>
@@ -847,7 +1145,7 @@ var UserPersona = class extends HTMLElement {
               <div class="section-icon frustrations" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
               </div>
-              <span class="section-title">Frustrations</span>
+              <h3 class="section-title">Frustrations</h3>
             </div>
             <div class="section-content">
               <slot name="frustrations">No frustrations listed.</slot>
@@ -859,7 +1157,7 @@ var UserPersona = class extends HTMLElement {
               <div class="section-icon behaviors" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
               </div>
-              <span class="section-title">Behaviors</span>
+              <h3 class="section-title">Behaviors</h3>
             </div>
             <div class="section-content">
               <slot name="behaviors">No behaviors documented.</slot>
@@ -1084,6 +1382,7 @@ var styles2 = `
 .section-icon.tasks      { background: var(--color-accent,  #8b5cf6); }
 
 .section-title {
+  margin: 0;
   font-size: var(--_font-xs);
   font-weight: 600;
   color: var(--_muted);
@@ -1148,13 +1447,39 @@ var styles2 = `
   margin: 0 !important;
 }
 
+.visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .story-title-fallback {
   font-size: var(--_font-sm);
   font-weight: 600;
   color: var(--_text);
 }
 
-/* Minimal detail level */
+/* Minimal detail level \u2014 the card is a <button> that opens the detail dialog */
+button.story-card--minimal {
+  display: block;
+  inline-size: 100%;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+}
+
+.story-card--minimal .story-body,
+.story-card--minimal .story-title-wrap {
+  display: block;
+}
+
 :host([detail="minimal"]) .story-card {
   padding: var(--_space-xs);
 }
@@ -1204,7 +1529,9 @@ var styles2 = `
 `;
 
 // src/web-components/user-story/logic.js
-var UserStory = class _UserStory extends HTMLElement {
+var dialogSeq = 0;
+var UserStory = class extends UXShadowElement {
+  static readyEvent = "story-ready";
   static get observedAttributes() {
     return [
       "persona-id",
@@ -1218,36 +1545,15 @@ var UserStory = class _UserStory extends HTMLElement {
       "src"
     ];
   }
-  static PRIORITIES = {
-    critical: { label: "Critical", color: "#dc2626", bg: "rgba(220, 38, 38, 0.1)" },
-    high: { label: "High", color: "#ea580c", bg: "rgba(234, 88, 12, 0.1)" },
-    medium: { label: "Medium", color: "#ca8a04", bg: "rgba(202, 138, 4, 0.1)" },
-    low: { label: "Low", color: "#16a34a", bg: "rgba(22, 163, 74, 0.1)" }
-  };
-  static STATUSES = {
-    backlog: { label: "Backlog", color: "#6b7280", bg: "rgba(107, 114, 128, 0.1)" },
-    "to-do": { label: "To Do", color: "#3b82f6", bg: "rgba(59, 130, 246, 0.1)" },
-    "in-progress": { label: "In Progress", color: "#8b5cf6", bg: "rgba(139, 92, 246, 0.1)" },
-    review: { label: "Review", color: "#f59e0b", bg: "rgba(245, 158, 11, 0.1)" },
-    done: { label: "Done", color: "#22c55e", bg: "rgba(34, 197, 94, 0.1)" }
-  };
-  #slotCache = /* @__PURE__ */ new Map();
+  static PRIORITIES = PRIORITIES;
+  static STATUSES = STATUSES;
   /** @type {MutationObserver | null} */
   #personaObserver = null;
+  /** @type {HTMLDialogElement | null} */
+  #dialog = null;
   constructor() {
     super();
-    this.attachShadow({ mode: "open" });
-  }
-  #cacheSlotValues() {
-    for (const child of [...this.children]) {
-      const slotName = child.getAttribute("slot");
-      if (slotName) {
-        this.#slotCache.set(slotName, child.textContent.trim());
-      }
-    }
-  }
-  _resolve(attr) {
-    return this.getAttribute(attr) || this.#slotCache.get(attr) || "";
+    this.addEventListener("keydown", this.#onBoardKeydown);
   }
   /* ── Data API ──────────────────────────────────── */
   /**
@@ -1275,20 +1581,12 @@ var UserStory = class _UserStory extends HTMLElement {
    * Idempotent for repeat calls.
    */
   set data(value) {
-    if (!value || typeof value !== "object") return;
-    this._applyData(value);
-    this.#cacheSlotValues();
-    if (this.shadowRoot) this.#render();
-    this.dispatchEvent(new CustomEvent("user-story:data-changed", {
-      detail: { data: this.data, source: "property" },
-      bubbles: true,
-      composed: true
-    }));
+    this._setData(value);
   }
   /**
    * Apply a data record to attributes + slotted children. Used by both the
-   * .data setter and async _loadSrc. No render or cache update — caller decides.
-   * @param {Recordstring, unknown} data
+   * .data setter and the src loader. Slotted children are created only when absent (authored content wins). No render — caller decides.
+   * @param {Record<string, unknown>} data
    */
   _applyData(data) {
     for (const [jsonKey, attr] of [
@@ -1302,88 +1600,43 @@ var UserStory = class _UserStory extends HTMLElement {
     ]) {
       if (data[jsonKey] != null) this.setAttribute(attr, String(data[jsonKey]));
     }
-    if (data.persona && !this.querySelector('[slot="persona"]')) {
-      const el = document.createElement("span");
-      el.slot = "persona";
-      el.textContent = String(data.persona);
-      this.appendChild(el);
-    }
-    if (data.action && !this.querySelector('[slot="action"]')) {
-      const el = document.createElement("span");
-      el.slot = "action";
-      el.textContent = String(data.action);
-      this.appendChild(el);
-    }
-    if (data.benefit && !this.querySelector('[slot="benefit"]')) {
-      const el = document.createElement("span");
-      el.slot = "benefit";
-      el.textContent = String(data.benefit);
-      this.appendChild(el);
-    }
-    if (data.title && !this.querySelector('[slot="title"]')) {
-      const el = document.createElement("h3");
-      el.slot = "title";
-      el.textContent = String(data.title);
-      this.appendChild(el);
-    }
-    for (const key of ["acceptance-criteria", "tasks", "notes"]) {
-      const jsonKey = key === "acceptance-criteria" ? "acceptanceCriteria" : key;
-      if (data[jsonKey] && !this.querySelector(`[slot="${key}"]`)) {
-        if (Array.isArray(data[jsonKey])) {
-          const ul = document.createElement("ul");
-          ul.slot = key;
-          for (const item of data[jsonKey]) {
-            const li = document.createElement("li");
-            li.textContent = String(item);
-            ul.appendChild(li);
-          }
-          this.appendChild(ul);
-        } else {
-          const p = document.createElement("p");
-          p.slot = key;
-          p.textContent = String(data[jsonKey]);
-          this.appendChild(p);
-        }
-      }
-    }
+    fillSlot(this, "persona", data.persona, { tag: "span" });
+    fillSlot(this, "action", data.action, { tag: "span" });
+    fillSlot(this, "benefit", data.benefit, { tag: "span" });
+    fillSlot(this, "title", data.title, { tag: "h3" });
+    fillSlot(this, "acceptance-criteria", data.acceptanceCriteria);
+    fillSlot(this, "tasks", data.tasks);
+    fillSlot(this, "notes", data.notes);
   }
-  async _loadSrc(url) {
-    if (!url) return;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      this._applyData(data);
-      this.#cacheSlotValues();
-      this.#render();
-    } catch (err) {
-      console.warn(`[user-story] Failed to load src="${url}":`, err);
-    }
-  }
-  connectedCallback() {
-    this.#cacheSlotValues();
+  /* ── Lifecycle (see UXShadowElement) ──────────── */
+  _setup() {
     if (this.storyId && !this.id && !this.hasAttribute("data-detail-clone")) this.id = this.storyId;
-    if (this.hasAttribute("src")) {
-      this._loadSrc(this.getAttribute("src"));
-    }
-    this.#render();
-    this.#observeLinkedPersona();
-    this.setAttribute("data-upgraded", "");
   }
-  disconnectedCallback() {
-    this.removeAttribute("data-upgraded");
+  _connect() {
+    this.#observeLinkedPersona();
+    this.#syncBoardFocus();
+  }
+  _disconnect() {
     this.#personaObserver?.disconnect();
     this.#personaObserver = null;
+    queueMicrotask(() => {
+      if (!this.isConnected) this.#removeDialog();
+    });
   }
-  attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue !== newValue && this.shadowRoot) {
-      if (name === "src" && this.isConnected) {
-        this._loadSrc(newValue);
-      } else {
-        this.#render();
-        if (name === "persona-id") this.#observeLinkedPersona();
-      }
-    }
+  /** @param {string} name */
+  _attributeEffects(name) {
+    if (name === "persona-id") this.#observeLinkedPersona();
+  }
+  _readyDetail() {
+    return {
+      id: this.storyId,
+      persona: this.persona,
+      action: this.action,
+      benefit: this.benefit,
+      priority: this.priority,
+      status: this.status,
+      points: this.points
+    };
   }
   /**
    * Keep the "As a…" text in sync when the linked persona's role is edited.
@@ -1401,13 +1654,13 @@ var UserStory = class _UserStory extends HTMLElement {
     const scope = root && typeof root.getElementById === "function" ? root : document;
     const persona = scope.getElementById(this.personaId);
     if (!persona || persona.tagName !== "USER-PERSONA") return;
-    this.#personaObserver = new MutationObserver(() => this.#render());
+    this.#personaObserver = new MutationObserver(() => this._render());
     this.#personaObserver.observe(persona, { attributes: true, attributeFilter: ["role"] });
   }
   // ── Getters ────────────────────────────────────────────────────────
   /**
    * Read persona from slotted element or cache. When neither is authored but
-   * persona-id links to a user-persona on the page, fall back to that
+   * persona-id links to a <user-persona> on the page, fall back to that
    * persona's role ("As a Product Manager…") rather than the generic "user".
    */
   get persona() {
@@ -1419,11 +1672,10 @@ var UserStory = class _UserStory extends HTMLElement {
   }
   /** Persona text the author supplied directly via slot or .data (no link resolution). */
   #explicitPersona() {
-    const slotted = this.querySelector('[slot="persona"]');
-    return slotted?.textContent?.trim() || this.#slotCache.get("persona") || "";
+    return this._slotText("persona");
   }
   /**
-   * Resolve the role of the user-persona referenced by persona-id, if one
+   * Resolve the role of the <user-persona> referenced by persona-id, if one
    * exists in the same tree. Used as the "As a…" fallback so a linked story
    * reads "As a Product Manager" instead of "As a user". Returns '' when there
    * is no persona-id, no matching persona, or the persona has no role.
@@ -1450,13 +1702,11 @@ var UserStory = class _UserStory extends HTMLElement {
   }
   /** Read action from slotted element or cache */
   get action() {
-    const slotted = this.querySelector('[slot="action"]');
-    return slotted?.textContent?.trim() || this.#slotCache.get("action") || "";
+    return this._slotText("action");
   }
   /** Read benefit from slotted element or cache */
   get benefit() {
-    const slotted = this.querySelector('[slot="benefit"]');
-    return slotted?.textContent?.trim() || this.#slotCache.get("benefit") || "";
+    return this._slotText("benefit");
   }
   get priority() {
     return this.getAttribute("priority") || "medium";
@@ -1475,8 +1725,7 @@ var UserStory = class _UserStory extends HTMLElement {
   }
   /** Read title from slotted heading or cache */
   get storyTitle() {
-    const slotted = this.querySelector('[slot="title"]');
-    return slotted?.textContent?.trim() || this.#slotCache.get("title") || "";
+    return this._slotText("title");
   }
   /** Label for minimal mode: title if set, otherwise truncated action */
   get _minimalLabel() {
@@ -1488,13 +1737,11 @@ var UserStory = class _UserStory extends HTMLElement {
     return this.hasAttribute("compact");
   }
   get _detailLevel() {
-    if (this.getAttribute("detail")) return this.getAttribute("detail");
-    if (this.hasAttribute("compact")) return "compact";
-    return "full";
+    return detailLevel(this);
   }
   // ── Public API ───────────────────────────────────────────────────
   updateStatus(newStatus) {
-    if (_UserStory.STATUSES[newStatus]) {
+    if (Object.hasOwn(STATUSES, newStatus)) {
       this.setAttribute("status", newStatus);
       this.dispatchEvent(new CustomEvent("status-changed", {
         detail: { status: newStatus, storyId: this.storyId },
@@ -1504,7 +1751,7 @@ var UserStory = class _UserStory extends HTMLElement {
     }
   }
   updatePriority(newPriority) {
-    if (_UserStory.PRIORITIES[newPriority]) {
+    if (Object.hasOwn(PRIORITIES, newPriority)) {
       this.setAttribute("priority", newPriority);
       this.dispatchEvent(new CustomEvent("priority-changed", {
         detail: { priority: newPriority, storyId: this.storyId },
@@ -1513,23 +1760,23 @@ var UserStory = class _UserStory extends HTMLElement {
       }));
     }
   }
+  /**
+   * Open a modal <dialog> showing this story at full detail. Each story
+   * owns at most one dialog; it is removed from the document when it
+   * closes or when the story is removed.
+   */
   showDetail() {
-    const dialogId = `story-dialog-${this.storyId || this.id || "detail"}`;
-    let dialog = (
-      /** @type {HTMLDialogElement | null} */
-      document.getElementById(dialogId)
-    );
-    if (!dialog) {
-      dialog = document.createElement("dialog");
-      dialog.id = dialogId;
-      dialog.setAttribute("data-size", "l");
-      document.body.appendChild(dialog);
-    }
+    this.#removeDialog();
+    const dialog = document.createElement("dialog");
+    dialog.id = this.#dialogId();
+    dialog.setAttribute("data-size", "l");
     const form = document.createElement("form");
     form.method = "dialog";
     const header = document.createElement("header");
-    const title = document.createElement("h3");
+    const title = document.createElement("h2");
+    title.id = `${dialog.id}-title`;
     title.textContent = this.storyTitle || this.storyId || "Story Detail";
+    dialog.setAttribute("aria-labelledby", title.id);
     const closeBtn = document.createElement("button");
     closeBtn.type = "submit";
     closeBtn.setAttribute("aria-label", "Close");
@@ -1542,57 +1789,97 @@ var UserStory = class _UserStory extends HTMLElement {
       if (attr === "detail" || attr === "compact" || attr === "data-upgraded" || attr === "draggable" || attr === "data-id" || attr === "data-quadrant") continue;
       full.setAttribute(attr, this.getAttribute(attr) ?? "");
     }
-    const hasSlottedContent = [...this.children].some((c) => c.getAttribute("slot") && c.tagName !== "DIALOG");
+    const hasSlottedContent = [...this.children].some((c) => c.getAttribute("slot"));
     full.setAttribute("detail", hasSlottedContent ? "full" : "compact");
     full.removeAttribute("id");
     full.setAttribute("data-detail-clone", "");
-    for (const child of [...this.children]) {
-      if (child.tagName === "DIALOG") continue;
-      full.appendChild(child.cloneNode(true));
-    }
+    for (const child of [...this.children]) full.appendChild(child.cloneNode(true));
     section.appendChild(full);
     form.appendChild(header);
     form.appendChild(section);
-    dialog.innerHTML = "";
     dialog.appendChild(form);
     dialog.addEventListener("close", () => {
-      dialog.innerHTML = "";
+      if (this.#dialog === dialog) this.#dialog = null;
+      dialog.remove();
     }, { once: true });
+    document.body.appendChild(dialog);
+    this.#dialog = dialog;
     dialog.showModal();
   }
+  /** `story-dialog-<story-id>`, made unique if another dialog already uses it. */
+  #dialogId() {
+    const base = `story-dialog-${this.storyId || this.id || "story"}`;
+    let id = base;
+    while (document.getElementById(id)) id = `${base}-${++dialogSeq}`;
+    return id;
+  }
+  #removeDialog() {
+    const dialog = this.#dialog;
+    if (!dialog) return;
+    this.#dialog = null;
+    if (dialog.open) dialog.close();
+    dialog.remove();
+  }
+  // ── Board keyboard model ─────────────────────────────────────────
+  /**
+   * True when this card is a direct child of a <drag-surface> (kanban-board,
+   * story-map, impact-effort), which makes the host its focusable,
+   * keyboard-reorderable list item.
+   */
+  get #onBoard() {
+    return this.parentElement?.localName === "drag-surface";
+  }
+  /**
+   * On a board the host (tabindex 0, set by drag-surface) is the card's
+   * only tab stop, so the minimal card's inner button leaves the tab order.
+   * Off a board the button is the tab stop and works as a normal button.
+   */
+  #syncBoardFocus() {
+    const button = (
+      /** @type {HTMLButtonElement | null | undefined} */
+      this.shadowRoot?.querySelector(".story-card--minimal")
+    );
+    if (button) button.tabIndex = this.#onBoard ? -1 : 0;
+  }
+  /**
+   * Board keyboard model for a minimal card: Enter opens the detail
+   * dialog; Space (drag-surface's grab key) grabs and drops; while grabbed,
+   * Enter drops and arrows move. Runs on the host, before the drag-surface's
+   * own handler, and stops Enter there so it does not start a grab.
+   * @param {KeyboardEvent} e
+   */
+  #onBoardKeydown = (e) => {
+    if (e.key !== "Enter" || e.defaultPrevented || !this.#onBoard) return;
+    if (this._detailLevel !== "minimal" || this.getAttribute("aria-grabbed") === "true") return;
+    if (!this.shadowRoot?.querySelector(".story-card--minimal")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    this.showDetail();
+  };
   // ── Private ──────────────────────────────────────────────────────
-  #render() {
-    const priorityInfo = _UserStory.PRIORITIES[this.priority] || _UserStory.PRIORITIES.medium;
-    const statusInfo = _UserStory.STATUSES[this.status] || _UserStory.STATUSES.backlog;
+  _render() {
+    const priorityInfo = lookup(PRIORITIES, this.priority, "medium");
+    const statusInfo = lookup(STATUSES, this.status, "backlog");
     const level = this._detailLevel;
     const ariaLabel = this.storyId ? `User story: ${esc(this.storyId)}` : "User story";
     if (!this.shadowRoot) return;
     if (level === "minimal") {
+      const label = this._minimalLabel || "Untitled story";
+      const buttonLabel = this.storyId ? `${this.storyId}: ${label}` : label;
       this.shadowRoot.innerHTML = `
         <style>${styles2}</style>
-        <article class="story-card story-card--minimal" role="article" aria-label="${ariaLabel}"
-          tabindex="0">
-          <div class="story-body">
+        <button type="button" class="story-card story-card--minimal" part="card"
+          aria-haspopup="dialog" aria-label="${esc(buttonLabel)}">
+          <span class="story-body">
             ${this.storyId ? `<span class="story-id">${esc(this.storyId)}</span>` : ""}
-            <div class="story-title-wrap">
+            <span class="story-title-wrap">
               <slot name="title"><span class="story-title-fallback">${esc(this._minimalLabel || "[describe the action]")}</span></slot>
-            </div>
-          </div>
-        </article>
+            </span>
+          </span>
+        </button>
       `;
-      const card = this.shadowRoot.querySelector(".story-card--minimal");
-      if (!card) return;
-      card.addEventListener("click", () => this.showDetail());
-      card.addEventListener("keydown", (e) => {
-        const ke = (
-          /** @type {KeyboardEvent} */
-          e
-        );
-        if (ke.key === "Enter" || ke.key === " ") {
-          ke.preventDefault();
-          this.showDetail();
-        }
-      });
+      this.shadowRoot.querySelector(".story-card--minimal")?.addEventListener("click", () => this.showDetail());
+      this.#syncBoardFocus();
     } else {
       this.shadowRoot.innerHTML = `
         <style>${styles2}</style>
@@ -1610,7 +1897,7 @@ var UserStory = class _UserStory extends HTMLElement {
               <span class="status-badge" part="status"
                 style="color: ${statusInfo.color}; background: ${statusInfo.bg};"
               >${esc(statusInfo.label)}</span>
-              ${this.points ? `<span class="points-badge" part="points">${esc(this.points)}</span>` : ""}
+              ${this.points ? `<span class="points-badge" part="points">${esc(this.points)}<span class="visually-hidden"> story points</span></span>` : ""}
             </div>
           </header>
 
@@ -1619,7 +1906,7 @@ var UserStory = class _UserStory extends HTMLElement {
               <span class="keyword">As ${this.#personaArticle()}</span>
               ${this.personaId ? `<a class="persona-text persona-text--link" href="#${esc(this.personaId)}">${lucideSvg(UX_ICONS.user)} <slot name="persona"><span>${esc(this.#linkedPersonaRole() || "user")}</span></slot></a>` : `<span class="persona-text"><slot name="persona"><span>user</span></slot></span>`},
               <span class="keyword">I want</span>
-              <span class="action-text"><slot name="action"><span>[describe the action]</span></slot></span>${this.benefit || this.querySelector('[slot="benefit"]') ? `
+              <span class="action-text"><slot name="action"><span>[describe the action]</span></slot></span>${this.benefit || slottedChild(this, "benefit") ? `
               <span class="keyword">so that</span>
               <span class="benefit-text"><slot name="benefit"></slot></span>` : ""}
             </p>
@@ -1631,7 +1918,7 @@ var UserStory = class _UserStory extends HTMLElement {
                 <div class="section-icon acceptance">
                   <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                 </div>
-                <span class="section-title">Acceptance Criteria</span>
+                <h3 class="section-title">Acceptance Criteria</h3>
               </div>
               <div class="section-content">
                 <slot name="acceptance-criteria">
@@ -1645,7 +1932,7 @@ var UserStory = class _UserStory extends HTMLElement {
                 <div class="section-icon tasks">
                   <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
                 </div>
-                <span class="section-title">Tasks</span>
+                <h3 class="section-title">Tasks</h3>
               </div>
               <div class="section-content">
                 <slot name="tasks">
@@ -1659,7 +1946,7 @@ var UserStory = class _UserStory extends HTMLElement {
                 <div class="section-icon notes">
                   <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                 </div>
-                <span class="section-title">Notes</span>
+                <h3 class="section-title">Notes</h3>
               </div>
               <div class="section-content">
                 <slot name="notes">
@@ -1670,29 +1957,8 @@ var UserStory = class _UserStory extends HTMLElement {
           </div>
         </article>
       `;
-      if (level === "compact") {
-        const sections = this.shadowRoot.querySelectorAll(".section");
-        sections.forEach((section) => {
-          const slot = section.querySelector("slot");
-          if (slot && slot.assignedNodes().length === 0) {
-            section.setAttribute("data-empty", "");
-          }
-        });
-      }
+      if (level === "compact") markEmptySections(this.shadowRoot, ".section");
     }
-    this.dispatchEvent(new CustomEvent("story-ready", {
-      detail: {
-        id: this.storyId,
-        persona: this.persona,
-        action: this.action,
-        benefit: this.benefit,
-        priority: this.priority,
-        status: this.status,
-        points: this.points
-      },
-      bubbles: true,
-      composed: true
-    }));
   }
 };
 registerComponent("user-story", UserStory);
@@ -2024,16 +2290,13 @@ var ROWS = [
   { key: "painPoints", label: "Pain Points" },
   { key: "opportunities", label: "Opportunities" }
 ];
-var UserJourney = class extends HTMLElement {
+var UserJourney = class extends UXShadowElement {
+  static readyEvent = "journey-ready";
   static get observedAttributes() {
     return ["src", "persona", "persona-id", "story-ids", "compact"];
   }
-  #slotCache = /* @__PURE__ */ new Map();
-  constructor() {
-    super();
-    this.attachShadow({ mode: "open" });
-    this.__phases = null;
-  }
+  /** @type {Array<Record<string, any>> | null} */
+  __phases = null;
   /** @returns {Array|null} */
   get phases() {
     return this.__phases;
@@ -2046,7 +2309,7 @@ var UserJourney = class extends HTMLElement {
   set phases(data) {
     if (this.__phases === data) return;
     this.__phases = data;
-    if (this.isConnected) this._render();
+    if (this._isSetUp) this._render();
     this.dispatchEvent(new CustomEvent("user-journey:phases-changed", {
       detail: { phases: data, source: "property" },
       bubbles: true,
@@ -2062,8 +2325,8 @@ var UserJourney = class extends HTMLElement {
     return {
       persona: this.getAttribute("persona") || void 0,
       personaId: this.getAttribute("persona-id") || void 0,
-      title: this.querySelector('[slot="title"]')?.textContent?.trim() || void 0,
-      summary: this.querySelector('[slot="summary"]')?.textContent?.trim() || void 0,
+      title: slottedChild(this, "title")?.textContent?.trim() || void 0,
+      summary: slottedChild(this, "summary")?.textContent?.trim() || void 0,
       phases: this.__phases || void 0
     };
   }
@@ -2072,104 +2335,56 @@ var UserJourney = class extends HTMLElement {
    * Emits user-journey:data-changed { data, source: 'property' }.
    */
   set data(value) {
-    if (!value || typeof value !== "object") return;
-    if (value.persona) this.setAttribute("persona", String(value.persona));
-    if (value.personaId) this.setAttribute("persona-id", String(value.personaId));
-    if (value.title && !this.querySelector('[slot="title"]')) {
-      const el = document.createElement("h2");
-      el.slot = "title";
-      el.textContent = value.title;
-      this.appendChild(el);
-    }
-    if (value.summary && !this.querySelector('[slot="summary"]')) {
-      const el = document.createElement("p");
-      el.slot = "summary";
-      el.textContent = value.summary;
-      this.appendChild(el);
-    }
-    if (value.phases != null) this.__phases = value.phases;
-    if (this.isConnected) this._render();
-    this.dispatchEvent(new CustomEvent("user-journey:data-changed", {
-      detail: { data: this.data, source: "property" },
-      bubbles: true,
-      composed: true
-    }));
+    this._setData(value);
   }
-  /* ── Slot caching ──────────────────────────── */
-  #cacheSlotValues() {
-    for (const child of this.children) {
-      const slot = child.getAttribute("slot");
-      if (slot) this.#slotCache.set(slot, child.textContent.trim());
-    }
+  /**
+   * Apply a journey record (from .data or src). Title / summary create
+   * slotted children only when none are authored.
+   * @param {Record<string, any>} data
+   */
+  _applyData(data) {
+    if (data.persona) this.setAttribute("persona", String(data.persona));
+    if (data.personaId) this.setAttribute("persona-id", String(data.personaId));
+    fillSlot(this, "title", data.title, { tag: "h2" });
+    fillSlot(this, "summary", data.summary);
+    if (data.phases != null) this.__phases = data.phases;
   }
+  _readyDetail() {
+    const phases = this.__phases;
+    return {
+      title: this._slotText("title"),
+      persona: this._resolve("persona"),
+      phaseCount: Array.isArray(phases) ? phases.length : 0
+    };
+  }
+  /**
+   * Attribute value, else the text of a same-named light-DOM child (e.g.
+   * `<span slot="persona">`, read as data; it is not projected).
+   * @param {string} attr
+   */
   _resolve(attr) {
-    return this.getAttribute(attr) || this.#slotCache.get(attr) || "";
+    return this.getAttribute(attr) || this._slotCache.get(attr) || "";
   }
-  /* ── Lifecycle ─────────────────────────────── */
-  connectedCallback() {
-    this.#cacheSlotValues();
-    this.setAttribute("data-upgraded", "");
-    if (this.hasAttribute("src")) {
-      this._loadSrc(this.getAttribute("src"));
-    } else {
-      this._render();
-    }
+  /** Journey title: the slotted title's text, or the default heading. */
+  #title() {
+    return this._slotText("title") || "User Journey";
   }
-  disconnectedCallback() {
-    this.removeAttribute("data-upgraded");
+  /* ── JSON loading states ───────────────────── */
+  _renderLoading() {
+    this.shadowRoot.innerHTML = `<style>${styles3}</style><div class="state-msg">Loading\u2026</div>`;
   }
-  attributeChangedCallback(name) {
-    if (!this.isConnected) return;
-    if (name === "src") {
-      this._loadSrc(this.getAttribute("src"));
-    } else {
-      this._render();
-    }
-  }
-  /* ── JSON loading ──────────────────────────── */
-  async _loadSrc(src) {
-    if (!src) return;
-    const root = (
-      /** @type {ShadowRoot} */
-      this.shadowRoot
-    );
-    root.innerHTML = `<style>${styles3}</style><div class="state-msg">Loading\u2026</div>`;
-    try {
-      const res = await fetch(src);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (data.persona) this.setAttribute("persona", data.persona);
-      if (data.personaId) this.setAttribute("persona-id", data.personaId);
-      if (data.title && !this.querySelector('[slot="title"]')) {
-        const el = document.createElement("h2");
-        el.slot = "title";
-        el.textContent = data.title;
-        this.appendChild(el);
-      }
-      if (data.summary && !this.querySelector('[slot="summary"]')) {
-        const el = document.createElement("p");
-        el.slot = "summary";
-        el.textContent = data.summary;
-        this.appendChild(el);
-      }
-      this.__phases = data.phases || [];
-      this._render();
-    } catch (err) {
-      root.innerHTML = `<style>${styles3}</style><div class="state-msg state-msg--error">Could not load journey: ${esc(
-        /** @type {Error} */
-        err.message
-      )}</div>`;
-    }
+  /** @param {Error} err */
+  _renderError(err) {
+    this.shadowRoot.innerHTML = `<style>${styles3}</style><div class="state-msg state-msg--error">Could not load journey: ${esc(err.message)}</div>`;
   }
   /* ── Render ────────────────────────────────── */
   _render() {
     const persona = this._resolve("persona") || "";
     const personaId = this._resolve("persona-id") || "";
-    const storyIds = (this.getAttribute("story-ids") || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const storyIds = splitList(this.getAttribute("story-ids"));
     const compact = this.hasAttribute("compact");
-    const phases = this.__phases;
-    const hasSummary = !!this.querySelector('[slot="summary"]') || this.#slotCache.has("summary");
-    const title = this.querySelector('[slot="title"]')?.textContent?.trim() || this.#slotCache.get("title") || "";
+    const phases = Array.isArray(this.__phases) ? this.__phases : null;
+    const hasSummary = !!slottedChild(this, "summary") || this._slotCache.has("summary");
     const html = `<style>${styles3}</style>
       <article class="journey${compact ? " journey--compact" : ""}">
 
@@ -2178,12 +2393,12 @@ var UserJourney = class extends HTMLElement {
             <div class="journey__chips">
               <span class="chip chip--type">Journey Map</span>
               ${storyIds.map(
-      (id) => `<a class="chip chip--story" href="#${id}">${this._label(id)}</a>`
+      (id) => `<a class="chip chip--story" href="${fragmentHref(id)}">${esc(this._label(id))}</a>`
     ).join("")}
             </div>
             ${persona ? `
               <div class="journey__persona">
-                ${personaId ? `<a class="persona-ref" href="#${personaId}">${lucideSvg(UX_ICONS.user)} ${esc(persona)}</a>` : `<span class="persona-ref">${lucideSvg(UX_ICONS.user)} ${esc(persona)}</span>`}
+                ${personaId ? `<a class="persona-ref" href="${fragmentHref(personaId)}">${lucideSvg(UX_ICONS.user)} ${esc(persona)}</a>` : `<span class="persona-ref">${lucideSvg(UX_ICONS.user)} ${esc(persona)}</span>`}
               </div>` : ""}
           </div>
           <div class="journey__title-wrap">
@@ -2209,15 +2424,6 @@ var UserJourney = class extends HTMLElement {
     } else {
       swap();
     }
-    this.dispatchEvent(new CustomEvent("journey-ready", {
-      bubbles: true,
-      composed: true,
-      detail: {
-        title,
-        persona,
-        phaseCount: phases ? phases.length : 0
-      }
-    }));
   }
   /* ── SVG curve ─────────────────────────────── */
   _curve(phases) {
@@ -2225,10 +2431,7 @@ var UserJourney = class extends HTMLElement {
     const uw = W - PX * 2, uh = H - PY * 2;
     const n = phases.length;
     const toX = (i) => PX + (n < 2 ? uw / 2 : i / (n - 1) * uw);
-    const toY = (ph) => {
-      const m = EMOTION_META[ph.emotion] || EMOTION_META.neutral;
-      return PY + (1 - m.score) * uh;
-    };
+    const toY = (ph) => PY + (1 - emotionMeta(ph?.emotion).score) * uh;
     const pts = phases.map((ph, i) => ({ x: toX(i), y: toY(ph), ph }));
     let d = `M ${pts[0].x},${pts[0].y}`;
     for (let i = 1; i < pts.length; i++) {
@@ -2252,32 +2455,32 @@ var UserJourney = class extends HTMLElement {
           ${pts.map(({ x }) => `<line x1="${x}" y1="0" x2="${x}" y2="${H}" class="vline"/>`).join("")}
           <path d="${d} L ${last.x},${H} L ${pts[0].x},${H} Z" fill="url(#${uid})"/>
           <path d="${d}" fill="none" class="curve-line"/>
-          ${pts.map(({ x, y, ph }) => {
-      const m = EMOTION_META[ph.emotion] || EMOTION_META.neutral;
-      return `<circle cx="${x}" cy="${y}" r="5" class="dot" style="fill:${m.color}"/>`;
-    }).join("")}
+          ${pts.map(
+      ({ x, y, ph }) => `<circle cx="${x}" cy="${y}" r="5" class="dot" style="fill:${emotionMeta(ph?.emotion).color}"/>`
+    ).join("")}
         </svg>
       </div>`;
   }
   /* ── Phase grid ────────────────────────────── */
   _grid(phases) {
     const headCells = phases.map((ph, i) => {
-      const m = EMOTION_META[ph.emotion] || EMOTION_META.neutral;
-      const stories = ph.storyIds || [];
+      const m = emotionMeta(ph?.emotion);
+      const emotion = String(ph?.emotion || "neutral");
+      const stories = asList(ph?.storyIds);
       return `
-        <th class="phase-head" data-emotion="${ph.emotion || "neutral"}"
+        <th class="phase-head" data-emotion="${esc(emotion)}"
             style="--ec:${m.color}">
           <span class="ph-num">${i + 1}</span>
-          <span class="ph-name">${esc(ph.name || "")}</span>
-          <span class="ph-emoji" title="${ph.emotion || "neutral"}"><span role="img" aria-label="${esc(ph.emotion || "neutral")}">${m.emoji}</span></span>
+          <span class="ph-name">${esc(ph?.name || "")}</span>
+          <span class="ph-emoji" title="${esc(emotion)}"><span role="img" aria-label="${esc(emotion)}">${m.emoji}</span></span>
           ${stories.length ? `<div class="ph-stories">${stories.map(
-        (id) => `<a class="chip chip--story" href="#${id}">${this._label(id)}</a>`
+        (id) => `<a class="chip chip--story" href="${fragmentHref(id)}">${esc(this._label(id))}</a>`
       ).join("")}</div>` : ""}
         </th>`;
     }).join("");
     const bodyRows = ROWS.map(({ key, label }) => {
       const cells = phases.map((ph) => {
-        const items = ph[key] || [];
+        const items = asList(ph?.[key]);
         if (!items.length) return `<td class="data-cell data-cell--empty">\u2014</td>`;
         return `<td class="data-cell data-cell--${key.toLowerCase()}">
           ${items.map((t) => `<p>${esc(t)}</p>`).join("")}
@@ -2292,7 +2495,7 @@ var UserJourney = class extends HTMLElement {
     return `
       <div class="journey__grid-wrap">
         <table class="journey__grid"
-               aria-label="${esc(this.getAttribute("title") || "User Journey")} \u2014 phase breakdown">
+               aria-label="${esc(this.#title())} \u2014 phase breakdown">
           <thead>
             <tr>
               <th class="corner">Stage</th>
@@ -2304,8 +2507,9 @@ var UserJourney = class extends HTMLElement {
       </div>`;
   }
   /* ── Helpers ───────────────────────────────── */
+  /** @param {string} id */
   _label(id) {
-    return id.replace(/^(activity|persona|journey|story|user)-/, "").replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    return String(id).replace(/^(activity|persona|journey|story|user)-/, "").replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   }
 };
 registerComponent("user-journey", UserJourney);
@@ -2529,6 +2733,7 @@ var styles4 = `
   .quadrant--feels  .quadrant__icon { background: var(--_feels-bg);  color: var(--_feels); }
 
   .quadrant__label {
+    margin: 0;
     font-size: 13px;
     font-weight: 700;
     text-transform: uppercase;
@@ -2828,28 +3033,30 @@ var styles4 = `
 
 // src/web-components/empathy-map/logic.js
 var QUADRANT_KEYS = ["says", "thinks", "does", "feels"];
-var EmpathyMap = class extends HTMLElement {
+var EmpathyMap = class extends UXShadowElement {
+  static readyEvent = "empathy-map:ready";
   static get observedAttributes() {
     return ["persona", "persona-id", "src", "editable", "compact"];
   }
-  #slotCache = /* @__PURE__ */ new Map();
-  constructor() {
-    super();
-    this.attachShadow({ mode: "open" });
-    this.__quadrants = null;
-    this.__goals = null;
-    this.__painPoints = null;
-    this._editingQuadrants = /* @__PURE__ */ new Set();
-  }
+  /** @type {Object<string, string[]>|null} */
+  __quadrants = null;
+  /** @type {string[]|null} */
+  __goals = null;
+  /** @type {string[]|null} */
+  __painPoints = null;
+  /** @type {Set<string>} quadrants whose editor is open */
+  _editingQuadrants = /* @__PURE__ */ new Set();
+  /** @type {Set<string>} quadrants edited at least once (render from data, not the slot) */
+  _editedQuadrants = /* @__PURE__ */ new Set();
   /* ── Properties ─────────────────────────────────── */
-  /** @returns {Objectstring, string[]|null} */
+  /** @returns {Object<string, string[]>|null} */
   get quadrants() {
     return this.__quadrants;
   }
-  /** @param {Objectstring, string[]|null} data */
+  /** @param {Object<string, string[]>|null} data */
   set quadrants(data) {
     this.__quadrants = data;
-    if (this.isConnected) this._render();
+    if (this._isSetUp) this._render();
   }
   /** @returns {string[]|null} */
   get goals() {
@@ -2858,7 +3065,7 @@ var EmpathyMap = class extends HTMLElement {
   /** @param {string[]|null} data */
   set goals(data) {
     this.__goals = data;
-    if (this.isConnected) this._render();
+    if (this._isSetUp) this._render();
   }
   /** @returns {string[]|null} */
   get painPoints() {
@@ -2867,38 +3074,18 @@ var EmpathyMap = class extends HTMLElement {
   /** @param {string[]|null} data */
   set painPoints(data) {
     this.__painPoints = data;
-    if (this.isConnected) this._render();
+    if (this._isSetUp) this._render();
   }
-  /* ── Slot caching ───────────────────────────────── */
-  #cacheSlotValues() {
-    for (const child of this.children) {
-      const slot = child.getAttribute("slot");
-      if (slot) this.#slotCache.set(slot, child.textContent.trim());
-    }
-  }
+  /**
+   * Attribute value, else the text of a same-named light-DOM child (e.g.
+   * `<span slot="persona">`, read as data; it is not projected).
+   * @param {string} attr
+   */
   _resolve(attr) {
-    return this.getAttribute(attr) || this.#slotCache.get(attr) || "";
+    return this.getAttribute(attr) || this._slotCache.get(attr) || "";
   }
-  /* ── Lifecycle ─────────────────────────────────── */
-  connectedCallback() {
-    this.#cacheSlotValues();
-    this.setAttribute("data-upgraded", "");
-    if (this.hasAttribute("src")) {
-      this._loadSrc(this.getAttribute("src"));
-    } else {
-      this._render();
-    }
-  }
-  disconnectedCallback() {
-    this.removeAttribute("data-upgraded");
-  }
-  attributeChangedCallback(name) {
-    if (!this.isConnected) return;
-    if (name === "src") {
-      this._loadSrc(this.getAttribute("src"));
-    } else {
-      this._render();
-    }
+  _readyDetail() {
+    return { title: this._slotText("title") || "Empathy Map", persona: this._resolve("persona") };
   }
   // ── Data API (HTML-first / JS-first dual contract) ──────────────
   /**
@@ -2906,8 +3093,8 @@ var EmpathyMap = class extends HTMLElement {
    * slotted content. Mirrors what a consumer would assign to .data.
    */
   get data() {
-    const titleEl = this.querySelector('[slot="title"]');
-    const summaryEl = this.querySelector('[slot="summary"]');
+    const titleEl = slottedChild(this, "title");
+    const summaryEl = slottedChild(this, "summary");
     return {
       persona: this.getAttribute("persona") || void 0,
       personaId: this.getAttribute("persona-id") || void 0,
@@ -2924,30 +3111,21 @@ var EmpathyMap = class extends HTMLElement {
    * Emits empathy-map:data-changed { data, source: 'property' }.
    */
   set data(value) {
-    if (!value || typeof value !== "object") return;
-    if (value.persona) this.setAttribute("persona", String(value.persona));
-    if (value.personaId) this.setAttribute("persona-id", String(value.personaId));
-    if (value.title && !this.querySelector('[slot="title"]')) {
-      const el = document.createElement("h2");
-      el.slot = "title";
-      el.textContent = value.title;
-      this.appendChild(el);
-    }
-    if (value.summary && !this.querySelector('[slot="summary"]')) {
-      const el = document.createElement("p");
-      el.slot = "summary";
-      el.textContent = value.summary;
-      this.appendChild(el);
-    }
-    if (value.quadrants != null) this.__quadrants = value.quadrants;
-    if (value.goals != null) this.__goals = value.goals;
-    if (value.painPoints != null) this.__painPoints = value.painPoints;
-    if (this.isConnected) this._render();
-    this.dispatchEvent(new CustomEvent("empathy-map:data-changed", {
-      detail: { data: this.data, source: "property" },
-      bubbles: true,
-      composed: true
-    }));
+    this._setData(value);
+  }
+  /**
+   * Apply an empathy-map record (from .data or src). Title / summary create
+   * slotted children only when none are authored.
+   * @param {Record<string, any>} data
+   */
+  _applyData(data) {
+    if (data.persona) this.setAttribute("persona", String(data.persona));
+    if (data.personaId) this.setAttribute("persona-id", String(data.personaId));
+    fillSlot(this, "title", data.title, { tag: "h2" });
+    fillSlot(this, "summary", data.summary);
+    if (data.quadrants != null) this.__quadrants = data.quadrants;
+    if (data.goals != null) this.__goals = data.goals;
+    if (data.painPoints != null) this.__painPoints = data.painPoints;
   }
   /* ── Public API ────────────────────────────────── */
   /**
@@ -2960,44 +3138,21 @@ var EmpathyMap = class extends HTMLElement {
     this._openEdit(name);
   }
   /**
-   * Close a quadrant edit and save.
+   * Close a quadrant edit and save. No-op (and no update event) unless the
+   * quadrant's editor is open.
    * @param {string} name - Quadrant key: says|thinks|does|feels
    */
   closeQuadrant(name) {
     if (!QUADRANT_KEYS.includes(name)) return;
     this._closeEdit(name);
   }
-  /* ── JSON loading ──────────────────────────────── */
-  async _loadSrc(src) {
-    if (!src || !this.shadowRoot) return;
+  /* ── JSON loading states ───────────────────────── */
+  _renderLoading() {
     this.shadowRoot.innerHTML = `<style>${styles4}</style><div class="state-msg">Loading\u2026</div>`;
-    try {
-      const res = await fetch(src);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (data.persona) this.setAttribute("persona", data.persona);
-      if (data.personaId) this.setAttribute("persona-id", data.personaId);
-      if (data.title && !this.querySelector('[slot="title"]')) {
-        const el = document.createElement("h2");
-        el.slot = "title";
-        el.textContent = data.title;
-        this.appendChild(el);
-      }
-      if (data.summary && !this.querySelector('[slot="summary"]')) {
-        const el = document.createElement("p");
-        el.slot = "summary";
-        el.textContent = data.summary;
-        this.appendChild(el);
-      }
-      this.__quadrants = data.quadrants || null;
-      this.__goals = data.goals || null;
-      this.__painPoints = data.painPoints || null;
-      this._render();
-    } catch (err) {
-      if (!this.shadowRoot) return;
-      const msg = err instanceof Error ? err.message : String(err);
-      this.shadowRoot.innerHTML = `<style>${styles4}</style><div class="state-msg state-msg--error">Could not load empathy map: ${esc(msg)}</div>`;
-    }
+  }
+  /** @param {Error} err */
+  _renderError(err) {
+    this.shadowRoot.innerHTML = `<style>${styles4}</style><div class="state-msg state-msg--error">Could not load empathy map: ${esc(err.message)}</div>`;
   }
   /* ── Render ────────────────────────────────────── */
   _render() {
@@ -3005,10 +3160,9 @@ var EmpathyMap = class extends HTMLElement {
     const personaId = this._resolve("persona-id") || "";
     const compact = this.hasAttribute("compact");
     const editable = this.hasAttribute("editable");
-    const hasTitle = !!this.querySelector('[slot="title"]') || this.#slotCache.has("title");
-    const hasSummary = !!this.querySelector('[slot="summary"]') || this.#slotCache.has("summary");
-    const hasGoals = this.__goals?.length || this.querySelector('[slot="goals"]');
-    const hasPains = this.__painPoints?.length || this.querySelector('[slot="pain-points"]');
+    const hasSummary = !!slottedChild(this, "summary") || this._slotCache.has("summary");
+    const hasGoals = this.__goals?.length || slottedChild(this, "goals");
+    const hasPains = this.__painPoints?.length || slottedChild(this, "pain-points");
     const html = `<style>${styles4}</style>
       <article class="empathy-map${compact ? " empathy-map--compact" : ""}">
 
@@ -3042,33 +3196,32 @@ var EmpathyMap = class extends HTMLElement {
       </article>`;
     const swap = () => {
       if (!this.shadowRoot) return;
+      const drafts = this.#captureDrafts();
       this.shadowRoot.innerHTML = html;
-      if (editable) this._bindEditListeners();
+      if (editable) {
+        this._bindEditListeners();
+        this.#restoreDrafts(drafts);
+      }
     };
     if (this.shadowRoot?.querySelector("article")) {
       viewTransitionSwap(this, swap, "em-vt");
     } else {
       swap();
     }
-    this.dispatchEvent(new CustomEvent("empathy-map:ready", {
-      bubbles: true,
-      composed: true,
-      detail: { title: this.querySelector('[slot="title"]')?.textContent?.trim() || "Empathy Map", persona }
-    }));
   }
   /* ── Render quadrant ───────────────────────────── */
   _renderQuadrant(key, editable) {
     const meta = QUADRANT_META[key];
     const items = this.__quadrants?.[key];
     const isEditing = this._editingQuadrants.has(key);
-    const frontContent = items && items.length ? key === "feels" ? items.map((item) => this._renderEmotion(item)).join("") : items.map((item) => `<p>${esc(item)}</p>`).join("") : `<slot name="${key}"><p class="placeholder">Add ${meta.label.toLowerCase()} items\u2026</p></slot>`;
-    const textareaValue = items?.length ? items.join("\n") : "";
+    const frontContent = items && items.length || this._editedQuadrants.has(key) ? this._quadrantItemsHtml(key) : `<slot name="${key}"><p class="placeholder">Add ${meta.label.toLowerCase()} items\u2026</p></slot>`;
+    const textareaValue = this.#editorSeed(key);
     return `
       <section class="quadrant quadrant--${key}"${isEditing ? " data-editing" : ""}>
         <div class="quadrant__inner">
           <div class="quadrant__header">
             <div class="quadrant__icon" aria-hidden="true">${lucideSvg(meta.icon)}</div>
-            <span class="quadrant__label">${meta.label}</span>
+            <h3 class="quadrant__label">${meta.label}</h3>
             ${editable ? `<button class="quadrant__edit-btn" data-quadrant="${key}"
               aria-label="Edit ${meta.label}" title="Edit ${meta.label}">${lucideSvg(UX_ICONS.pencil)}</button>` : ""}
           </div>
@@ -3091,11 +3244,21 @@ var EmpathyMap = class extends HTMLElement {
         </div>
       </section>`;
   }
+  /**
+   * Front-face markup for a quadrant rendered from data (no slot).
+   * @param {string} key
+   */
+  _quadrantItemsHtml(key) {
+    const items = this.__quadrants?.[key] || [];
+    if (!items.length) {
+      return `<p class="placeholder">Add ${QUADRANT_META[key].label.toLowerCase()} items\u2026</p>`;
+    }
+    return key === "feels" ? items.map((item) => this._renderEmotion(item)).join("") : items.map((item) => `<p>${esc(item)}</p>`).join("");
+  }
   /* ── Render emotion tag ────────────────────────── */
   _renderEmotion(item) {
-    const normalized = item.toLowerCase().trim();
-    const meta = EMOTION_META[normalized];
-    if (meta) {
+    if (isEmotion(item)) {
+      const meta = emotionMeta(item);
       return `<span class="emotion-tag" style="--ec:${meta.color}"><span role="img" aria-label="${esc(item)}">${meta.emoji}</span> ${esc(item)}</span>`;
     }
     return `<p>${esc(item)}</p>`;
@@ -3155,9 +3318,9 @@ var EmpathyMap = class extends HTMLElement {
     });
   }
   _openEdit(key) {
-    this._editingQuadrants.add(key);
     const section = this.shadowRoot?.querySelector(`.quadrant--${key}`);
     if (!section) return;
+    this._editingQuadrants.add(key);
     section.setAttribute("data-editing", "");
     const front = section.querySelector(".quadrant__face--front");
     const back = section.querySelector(".quadrant__face--back");
@@ -3168,34 +3331,70 @@ var EmpathyMap = class extends HTMLElement {
       section.querySelector(".quadrant__editor")
     );
     if (textarea) {
-      const items = this.__quadrants?.[key];
-      if (items?.length) {
-        textarea.value = items.join("\n");
-      } else {
-        const slot = (
-          /** @type {HTMLSlotElement | null} */
-          section.querySelector(`slot[name="${key}"]`)
-        );
-        if (slot) {
-          const assigned = slot.assignedElements();
-          if (assigned.length) {
-            const lines = [];
-            assigned.forEach((el) => {
-              const lis = el.querySelectorAll("li");
-              if (lis.length) {
-                lis.forEach((li) => lines.push(li.textContent?.trim() ?? ""));
-              } else {
-                lines.push(el.textContent?.trim() ?? "");
-              }
-            });
-            textarea.value = lines.filter(Boolean).join("\n");
-          }
-        }
-      }
+      textarea.value = this.#editorSeed(key);
       textarea.focus();
     }
   }
+  /**
+   * Text an editor opens with: the saved items, else (for a quadrant never
+   * edited) its slotted light-DOM items, one per line.
+   * @param {string} key
+   * @returns {string}
+   */
+  #editorSeed(key) {
+    const items = this.__quadrants?.[key];
+    if (items?.length) return items.join("\n");
+    if (this._editedQuadrants.has(key)) return "";
+    const lines = [];
+    for (const el of this.children) {
+      if (el.getAttribute("slot") !== key) continue;
+      const lis = el.querySelectorAll("li");
+      if (lis.length) lis.forEach((li) => lines.push(li.textContent?.trim() ?? ""));
+      else lines.push(el.textContent?.trim() ?? "");
+    }
+    return lines.filter(Boolean).join("\n");
+  }
+  /**
+   * Snapshot open editors (value, selection, focus) before the shadow
+   * tree is replaced.
+   * @returns {Map<string, { value: string, start: number, end: number, focused: boolean }>}
+   */
+  #captureDrafts() {
+    const drafts = /* @__PURE__ */ new Map();
+    const root = this.shadowRoot;
+    if (!root) return drafts;
+    for (const key of this._editingQuadrants) {
+      const ta = (
+        /** @type {HTMLTextAreaElement | null} */
+        root.querySelector(`.quadrant__editor[data-quadrant="${key}"]`)
+      );
+      if (!ta) continue;
+      drafts.set(key, {
+        value: ta.value,
+        start: ta.selectionStart,
+        end: ta.selectionEnd,
+        focused: root.activeElement === ta
+      });
+    }
+    return drafts;
+  }
+  /** @param {Map<string, { value: string, start: number, end: number, focused: boolean }>} drafts */
+  #restoreDrafts(drafts) {
+    const root = this.shadowRoot;
+    if (!root) return;
+    for (const [key, d] of drafts) {
+      const ta = (
+        /** @type {HTMLTextAreaElement | null} */
+        root.querySelector(`.quadrant__editor[data-quadrant="${key}"]`)
+      );
+      if (!ta) continue;
+      ta.value = d.value;
+      ta.setSelectionRange(d.start, d.end);
+      if (d.focused) ta.focus();
+    }
+  }
   _closeEdit(key) {
+    if (!this._editingQuadrants.has(key)) return;
     const section = this.shadowRoot?.querySelector(`.quadrant--${key}`);
     if (!section) return;
     const textarea = (
@@ -3206,20 +3405,18 @@ var EmpathyMap = class extends HTMLElement {
       const items = textarea.value.split("\n").map((line) => line.trim()).filter(Boolean);
       if (!this.__quadrants) this.__quadrants = {};
       this.__quadrants[key] = items;
+      this._editedQuadrants.add(key);
       const contentEl = section.querySelector(".quadrant__content");
-      if (contentEl) {
-        if (items.length) {
-          contentEl.innerHTML = key === "feels" ? items.map((item) => this._renderEmotion(item)).join("") : items.map((item) => `<p>${esc(item)}</p>`).join("");
-        } else {
-          const meta = QUADRANT_META[key];
-          contentEl.innerHTML = `<p class="placeholder">Add ${meta.label.toLowerCase()} items\u2026</p>`;
-        }
-      }
+      if (contentEl) contentEl.innerHTML = this._quadrantItemsHtml(key);
     }
     this._editingQuadrants.delete(key);
     section.removeAttribute("data-editing");
     const front = section.querySelector(".quadrant__face--front");
     const back = section.querySelector(".quadrant__face--back");
+    const active = this.shadowRoot?.activeElement;
+    if (back && active && back.contains(active)) {
+      section.querySelector(".quadrant__edit-btn")?.focus();
+    }
     if (front) front.removeAttribute("inert");
     if (back) back.setAttribute("inert", "");
     this.dispatchEvent(new CustomEvent("empathy-map:update", {
@@ -3352,6 +3549,98 @@ function diffByKey({ newItems, nodes, keyOf, renderItem, containerFor }) {
   return { added, moved, removed };
 }
 
+// src/lib/board-surface.js
+function titleCase(str) {
+  return String(str ?? "").replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+function createLiveRegion(className) {
+  const region = document.createElement("div");
+  region.className = className;
+  region.setAttribute("role", "status");
+  region.setAttribute("aria-live", "polite");
+  region.setAttribute("aria-atomic", "true");
+  return region;
+}
+function announce(region, msg) {
+  if (!region) return;
+  region.textContent = "";
+  requestAnimationFrame(() => {
+    region.textContent = msg;
+  });
+}
+function itemLabel(item) {
+  if (!item) return "item";
+  const clean = (s) => (s || "").replace(/\s+/g, " ").trim();
+  const slotted2 = clean(item.querySelector(':scope > [slot="title"]')?.textContent) || clean(item.querySelector(':scope > [slot="action"]')?.textContent);
+  if (slotted2) return truncate(slotted2);
+  const aria = clean(item.getAttribute("aria-label"));
+  if (aria) return truncate(aria);
+  const text = clean(item.textContent);
+  if (text) return truncate(text);
+  return item.getAttribute("story-id") || item.getAttribute("data-id") || "item";
+}
+function truncate(s) {
+  return s.length > 60 ? `${s.slice(0, 59).trimEnd()}\u2026` : s;
+}
+function syncPlaceholder(surface, className, text) {
+  const hasCards = !!surface.querySelector(':scope > [draggable="true"]');
+  const placeholder = surface.querySelector(`:scope > .${className}`);
+  if (!hasCards && !placeholder) {
+    const p = document.createElement("p");
+    p.className = className;
+    p.textContent = text;
+    surface.appendChild(p);
+  } else if (hasCards && placeholder) {
+    placeholder.remove();
+  }
+}
+function isStoryRecord(record) {
+  return !!(record && (record.persona || record.action || record.benefit || record.storyId));
+}
+function createStoryCard(record, defaultDetail) {
+  const el = document.createElement("user-story");
+  const attrs = [
+    ["storyId", "story-id"],
+    ["personaId", "persona-id"],
+    ["priority", "priority"],
+    ["status", "status"],
+    ["points", "points"],
+    ["epic", "epic"]
+  ];
+  for (const [key, attr] of attrs) {
+    if (record[key] != null && record[key] !== "") el.setAttribute(attr, String(record[key]));
+  }
+  const detail = record.detail || defaultDetail;
+  if (detail) el.setAttribute("detail", String(detail));
+  for (const slot of ["persona", "action", "benefit"]) {
+    if (record[slot]) el.appendChild(slotted("span", slot, record[slot]));
+  }
+  if (record.title) el.appendChild(slotted("h3", "title", record.title));
+  for (const [key, slot] of [["acceptanceCriteria", "acceptance-criteria"], ["tasks", "tasks"], ["notes", "notes"]]) {
+    const value = record[key];
+    if (!value) continue;
+    if (Array.isArray(value)) {
+      const ul = document.createElement("ul");
+      ul.slot = slot;
+      for (const entry of value) {
+        const li = document.createElement("li");
+        li.textContent = String(entry);
+        ul.appendChild(li);
+      }
+      el.appendChild(ul);
+    } else {
+      el.appendChild(slotted("p", slot, value));
+    }
+  }
+  return el;
+}
+function slotted(tag, slot, text) {
+  const el = document.createElement(tag);
+  el.slot = slot;
+  el.textContent = String(text);
+  return el;
+}
+
 // src/web-components/impact-effort/logic.js
 var ImpactEffort = class _ImpactEffort extends VBElement {
   static QUADRANTS = ["quick-wins", "big-bets", "fill-ins", "money-pit"];
@@ -3371,18 +3660,56 @@ var ImpactEffort = class _ImpactEffort extends VBElement {
   static get observedAttributes() {
     return ["src", "compact", "title"];
   }
-  /** @type {HTMLElement | null} */
-  #grid = null;
-  /** @type {Recordstring, HTMLElement} */
+  /** @type {Record<string, HTMLElement>} */
   #surfaces = {};
   /** @type {HTMLElement | null} */
   #liveRegion = null;
+  /** @type {HTMLHeadingElement | null} */
+  #titleEl = null;
   /** @type {string} */
   #groupId = "";
-  /** @type {HTMLElement | null} */
-  #wrapper = null;
+  /** Shell built (survives disconnect so a moved matrix keeps its cards). */
+  #built = false;
+  /** Listeners attached for the current connection. */
+  #wired = false;
+  #readyFired = false;
+  #loader = new SrcLoader();
+  /** Items assigned before upgrade, applied on first setup. */
+  /** @type {any[] | null} */
+  #pending = null;
+  /** key → rendered card (authored, assigned, or loaded). */
+  /** @type {Map<unknown, Element>} */
+  #nodes = /* @__PURE__ */ new Map();
+  /** key → last record assigned via `.items` or `src`. */
+  /** @type {Map<unknown, any>} */
+  #records = /* @__PURE__ */ new Map();
   setup() {
-    this.#groupId = `ie-${++_ImpactEffort.#instanceCount}`;
+    if (!this.#groupId) this.#groupId = `ie-${++_ImpactEffort.#instanceCount}`;
+    if (!this.#built) {
+      this.#built = true;
+      this.#build();
+      if (this.#pending) {
+        const pending = this.#pending;
+        this.#pending = null;
+        this.items = pending;
+      }
+    }
+    if (!this.#wired) {
+      this.#wired = true;
+      this.listen(this, "drag-surface:transfer", this.#onTransfer);
+    }
+    const src = this.getAttribute("src");
+    if (src) {
+      if (src !== this.#loader.url) this.#loadFromSrc(src);
+      return;
+    }
+    if (!this.#readyFired) this.#dispatchReady();
+  }
+  teardown() {
+    this.#wired = false;
+  }
+  /** First build: wrapper, quadrants, live region; authored cards moved in. */
+  #build() {
     const children = [...this.querySelectorAll(":scope > [data-quadrant], :scope > [draggable]")];
     const wrapper = document.createElement("div");
     wrapper.className = "ie-wrapper";
@@ -3407,7 +3734,10 @@ var ImpactEffort = class _ImpactEffort extends VBElement {
       section.setAttribute("aria-label", `${_ImpactEffort.LABELS[q]}: ${_ImpactEffort.DESCRIPTIONS[q]}`);
       const header = document.createElement("header");
       header.className = "ie-quadrant-label";
-      header.innerHTML = `${_ImpactEffort.LABELS[q]}<br><span class="ie-quadrant-desc">${_ImpactEffort.DESCRIPTIONS[q]}</span>`;
+      const desc = document.createElement("span");
+      desc.className = "ie-quadrant-desc";
+      desc.textContent = _ImpactEffort.DESCRIPTIONS[q];
+      header.append(_ImpactEffort.LABELS[q], document.createElement("br"), desc);
       const surface = document.createElement("drag-surface");
       surface.setAttribute("group", this.#groupId);
       surface.setAttribute("aria-label", _ImpactEffort.LABELS[q]);
@@ -3423,195 +3753,214 @@ var ImpactEffort = class _ImpactEffort extends VBElement {
         /** @type {HTMLElement} */
         c
       );
-      const quadrant = child.getAttribute("data-quadrant") || "quick-wins";
-      const target = this.#surfaces[quadrant] || this.#surfaces["quick-wins"];
-      if (!child.hasAttribute("draggable")) {
-        child.setAttribute("draggable", "true");
-      }
-      if (!child.hasAttribute("data-id")) {
-        child.dataset.id = `ie-item-${i}`;
-      }
-      target.appendChild(child);
+      const quadrant = this.#surfaces[child.getAttribute("data-quadrant") || ""] ? child.getAttribute("data-quadrant") : "quick-wins";
+      child.setAttribute(
+        "data-quadrant",
+        /** @type {string} */
+        quadrant
+      );
+      if (!child.hasAttribute("draggable")) child.setAttribute("draggable", "true");
+      if (!child.hasAttribute("data-id")) child.dataset.id = `ie-item-${i}`;
+      this.#surfaces[
+        /** @type {string} */
+        quadrant
+      ].appendChild(child);
+      this.#nodes.set(child.dataset.id, child);
     });
-    const liveRegion = document.createElement("div");
-    liveRegion.className = "ie-live-region";
-    liveRegion.setAttribute("role", "status");
-    liveRegion.setAttribute("aria-live", "polite");
-    liveRegion.setAttribute("aria-atomic", "true");
-    const title = this.getAttribute("title");
-    if (title) {
-      const heading = document.createElement("h3");
-      heading.className = "ie-title";
-      heading.textContent = title;
-      this.prepend(heading);
-    }
+    this.#liveRegion = createLiveRegion("ie-live-region");
+    this.#syncTitle();
     column.appendChild(grid);
     column.appendChild(xLabel);
     wrapper.appendChild(yLabel);
     wrapper.appendChild(column);
-    this.appendChild(wrapper);
-    this.appendChild(liveRegion);
-    this.#grid = grid;
-    this.#liveRegion = liveRegion;
-    this.#wrapper = wrapper;
-    this.listen(this, "drag-surface:transfer", (e) => {
-      const { item, fromSurface, toSurface } = e.detail;
-      const fromQuadrant = this.#findQuadrantForSurface(fromSurface);
-      const toQuadrant = this.#findQuadrantForSurface(toSurface);
-      if (!fromQuadrant || !toQuadrant) return;
-      item.setAttribute("data-quadrant", toQuadrant);
-      this.#announce(`Moved ${this.#itemLabel(item)} to ${_ImpactEffort.LABELS[toQuadrant]}`);
-      this.dispatchEvent(new CustomEvent("impact-effort:move", {
-        bubbles: true,
-        detail: {
-          itemId: item.dataset.id,
-          from: fromQuadrant,
-          to: toQuadrant,
-          item
-        }
-      }));
-    });
-    const src = this.getAttribute("src");
-    if (src) {
-      this.#loadFromSrc(src);
-    }
-    this.#dispatchReady();
+    this.append(wrapper, this.#liveRegion);
   }
-  teardown() {
-    if (this.#wrapper) {
-      this.#wrapper.remove();
-      this.#wrapper = null;
+  /** Create, update, or remove the optional heading from the title attribute. */
+  #syncTitle() {
+    const title = this.getAttribute("title");
+    if (title) {
+      if (!this.#titleEl) {
+        this.#titleEl = document.createElement("h3");
+        this.#titleEl.className = "ie-title";
+        this.prepend(this.#titleEl);
+      }
+      this.#titleEl.textContent = title;
+    } else if (this.#titleEl) {
+      this.#titleEl.remove();
+      this.#titleEl = null;
     }
-    if (this.#liveRegion) {
-      this.#liveRegion.remove();
-      this.#liveRegion = null;
-    }
-    this.#grid = null;
-    this.#surfaces = {};
-    this.#nodes.clear();
-    this.#items = [];
   }
+  /** @param {Event} e */
+  #onTransfer = (e) => {
+    const { item, fromSurface, toSurface } = (
+      /** @type {CustomEvent} */
+      e.detail
+    );
+    const fromQuadrant = this.#findQuadrantForSurface(fromSurface);
+    const toQuadrant = this.#findQuadrantForSurface(toSurface);
+    if (!fromQuadrant || !toQuadrant) return;
+    item.setAttribute("data-quadrant", toQuadrant);
+    announce(this.#liveRegion, `Moved ${itemLabel(item)} to ${_ImpactEffort.LABELS[toQuadrant]}`);
+    this.dispatchEvent(new CustomEvent("impact-effort:move", {
+      bubbles: true,
+      detail: {
+        itemId: item.dataset.id,
+        from: fromQuadrant,
+        to: toQuadrant,
+        item
+      }
+    }));
+  };
   // ── Data API (HTML-first / JS-first dual contract) ──────────────
-  /** @type {any[]} */
-  #items = [];
-  /** @type {Mapunknown, Element} */
-  #nodes = /* @__PURE__ */ new Map();
   /**
-   * Read the matrix items as a plain array. Each entry:
-   * `{ id, quadrant: 'quick-wins'|'big-bets'|'fill-ins'|'money-pit', text? }`.
-   * After upgrade reflects the parsed children; after assignment reflects
-   * what was passed in.
+   * The matrix items in DOM order, reflecting drags. Each entry is the
+   * record last assigned for that id (via `.items` or `src`) with its
+   * current `quadrant`; authored cards read as `{ id, quadrant, label }`.
+   * Assigning the result back to `.items` keeps every card in place.
    */
   get items() {
-    if (this.#items.length) return this.#items;
     const result = [];
     for (const [q, surface] of Object.entries(this.#surfaces)) {
       for (const el of surface.querySelectorAll(':scope > [draggable="true"]')) {
-        result.push({
-          id: el.getAttribute("data-id") || void 0,
-          quadrant: q,
-          text: el.textContent?.trim() || void 0
-        });
+        const id = el.getAttribute("data-id") || void 0;
+        const key = this.#keyForNode(el);
+        const known = key !== void 0 ? this.#records.get(key) : void 0;
+        if (known) {
+          result.push({ ...known, quadrant: q });
+        } else {
+          result.push({ id, quadrant: q, label: itemLabel(el) });
+        }
       }
     }
     return result;
   }
   /**
    * Replace the matrix items and route each into its quadrant surface.
-   * Runs a keyed diff so existing nodes whose id persists are preserved
-   * across re-assignment (in-flight drag state, focus, animations survive).
-   * New ids render as article class="ie-card" by default; override via
+   * Each item: `{ id, quadrant, label }` (`text` is accepted as an alias of
+   * `label`; story fields — persona, action, benefit, storyId — render a
+   * `<user-story>` card). Runs a keyed diff by `id`, so cards whose id
+   * persists (including authored ones) are moved, not recreated. Items
+   * without an `id` are keyed by their label (the nth repeat of a label
+   * keeps the nth such card), so they also survive drags and round-trips;
+   * give items an `id` if their labels change. New ids
+   * render as `<article class="ie-card">` by default; override via
    * `.renderItem`.
    *
    * Emits impact-effort:items-changed { items, source: 'property' }.
    */
   set items(value) {
-    if (!this.#grid) return;
     const next = Array.isArray(value) ? value : [];
-    diffByKey({
-      newItems: next,
-      nodes: this.#nodes,
-      keyOf: (it) => it.id ?? `${it.quadrant}:${it.text}`,
-      renderItem: (it) => {
-        const self = (
-          /** @type {any} */
-          this
-        );
-        if (typeof self.renderItem === "function") {
-          const out = self.renderItem(it);
-          if (out instanceof Element) {
-            if (!out.hasAttribute("draggable")) out.setAttribute("draggable", "true");
-            if (!out.hasAttribute("data-id")) out.setAttribute("data-id", String(it.id ?? ""));
-            return out;
-          }
-        }
-        const article = document.createElement("article");
-        article.className = "ie-card";
-        article.setAttribute("draggable", "true");
-        if (it.id) article.setAttribute("data-id", String(it.id));
-        article.textContent = it.text || it.id || "";
-        return article;
-      },
-      containerFor: (it) => this.#surfaces[it.quadrant] || this.#surfaces["quick-wins"]
-    });
-    this.#items = next;
+    if (!this.#built) {
+      this.#pending = next;
+      return;
+    }
+    this.#applyItems(next);
     this.dispatchEvent(new CustomEvent("impact-effort:items-changed", {
       detail: { items: next, source: "property" },
       bubbles: true
     }));
   }
-  attributeChangedCallback(name, oldVal, newVal) {
-    if (!this.hasAttribute("data-upgraded")) return;
-    if (name === "src" && newVal && newVal !== oldVal) {
-      this.#loadFromSrc(newVal);
+  /**
+   * Diff keys for a list of items: the `id` when present; otherwise the
+   * label (`label` or `text`), with a counter for repeats, so the nth
+   * id-less item with a given label keeps the nth such card. The quadrant
+   * is not part of the key, so a dragged id-less card survives an
+   * `.items` round-trip.
+   * @param {any[]} list
+   * @returns {Map<any, unknown>}
+   */
+  static #keysFor(list) {
+    const seen = /* @__PURE__ */ new Map();
+    const keys = /* @__PURE__ */ new Map();
+    for (const it of list) {
+      if (it.id != null) {
+        keys.set(it, it.id);
+        continue;
+      }
+      const label = String(it.label ?? it.text ?? "");
+      const n = seen.get(label) ?? 0;
+      seen.set(label, n + 1);
+      keys.set(it, n ? `label:${label}#${n}` : `label:${label}`);
+    }
+    return keys;
+  }
+  /** @param {Element} el */
+  #keyForNode(el) {
+    for (const [key, node] of this.#nodes) if (node === el) return key;
+    return void 0;
+  }
+  /** @param {any[]} next */
+  #applyItems(next) {
+    const keys = _ImpactEffort.#keysFor(next);
+    diffByKey({
+      newItems: next,
+      nodes: this.#nodes,
+      keyOf: (it) => keys.get(it),
+      renderItem: (it) => this.#renderCard(it),
+      containerFor: (it) => this.#surfaces[it.quadrant] || this.#surfaces["quick-wins"]
+    });
+    this.#records.clear();
+    for (const it of next) {
+      const key = keys.get(it);
+      this.#records.set(key, it);
+      const el = this.#nodes.get(key);
+      el?.setAttribute("data-quadrant", this.#surfaces[it.quadrant] ? it.quadrant : "quick-wins");
     }
   }
+  /**
+   * @param {any} it
+   * @returns {Element}
+   */
+  #renderCard(it) {
+    const self = (
+      /** @type {any} */
+      this
+    );
+    let el;
+    if (typeof self.renderItem === "function") {
+      const out = self.renderItem(it);
+      if (out instanceof Element) el = out;
+    }
+    if (!el && isStoryRecord(it)) el = createStoryCard(it, "minimal");
+    if (!el) {
+      el = document.createElement("article");
+      el.className = "ie-card";
+      el.textContent = it.label ?? it.text ?? it.id ?? "";
+    }
+    if (!el.hasAttribute("draggable")) el.setAttribute("draggable", "true");
+    if (it.id != null && !el.hasAttribute("data-id")) el.setAttribute("data-id", String(it.id));
+    return el;
+  }
+  attributeChangedCallback(name, oldVal, newVal) {
+    if (oldVal === newVal || !this.#built) return;
+    if (name === "src" && newVal && newVal !== this.#loader.url) this.#loadFromSrc(newVal);
+    if (name === "src" && !newVal) this.#loader.cancel();
+    if (name === "title") this.#syncTitle();
+  }
   // ── Data loading ──────────────────────────────────────────────────────────
+  /**
+   * Fetch an array of items (same shape as `.items`) and replace the
+   * matrix with it. One request per src value; a newer src aborts an
+   * older in-flight one. Once the cards are in the DOM (after the View
+   * Transition's update callback) `impact-effort:items-changed` fires with
+   * source 'src', and `impact-effort:ready` if it has not fired yet.
+   * @param {string} url
+   */
   async #loadFromSrc(url) {
     try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const result = await this.#loader.fetchJson(url);
+      if (!result) return;
+      const { data, isCurrent } = result;
       if (!Array.isArray(data)) return;
-      const swap = () => {
-        for (const q of _ImpactEffort.QUADRANTS) {
-          const surface = this.#surfaces[q];
-          if (!surface) continue;
-          for (const child of [...surface.querySelectorAll("[draggable]")]) {
-            child.remove();
-          }
-        }
-        data.forEach((entry, i) => {
-          const quadrant = entry.quadrant || "quick-wins";
-          const id = entry.id || `ie-item-${i}`;
-          let el;
-          if (entry.persona || entry.action || entry.storyId) {
-            el = document.createElement("user-story");
-            el.setAttribute("detail", "minimal");
-            if (entry.storyId) el.setAttribute("story-id", entry.storyId);
-            if (entry.persona) el.setAttribute("persona", entry.persona);
-            if (entry.action) el.setAttribute("action", entry.action);
-            if (entry.benefit) el.setAttribute("benefit", entry.benefit);
-            if (entry.priority) el.setAttribute("priority", entry.priority);
-            if (entry.status) el.setAttribute("status", entry.status);
-            if (entry.points) el.setAttribute("points", String(entry.points));
-          } else {
-            el = document.createElement("article");
-            el.textContent = entry.label || entry.text || "";
-          }
-          el.setAttribute("draggable", "true");
-          el.dataset.id = id;
-          el.dataset.quadrant = quadrant;
-          const target = this.#surfaces[quadrant] || this.#surfaces["quick-wins"];
-          target.appendChild(el);
-        });
-      };
-      if (this.hasAttribute("data-upgraded") && this.#grid) {
-        viewTransitionSwap(this, swap, "ie-vt");
-      } else {
-        swap();
-      }
-      this.#dispatchReady();
+      const entries = data.map((entry, i) => ({ ...entry, id: entry.id ?? entry.storyId ?? `ie-item-${i}` }));
+      const tx = viewTransitionSwap(this, () => this.#applyItems(entries), "ie-vt");
+      if (tx) await tx.updateCallbackDone;
+      if (!isCurrent()) return;
+      this.dispatchEvent(new CustomEvent("impact-effort:items-changed", {
+        detail: { items: this.items, source: "src" },
+        bubbles: true
+      }));
+      if (!this.#readyFired) this.#dispatchReady();
     } catch (err) {
       console.warn(`[impact-effort] Failed to load src="${url}":`, err);
     }
@@ -3624,25 +3973,13 @@ var ImpactEffort = class _ImpactEffort extends VBElement {
     }
     return null;
   }
-  /** Set live region text content (with clear-and-set for re-announcement) */
-  #announce(msg) {
-    const region = this.#liveRegion;
-    if (!region) return;
-    region.textContent = "";
-    requestAnimationFrame(() => {
-      region.textContent = msg;
-    });
-  }
-  /** Derive a label for an item from data-id or textContent */
-  #itemLabel(item) {
-    return item.dataset.id || item.textContent.trim().slice(0, 40);
-  }
   /** Dispatch the ready event with counts per quadrant */
   #dispatchReady() {
+    this.#readyFired = true;
     const quadrantCounts = {};
     for (const q of _ImpactEffort.QUADRANTS) {
       const surface = this.#surfaces[q];
-      quadrantCounts[q] = surface ? surface.querySelectorAll('[draggable="true"]').length : 0;
+      quadrantCounts[q] = surface ? surface.querySelectorAll(':scope > [draggable="true"]').length : 0;
     }
     this.dispatchEvent(new CustomEvent("impact-effort:ready", {
       bubbles: true,
@@ -3655,8 +3992,15 @@ registerComponent("impact-effort", ImpactEffort);
 // src/web-components/quadrant-grid/logic.js
 var QuadrantGrid = class _QuadrantGrid extends VBElement {
   static #instanceCount = 0;
+  /** Quadrant indices in visual reading order: TL (Q2), TR (Q1), BL (Q3), BR (Q4). */
+  static VISUAL_ORDER = [1, 0, 2, 3];
   setup() {
-    this.#groupId = `qg-${++_QuadrantGrid.#instanceCount}`;
+    if (!this.#groupId) this.#groupId = `qg-${++_QuadrantGrid.#instanceCount}`;
+    if (this.#built) {
+      this.#wire();
+      return;
+    }
+    this.#built = true;
     const xLabel = this.getAttribute("x-label") || "";
     const yLabel = this.getAttribute("y-label") || "";
     const xLow = this.getAttribute("x-low") || "Low";
@@ -3682,18 +4026,18 @@ var QuadrantGrid = class _QuadrantGrid extends VBElement {
     const yScale = document.createElement("aside");
     yScale.className = "qg-y-scale";
     yScale.setAttribute("aria-hidden", "true");
-    yScale.innerHTML = `<span>${yHigh}</span><span>${yLow}</span>`;
+    yScale.append(_QuadrantGrid.#span(yHigh), _QuadrantGrid.#span(yLow));
     const grid = document.createElement("div");
     grid.className = "qg-grid";
     const xScale = document.createElement("aside");
     xScale.className = "qg-x-scale";
     xScale.setAttribute("aria-hidden", "true");
-    xScale.innerHTML = `<span>${xLow}</span><span>${xHigh}</span>`;
+    xScale.append(_QuadrantGrid.#span(xLow), _QuadrantGrid.#span(xHigh));
     const xLabelEl = document.createElement("footer");
     xLabelEl.className = "qg-x-label";
     xLabelEl.setAttribute("aria-hidden", "true");
     xLabelEl.textContent = `${xLabel} \u2192`;
-    for (let q = 0; q < 4; q++) {
+    for (const q of _QuadrantGrid.VISUAL_ORDER) {
       const section = document.createElement("section");
       section.className = "qg-quadrant";
       section.dataset.quadrantZone = String(q);
@@ -3749,28 +4093,41 @@ var QuadrantGrid = class _QuadrantGrid extends VBElement {
         target.appendChild(child);
       } else {
         const li = document.createElement("li");
+        if (child.classList.contains("qg-pinned")) li.className = "qg-pin-item";
         li.appendChild(child);
         target.appendChild(li);
       }
     });
-    const liveRegion = document.createElement("div");
-    liveRegion.className = "qg-live-region visually-hidden";
-    liveRegion.setAttribute("role", "status");
-    liveRegion.setAttribute("aria-live", "polite");
+    const liveRegion2 = document.createElement("div");
+    liveRegion2.className = "qg-live-region visually-hidden";
+    liveRegion2.setAttribute("role", "status");
+    liveRegion2.setAttribute("aria-live", "polite");
     wrapper.appendChild(yLabelEl);
     wrapper.appendChild(yScale);
     wrapper.appendChild(grid);
     wrapper.appendChild(xScale);
     wrapper.appendChild(xLabelEl);
     this.appendChild(wrapper);
-    this.appendChild(liveRegion);
-    this.#grid = grid;
-    this.#liveRegion = liveRegion;
+    this.appendChild(liveRegion2);
+    this.#liveRegion = liveRegion2;
     this.#qLabels = qLabels;
-    if (draggable) {
+    this.#draggable = draggable;
+    this.#wire();
+  }
+  /** Attach listeners and pin observers once per connection. */
+  #wire() {
+    if (this.#wired) return;
+    this.#wired = true;
+    if (this.#draggable) {
       this.listen(this, "drag-surface:transfer", this.#onTransfer);
     }
     this.#observePins();
+  }
+  /** @param {string} text */
+  static #span(text) {
+    const span = document.createElement("span");
+    span.textContent = text;
+    return span;
   }
   #observePins() {
     if (typeof ResizeObserver === "undefined") return;
@@ -3815,6 +4172,10 @@ var QuadrantGrid = class _QuadrantGrid extends VBElement {
         pin.removeAttribute("tabindex");
         delete pin.dataset.qgTabbed;
       }
+      if (pin.dataset.qgRole !== void 0) {
+        pin.removeAttribute("role");
+        delete pin.dataset.qgRole;
+      }
     }
     let clusterSeq = 0;
     for (let q = 0; q < 4; q++) {
@@ -3855,12 +4216,17 @@ var QuadrantGrid = class _QuadrantGrid extends VBElement {
           if (!pin.hasAttribute("tabindex") && !pin.matches("a, button, [contenteditable]")) {
             pin.setAttribute("tabindex", "0");
             pin.dataset.qgTabbed = "";
+            if (!pin.hasAttribute("role")) {
+              pin.setAttribute("role", "group");
+              pin.dataset.qgRole = "";
+            }
           }
         });
       }
     }
   }
   teardown() {
+    this.#wired = false;
     this.#pinObserver?.disconnect();
     this.#pinObserver = null;
     if (this.#clusterRaf) cancelAnimationFrame(this.#clusterRaf);
@@ -3883,6 +4249,8 @@ var QuadrantGrid = class _QuadrantGrid extends VBElement {
     const to = this.#findQuadrantForSurface(toSurface);
     if (from == null || to == null) return;
     item.setAttribute("data-quadrant", String(to));
+    if (item.classList.contains("qg-pinned")) this.#unpin(item);
+    this.#scheduleClusterPass();
     this.#announce(`Moved ${this.#itemLabel(item)} to ${this.#qLabels[to]}`);
     this.dispatchEvent(new CustomEvent("quadrant-grid:move", {
       bubbles: true,
@@ -3894,6 +4262,36 @@ var QuadrantGrid = class _QuadrantGrid extends VBElement {
       }
     }));
   };
+  /**
+   * A dropped pin has no coordinates in its new quadrant: drop data-x /
+   * data-y and the pin styling so it joins the quadrant's stack.
+   * @param {HTMLElement} item
+   */
+  #unpin(item) {
+    this.#pinObserver?.unobserve(item);
+    item.removeAttribute("data-x");
+    item.removeAttribute("data-y");
+    item.classList.remove("qg-pinned", "qg-clustered");
+    for (const prop of [
+      "--qg-local-x",
+      "--qg-local-y",
+      "--qg-pin-half-w",
+      "--qg-pin-half-h",
+      "--qg-cluster-i",
+      "--qg-cluster-n"
+    ]) {
+      item.style.removeProperty(prop);
+    }
+    delete item.dataset.cluster;
+    if (item.dataset.qgTabbed !== void 0) {
+      item.removeAttribute("tabindex");
+      delete item.dataset.qgTabbed;
+    }
+    if (item.dataset.qgRole !== void 0) {
+      item.removeAttribute("role");
+      delete item.dataset.qgRole;
+    }
+  }
   #resolveQuadrant(child) {
     const q = parseInt(child.getAttribute("data-quadrant"), 10);
     if (q >= 0 && q <= 3) return q;
@@ -3930,14 +4328,15 @@ var QuadrantGrid = class _QuadrantGrid extends VBElement {
     if (this.#liveRegion) this.#liveRegion.textContent = message;
   }
   #groupId = "";
-  /** @type {Recordnumber, HTMLElement} */
+  #built = false;
+  #wired = false;
+  #draggable = false;
+  /** @type {Record<number, HTMLElement>} */
   #surfaces = {};
-  /** @type {Recordnumber, HTMLElement} */
+  /** @type {Record<number, HTMLElement>} */
   #lists = {};
-  /** @type {Recordnumber, HTMLElement} */
+  /** @type {Record<number, HTMLElement>} */
   #sections = {};
-  /** @type {HTMLElement | null} */
-  #grid = null;
   /** @type {HTMLElement | null} */
   #liveRegion = null;
   /** @type {string[]} */
@@ -3951,6 +4350,19 @@ registerComponent("quadrant-grid", QuadrantGrid);
 
 // src/web-components/risk-register/logic.js
 var SCALE = 5;
+var MIDPOINT = (SCALE + 1) / 2;
+function score(v) {
+  const n = parseInt(String(v ?? ""), 10);
+  if (!Number.isFinite(n) || n < 1) return 0;
+  return Math.min(SCALE, n);
+}
+var toUnit = (v) => (v - 1) / (SCALE - 1);
+function quadrantFor(likelihood, impact) {
+  const right = likelihood > MIDPOINT;
+  const top = impact > MIDPOINT;
+  if (top) return right ? 0 : 1;
+  return right ? 3 : 2;
+}
 var RiskRegister = class _RiskRegister extends VBElement {
   setup() {
     const tmpl = this.querySelector(":scope > template");
@@ -3981,8 +4393,8 @@ var RiskRegister = class _RiskRegister extends VBElement {
       rows.push({
         id,
         title,
-        likelihood: parseInt(cells[1]?.textContent ?? "", 10) || 0,
-        impact: parseInt(cells[2]?.textContent ?? "", 10) || 0,
+        likelihood: score(cells[1]?.textContent),
+        impact: score(cells[2]?.textContent),
         owner: cells[3]?.textContent?.trim() || "",
         mitigation: cells[4]?.textContent?.trim() || ""
       });
@@ -3990,7 +4402,12 @@ var RiskRegister = class _RiskRegister extends VBElement {
     return rows;
   }
   #render(rows) {
-    this.#rows = rows;
+    this.#rows = rows.map((r) => ({
+      ...r,
+      likelihood: score(r?.likelihood),
+      impact: score(r?.impact)
+    }));
+    rows = this.#rows;
     [...this.children].forEach((c) => {
       if (c.tagName !== "TEMPLATE") c.remove();
     });
@@ -4022,22 +4439,24 @@ var RiskRegister = class _RiskRegister extends VBElement {
           <th data-sort="string">Title</th>
           <th data-sort="number">Likelihood</th>
           <th data-sort="number">Impact</th>
-          <th data-sort="number" data-rollup="product" data-heatmap="low-good">Severity</th>
+          <th data-sort="number" data-severity data-heatmap="low-good">Severity</th>
           <th data-sort="string">Owner</th>
           <th data-sort="string">Mitigation</th>
         </tr>
       </thead>
       <tbody>
-        ${rows.map((r) => `
-          <tr data-id="${_RiskRegister.#escape(r.id)}">
-            <td>${_RiskRegister.#escape(r.title)}</td>
+        ${rows.map((r) => {
+      const sev = r.likelihood && r.impact ? r.likelihood * r.impact : null;
+      return `
+          <tr data-id="${esc(r.id)}">
+            <td>${esc(r.title)}</td>
             <td>${r.likelihood || ""}</td>
             <td>${r.impact || ""}</td>
-            <td></td>
-            <td>${_RiskRegister.#escape(r.owner)}</td>
-            <td>${_RiskRegister.#escape(r.mitigation)}</td>
-          </tr>
-        `).join("")}
+            <td${sev === null ? "" : ` data-sort-value="${sev}"`}>${sev ?? ""}</td>
+            <td>${esc(r.owner)}</td>
+            <td>${esc(r.mitigation)}</td>
+          </tr>`;
+    }).join("")}
       </tbody>
     `;
     wrapper.appendChild(table);
@@ -4058,21 +4477,17 @@ var RiskRegister = class _RiskRegister extends VBElement {
     for (const r of rows) {
       if (!r.likelihood || !r.impact) continue;
       const dot = document.createElement("span");
-      const x = Math.min(1, Math.max(0, r.likelihood / SCALE));
-      const y = Math.min(1, Math.max(0, r.impact / SCALE));
-      dot.setAttribute("data-x", x.toFixed(3));
-      dot.setAttribute("data-y", y.toFixed(3));
+      dot.setAttribute("data-x", toUnit(r.likelihood).toFixed(3));
+      dot.setAttribute("data-y", toUnit(r.impact).toFixed(3));
+      dot.setAttribute("data-quadrant", String(quadrantFor(r.likelihood, r.impact)));
       dot.setAttribute("data-id", r.id);
-      dot.setAttribute("title", `${r.title} \u2014 likelihood ${r.likelihood}, impact ${r.impact}`);
+      dot.setAttribute("title", `${r.title} \u2014 likelihood ${r.likelihood}, impact ${r.impact}, severity ${r.likelihood * r.impact}`);
       dot.textContent = r.title;
       grid.appendChild(dot);
     }
     return grid;
   }
-  static #escape(s) {
-    return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-  }
-  /** @type {Array{id:string,title:string,likelihood:number,impact:number,owner:string,mitigation:string}} */
+  /** @type {Array<{id:string,title:string,likelihood:number,impact:number,owner:string,mitigation:string}>} */
   #rows = [];
   get rows() {
     return [...this.#rows];
@@ -4084,6 +4499,7 @@ var RiskRegister = class _RiskRegister extends VBElement {
 registerComponent("risk-register", RiskRegister);
 
 // src/web-components/traceability-matrix/logic.js
+var DEFAULT_MATCH_ATTRS = ["id", "story-id", "item-id"];
 var TraceabilityMatrix = class _TraceabilityMatrix extends VBElement {
   setup() {
     const rowsSel = this.getAttribute("rows");
@@ -4093,8 +4509,23 @@ var TraceabilityMatrix = class _TraceabilityMatrix extends VBElement {
       console.warn("traceability-matrix: requires rows, cols, and link-attr attributes");
       return false;
     }
-    queueMicrotask(() => this.#build(rowsSel, colsSel, linkAttr));
+    queueMicrotask(() => {
+      if (this.isConnected) this.#build(rowsSel, colsSel, linkAttr);
+    });
     return true;
+  }
+  teardown() {
+    this.#clearHighlight();
+  }
+  /**
+   * Identifiers a column element answers to.
+   * @param {Element} el
+   * @returns {string[]}
+   */
+  #keysOf(el) {
+    const matchAttr = this.getAttribute("match-attr");
+    const attrs = matchAttr ? [matchAttr] : DEFAULT_MATCH_ATTRS;
+    return attrs.map((a) => (el.getAttribute(a) || "").trim()).filter(Boolean);
   }
   #build(rowsSel, colsSel, linkAttr) {
     const rowEls = [...document.querySelectorAll(rowsSel)].filter((el) => el !== this && !this.contains(el));
@@ -4106,19 +4537,14 @@ var TraceabilityMatrix = class _TraceabilityMatrix extends VBElement {
     const rowAxisLabel = this.getAttribute("row-label") || "";
     const cellMark = this.getAttribute("cell-mark") || "\u2713";
     const flagOrphans = this.hasAttribute("flag-orphans");
-    const links = [];
-    const rowHits = /* @__PURE__ */ new WeakMap();
-    const colHits = /* @__PURE__ */ new WeakMap();
-    for (const rowEl of rowEls) {
+    const colKeys = colEls.map((el) => new Set(this.#keysOf(el)));
+    const linked = rowEls.map((rowEl) => {
       const refs = _TraceabilityMatrix.#parseRefs(rowEl.getAttribute(linkAttr));
-      for (const ref of refs) {
-        const colEl = colEls.find((c) => c.id === ref);
-        if (!colEl) continue;
-        links.push({ rowEl, colEl });
-        rowHits.set(rowEl, (rowHits.get(rowEl) || 0) + 1);
-        colHits.set(colEl, (colHits.get(colEl) || 0) + 1);
-      }
-    }
+      return colKeys.map((keys) => refs.some((r) => keys.has(r)));
+    });
+    const rowHits = linked.map((cells) => cells.filter(Boolean).length);
+    const colHits = colEls.map((_, j) => linked.filter((cells) => cells[j]).length);
+    const linkCount = rowHits.reduce((a, b) => a + b, 0);
     const wrapper = document.createElement("data-table");
     const table = document.createElement("table");
     const thead = document.createElement("thead");
@@ -4127,44 +4553,48 @@ var TraceabilityMatrix = class _TraceabilityMatrix extends VBElement {
     corner.setAttribute("data-sort", "string");
     corner.textContent = rowAxisLabel;
     headerRow.appendChild(corner);
-    for (const colEl of colEls) {
+    const colLabels = colEls.map((el) => _TraceabilityMatrix.#labelOf(el));
+    colEls.forEach((colEl, j) => {
       const th = document.createElement("th");
       th.setAttribute("data-sort", "number");
-      th.textContent = _TraceabilityMatrix.#labelOf(colEl);
-      th.dataset.colId = colEl.id || "";
-      if (flagOrphans && !colHits.get(colEl)) th.dataset.orphan = "";
+      th.textContent = colLabels[j];
+      th.dataset.colId = colEl.id || this.#keysOf(colEl)[0] || "";
+      th.dataset.colIndex = String(j);
+      if (flagOrphans && !colHits[j]) th.dataset.orphan = "";
       headerRow.appendChild(th);
-    }
+    });
     thead.appendChild(headerRow);
     table.appendChild(thead);
     const tbody = document.createElement("tbody");
-    for (const rowEl of rowEls) {
+    rowEls.forEach((rowEl, i) => {
       const tr = document.createElement("tr");
       tr.dataset.rowId = rowEl.id || "";
-      if (flagOrphans && !rowHits.get(rowEl)) tr.dataset.orphan = "";
+      tr.dataset.rowIndex = String(i);
+      if (flagOrphans && !rowHits[i]) tr.dataset.orphan = "";
+      const rowLabel = _TraceabilityMatrix.#labelOf(rowEl);
       const labelCell = document.createElement("th");
       labelCell.scope = "row";
-      labelCell.textContent = _TraceabilityMatrix.#labelOf(rowEl);
+      labelCell.appendChild(_TraceabilityMatrix.#button(rowLabel, `Highlight ${rowLabel}`));
       tr.appendChild(labelCell);
-      const refs = _TraceabilityMatrix.#parseRefs(rowEl.getAttribute(linkAttr));
-      for (const colEl of colEls) {
+      colEls.forEach((colEl, j) => {
         const td = document.createElement("td");
-        const matched = refs.includes(colEl.id);
+        const matched = linked[i][j];
         td.setAttribute("data-sort-value", matched ? "1" : "0");
-        if (matched) {
-          td.dataset.linked = "";
-          td.textContent = cellMark;
-          td.setAttribute("aria-label", "linked");
-        } else {
-          td.setAttribute("aria-label", "not linked");
-        }
-        td.dataset.colId = colEl.id || "";
+        if (matched) td.dataset.linked = "";
+        td.setAttribute("aria-label", matched ? "linked" : "not linked");
+        td.dataset.colId = colEl.id || this.#keysOf(colEl)[0] || "";
+        td.dataset.colIndex = String(j);
+        td.appendChild(_TraceabilityMatrix.#button(
+          matched ? cellMark : "",
+          `${rowLabel} \xD7 ${colLabels[j]}: ${matched ? "linked" : "not linked"}`
+        ));
         tr.appendChild(td);
-      }
+      });
       tbody.appendChild(tr);
-    }
+    });
     table.appendChild(tbody);
     wrapper.appendChild(table);
+    this.#clearHighlight();
     [...this.children].forEach((c) => {
       if (c.tagName !== "TEMPLATE") c.remove();
     });
@@ -4176,26 +4606,38 @@ var TraceabilityMatrix = class _TraceabilityMatrix extends VBElement {
       this.appendChild(h);
     }
     this.appendChild(wrapper);
-    this.#wrapper = wrapper;
-    this.#rowsByDom = new Map(rowEls.map((el) => [el.id, el]));
-    this.#colsByDom = new Map(colEls.map((el) => [el.id, el]));
+    this.#rowEls = rowEls;
+    this.#colEls = colEls;
     this.listen(wrapper, "click", this.#onCellClick);
     queueMicrotask(() => {
       this.dispatchEvent(new CustomEvent("traceability-matrix:ready", {
         bubbles: true,
-        detail: { rowCount: rowEls.length, colCount: colEls.length, linkCount: links.length }
+        detail: { rowCount: rowEls.length, colCount: colEls.length, linkCount }
       }));
     });
+  }
+  /**
+   * @param {string} text visible text
+   * @param {string} name accessible name
+   */
+  static #button(text, name) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tm-cell-btn";
+    btn.textContent = text;
+    btn.setAttribute("aria-label", name);
+    btn.setAttribute("aria-pressed", "false");
+    return btn;
   }
   #onCellClick = (e) => {
     const cell = e.target.closest('td, th[scope="row"]');
     if (!cell) return;
     const tr = cell.closest("tr");
     if (!tr) return;
-    const rowId = tr.dataset.rowId;
-    const colId = cell.dataset.colId;
-    const rowEl = rowId ? this.#rowsByDom.get(rowId) : null;
-    const colEl = colId ? this.#colsByDom.get(colId) : null;
+    const rowIdx = tr.dataset.rowIndex;
+    const colIdx = cell.dataset.colIndex;
+    const rowEl = rowIdx !== void 0 ? this.#rowEls[Number(rowIdx)] ?? null : null;
+    const colEl = colIdx !== void 0 ? this.#colEls[Number(colIdx)] ?? null : null;
     const wasOn = cell.hasAttribute("data-state-highlighted");
     this.#clearHighlight();
     if (wasOn) {
@@ -4206,22 +4648,27 @@ var TraceabilityMatrix = class _TraceabilityMatrix extends VBElement {
       return;
     }
     cell.setAttribute("data-state-highlighted", "");
-    if (rowEl) rowEl.setAttribute("data-state-highlighted", "");
-    if (colEl && colEl !== rowEl) colEl.setAttribute("data-state-highlighted", "");
+    cell.querySelector(".tm-cell-btn")?.setAttribute("aria-pressed", "true");
     tr.setAttribute("data-state-highlighted", "");
+    for (const el of [rowEl, colEl]) {
+      if (el && !this.#highlighted.includes(el)) {
+        el.setAttribute("data-state-highlighted", "");
+        this.#highlighted.push(el);
+      }
+    }
     this.dispatchEvent(new CustomEvent("traceability-matrix:highlight", {
       bubbles: true,
       detail: { rowEl, colEl, on: true }
     }));
   };
   #clearHighlight() {
-    if (!this.#wrapper) return;
-    this.#wrapper.querySelectorAll("[data-state-highlighted]").forEach((el) => el.removeAttribute("data-state-highlighted"));
-    document.querySelectorAll("[data-state-highlighted]").forEach((el) => {
-      if (this.#rowsByDom.has(el.id) || this.#colsByDom.has(el.id)) el.removeAttribute("data-state-highlighted");
-    });
+    this.querySelectorAll("[data-state-highlighted]").forEach((el) => el.removeAttribute("data-state-highlighted"));
+    this.querySelectorAll('.tm-cell-btn[aria-pressed="true"]').forEach((el) => el.setAttribute("aria-pressed", "false"));
+    for (const el of this.#highlighted) el.removeAttribute("data-state-highlighted");
+    this.#highlighted = [];
   }
   #renderEmpty() {
+    this.#clearHighlight();
     [...this.children].forEach((c) => {
       if (c.tagName !== "TEMPLATE") c.remove();
     });
@@ -4237,19 +4684,121 @@ var TraceabilityMatrix = class _TraceabilityMatrix extends VBElement {
   static #labelOf(el) {
     return el.getAttribute("data-matrix-label") || el.id || (el.textContent || "").trim().split("\n")[0].slice(0, 60) || "(unnamed)";
   }
-  /** @type {HTMLElement | null} */
-  #wrapper = null;
-  /** @type {Mapstring, Element} */
-  #rowsByDom = /* @__PURE__ */ new Map();
-  /** @type {Mapstring, Element} */
-  #colsByDom = /* @__PURE__ */ new Map();
+  /** @type {Element[]} */
+  #rowEls = [];
+  /** @type {Element[]} */
+  #colEls = [];
+  /** Source elements this matrix highlighted (cleared on re-highlight and teardown). @type {Element[]} */
+  #highlighted = [];
 };
 registerComponent("traceability-matrix", TraceabilityMatrix);
 
+// src/lib/dates.js
+var ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?![\d:T])/;
+var ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+function parseISODate(value) {
+  if (value == null || value === "") return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : startOfDay(value);
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? startOfDay(new Date(value)) : null;
+  }
+  const s = String(value).trim();
+  const m = s.match(ISO_DATE);
+  if (m) {
+    const d2 = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    if (d2.getMonth() !== Number(m[2]) - 1 || d2.getDate() !== Number(m[3])) return null;
+    return d2;
+  }
+  if (!ISO_TIMESTAMP.test(s)) return null;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : startOfDay(d);
+}
+function startOfDay(d) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+function toISODate(d) {
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+function addDays(d, n) {
+  const out = startOfDay(d);
+  out.setDate(out.getDate() + n);
+  return out;
+}
+function daysBetween(a, b) {
+  const ua = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+  const ub = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+  return Math.round((ub - ua) / 864e5);
+}
+function enumerateDays(start, end) {
+  const out = [];
+  for (let d = startOfDay(start); d <= end; d = addDays(d, 1)) out.push(toISODate(d));
+  return out;
+}
+function startOfMonth(d) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+function endOfMonth(d) {
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+}
+function startOfQuarter(d) {
+  return new Date(d.getFullYear(), Math.floor(d.getMonth() / 3) * 3, 1);
+}
+function addMonths(d, n) {
+  const first = new Date(d.getFullYear(), d.getMonth() + n, 1);
+  const last = endOfMonth(first).getDate();
+  return new Date(first.getFullYear(), first.getMonth(), Math.min(d.getDate(), last));
+}
+function formatDate(d, opts = { year: "numeric", month: "long", day: "numeric" }, locale = void 0) {
+  return d.toLocaleDateString(locale, opts);
+}
+
 // src/web-components/burndown-chart/logic.js
-var MS_PER_DAY = 864e5;
 var BurndownChart = class _BurndownChart extends VBElement {
+  static get observedAttributes() {
+    return ["start", "end", "total", "unit", "label", "weekends"];
+  }
+  /** True between connectedCallback and disconnectedCallback. */
+  #live = false;
+  connectedCallback() {
+    this.#live = true;
+    super.connectedCallback();
+  }
+  disconnectedCallback() {
+    this.#live = false;
+    super.disconnectedCallback();
+  }
+  attributeChangedCallback(_name, oldValue, newValue) {
+    if (oldValue === newValue || !this.#live) return;
+    if (this.hasAttribute("data-upgraded")) {
+      if (!this.#renderFromAttributes()) this.#clearRendered();
+    } else {
+      super.connectedCallback();
+    }
+  }
   setup() {
+    if (!this.#renderFromAttributes()) return false;
+    const { dayCount, total, scopeChanges } = this.#lastRender;
+    queueMicrotask(() => {
+      this.dispatchEvent(new CustomEvent("burndown-chart:ready", {
+        bubbles: true,
+        detail: { dayCount, total, scopeChanges }
+      }));
+    });
+    return true;
+  }
+  /** @type {{ dayCount: number, total: number, scopeChanges: number }} */
+  #lastRender = { dayCount: 0, total: 0, scopeChanges: 0 };
+  #clearRendered() {
+    [...this.children].forEach((c) => {
+      if (c.tagName !== "TEMPLATE") c.remove();
+    });
+  }
+  /** Read attributes + template and render. Returns false when the config is invalid. */
+  #renderFromAttributes() {
     const start = this.getAttribute("start");
     const end = this.getAttribute("end");
     const total = parseFloat(this.getAttribute("total") || "");
@@ -4257,8 +4806,8 @@ var BurndownChart = class _BurndownChart extends VBElement {
       console.warn("burndown-chart: requires start, end, and total attributes");
       return false;
     }
-    const startDate = _BurndownChart.#parseDate(start);
-    const endDate = _BurndownChart.#parseDate(end);
+    const startDate = parseISODate(start);
+    const endDate = parseISODate(end);
     if (!startDate || !endDate || endDate < startDate) {
       console.warn("burndown-chart: start/end dates invalid", start, end);
       return false;
@@ -4269,22 +4818,15 @@ var BurndownChart = class _BurndownChart extends VBElement {
     const tmpl = this.querySelector(":scope > template");
     const samples = tmpl ? _BurndownChart.#parseTemplate(tmpl) : [];
     const scopeChanges = samples.filter((s) => s.delta !== 0);
-    const dayLabels = _BurndownChart.#enumerateDays(startDate, endDate);
+    const dayLabels = enumerateDays(startDate, endDate);
     const ideal = _BurndownChart.#idealSeries(dayLabels, total, includeWeekends);
     const actual = _BurndownChart.#actualSeries(dayLabels, samples);
     this.#render({ label, unit, dayLabels, actual, ideal, scopeChanges });
-    queueMicrotask(() => {
-      this.dispatchEvent(new CustomEvent("burndown-chart:ready", {
-        bubbles: true,
-        detail: { dayCount: dayLabels.length, total, scopeChanges: scopeChanges.length }
-      }));
-    });
+    this.#lastRender = { dayCount: dayLabels.length, total, scopeChanges: scopeChanges.length };
     return true;
   }
   #render({ label, unit, dayLabels, actual, ideal, scopeChanges }) {
-    [...this.children].forEach((c) => {
-      if (c.tagName !== "TEMPLATE") c.remove();
-    });
+    this.#clearRendered();
     if (label) {
       const h = document.createElement("header");
       h.className = "bdc-label";
@@ -4319,7 +4861,12 @@ var BurndownChart = class _BurndownChart extends VBElement {
       for (const change of scopeChanges) {
         const li = document.createElement("li");
         const sign = change.delta > 0 ? "+" : "";
-        li.innerHTML = `<time datetime="${change.date}">${change.date}</time>: <strong>${sign}${change.delta} ${unit}</strong>`;
+        const time = document.createElement("time");
+        time.setAttribute("datetime", change.date);
+        time.textContent = change.date;
+        const strong = document.createElement("strong");
+        strong.textContent = `${sign}${change.delta} ${unit}`;
+        li.append(time, ": ", strong);
         list.appendChild(li);
       }
       notes.appendChild(list);
@@ -4331,34 +4878,19 @@ var BurndownChart = class _BurndownChart extends VBElement {
     const trs = tmpl.content.querySelectorAll("tr");
     for (const tr of trs) {
       const cells = [...tr.children];
-      const date = cells[0]?.textContent?.trim();
+      const raw = cells[0]?.textContent?.trim();
       const remaining = parseFloat(cells[1]?.textContent ?? "");
       const delta = parseFloat(cells[2]?.textContent ?? "0") || 0;
-      if (!date || !Number.isFinite(remaining)) continue;
+      if (!raw || !Number.isFinite(remaining)) continue;
+      const parsed = /^\d{4}-\d{2}-\d{2}/.test(raw) ? parseISODate(raw) : null;
+      const date = parsed ? toISODate(parsed) : raw;
       out.push({ date, remaining, delta });
     }
     return out;
   }
-  static #parseDate(s) {
-    const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (!m) return null;
-    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  }
-  static #toISO(d) {
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${d.getFullYear()}-${m}-${day}`;
-  }
-  static #enumerateDays(start, end) {
-    const days = [];
-    for (let t = start.getTime(); t <= end.getTime(); t += MS_PER_DAY) {
-      days.push(_BurndownChart.#toISO(new Date(t)));
-    }
-    return days;
-  }
   static #idealSeries(dayLabels, total, includeWeekends) {
     const isWeekend = (label) => {
-      const d = _BurndownChart.#parseDate(label);
+      const d = parseISODate(label);
       if (!d) return false;
       const w = d.getDay();
       return w === 0 || w === 6;
@@ -4388,10 +4920,23 @@ var BurndownChart = class _BurndownChart extends VBElement {
 registerComponent("burndown-chart", BurndownChart);
 
 // src/web-components/product-roadmap/logic.js
+var DRAG_THRESHOLD = 4;
+var STATUS_LABELS = {
+  planned: "Planned",
+  "in-progress": "In progress",
+  "at-risk": "At risk",
+  shipped: "Shipped",
+  blocked: "Blocked"
+};
+function statusLabel(s) {
+  return STATUS_LABELS[s] || (s.charAt(0).toUpperCase() + s.slice(1)).replace(/-/g, " ");
+}
+var instanceCounter = 0;
 var Roadmap = class _Roadmap extends VBElement {
   static get observedAttributes() {
     return ["start", "end", "view", "editable", "today-marker"];
   }
+  #uid = `rm-${++instanceCounter}`;
   setup() {
     if (!this.#readConfig()) return false;
     const lanes = [...this.querySelectorAll(":scope > section[data-lane]")];
@@ -4400,8 +4945,17 @@ var Roadmap = class _Roadmap extends VBElement {
       return false;
     }
     this.#sourceLanes = lanes;
+    this.listen(this, "click", this.#onClick);
+    this.listen(this, "keydown", this.#onKeyDown);
+    this.listen(this, "pointerdown", this.#onPointerDown);
+    this.listen(this, "pointermove", this.#onPointerMove);
+    this.listen(this, "pointerup", this.#onPointerUp);
+    this.listen(this, "pointercancel", this.#onPointerCancel);
     this.#render();
     return true;
+  }
+  teardown() {
+    this.#dragInfo = null;
   }
   /** Parse start/end/view/editable from attributes. Returns false when invalid. */
   #readConfig() {
@@ -4413,35 +4967,44 @@ var Roadmap = class _Roadmap extends VBElement {
     }
     const start = _Roadmap.#parseDate(startAttr, "start");
     const end = _Roadmap.#parseDate(endAttr, "end");
-    if (!start || !end || end <= start) {
+    if (!start || !end || end < start) {
       console.warn("product-roadmap: invalid start/end", startAttr, endAttr);
       return false;
     }
     this.#start = start;
-    this.#end = end;
-    this.#totalMs = end.getTime() - start.getTime();
+    this.#endExcl = addDays(end, 1);
+    this.#totalDays = daysBetween(start, this.#endExcl);
     this.#view = this.getAttribute("view") === "month" ? "month" : "quarter";
     this.#editable = this.hasAttribute("editable");
     return true;
   }
   attributeChangedCallback(_name, oldValue, newValue) {
     if (oldValue === newValue) return;
-    if (!this.isConnected || !this.#sourceLanes.length) return;
+    if (!this.isConnected || !this.hasAttribute("data-upgraded")) return;
     if (this.#readConfig()) this.#render();
   }
+  get #periodMonths() {
+    return this.#view === "month" ? 1 : 3;
+  }
   #render() {
+    const focused = (
+      /** @type {HTMLElement | null} */
+      this.querySelector(".rm-bar:focus")
+    );
+    const refocus = focused ? this.#initiativeFor.get(focused) : null;
     [...this.children].forEach((c) => {
       if (!this.#sourceLanes.includes(c)) c.remove();
     });
     this.#sourceLanes.forEach((lane) => {
       lane.hidden = true;
     });
+    this.#initiativeFor = /* @__PURE__ */ new WeakMap();
     const wrapper = document.createElement("div");
     wrapper.className = "rm-wrapper";
-    const axis = this.#buildAxis();
-    wrapper.appendChild(axis);
+    wrapper.appendChild(this.#buildAxis());
     const lanesEl = document.createElement("div");
     lanesEl.className = "rm-lanes";
+    let refocusBar = null;
     for (const sourceLane of this.#sourceLanes) {
       const laneName = sourceLane.getAttribute("data-lane") || "";
       const laneEl = document.createElement("section");
@@ -4457,34 +5020,45 @@ var Roadmap = class _Roadmap extends VBElement {
       const initiatives = [...sourceLane.querySelectorAll(":scope > article[data-start][data-end]")];
       for (const init of initiatives) {
         const bar = this.#buildBar(init, laneName);
-        if (bar) track.appendChild(bar);
-      }
-      if (this.#editable) {
-        track.addEventListener("dragover", this.#onTrackDragOver);
-        track.addEventListener("drop", this.#onTrackDrop);
+        if (!bar) continue;
+        track.appendChild(bar);
+        if (init === refocus) refocusBar = bar;
       }
       laneEl.appendChild(track);
       lanesEl.appendChild(laneEl);
     }
     wrapper.appendChild(lanesEl);
-    if (this.hasAttribute("today-marker") && this.#start && this.#end) {
-      const today = /* @__PURE__ */ new Date();
-      if (today >= this.#start && today <= this.#end) {
+    if (this.hasAttribute("today-marker") && this.#start && this.#endExcl) {
+      const today = parseISODate(/* @__PURE__ */ new Date());
+      if (today >= this.#start && today < this.#endExcl) {
         const marker = document.createElement("div");
         marker.className = "rm-today";
         marker.style.setProperty("--rm-x", this.#fractionFor(today).toFixed(4));
-        marker.title = `Today: ${_Roadmap.#toISO(today)}`;
+        marker.title = `Today: ${toISODate(today)}`;
         lanesEl.appendChild(marker);
       }
     }
+    if (this.#editable) {
+      const help = document.createElement("p");
+      help.id = `${this.#uid}-help`;
+      help.className = "rm-sr-only";
+      const unit = this.#view === "month" ? "month" : "quarter";
+      help.textContent = `Arrow keys move by one ${unit}. Shift plus arrow keys change the end date. Alt plus up or down arrow moves to another lane.`;
+      wrapper.appendChild(help);
+    }
+    const live = document.createElement("div");
+    live.className = "rm-sr-only";
+    live.setAttribute("role", "status");
+    live.setAttribute("aria-live", "polite");
+    wrapper.appendChild(live);
+    this.#liveRegion = live;
     this.appendChild(wrapper);
-    this.#wrapper = wrapper;
+    if (refocusBar) refocusBar.focus();
   }
   #buildAxis() {
     const axis = document.createElement("header");
     axis.className = "rm-axis";
-    const ticks = this.#enumerateTicks();
-    for (const tick of ticks) {
+    for (const tick of this.#enumerateTicks()) {
       const cell = document.createElement("div");
       cell.className = "rm-tick";
       cell.style.setProperty("--rm-x", tick.startFraction.toFixed(4));
@@ -4494,12 +5068,17 @@ var Roadmap = class _Roadmap extends VBElement {
     }
     return axis;
   }
+  /**
+   * @param {Element} initiative
+   * @param {string} laneName
+   */
   #buildBar(initiative, laneName) {
     const start = _Roadmap.#parseDate(initiative.getAttribute("data-start"), "start");
     const end = _Roadmap.#parseDate(initiative.getAttribute("data-end"), "end");
-    if (!start || !end || !this.#start || !this.#end) return null;
+    if (!start || !end || end < start || !this.#start || !this.#endExcl) return null;
+    const endExcl = addDays(end, 1);
     const clipStart = start < this.#start ? this.#start : start;
-    const clipEnd = end > this.#end ? this.#end : end;
+    const clipEnd = endExcl > this.#endExcl ? this.#endExcl : endExcl;
     if (clipStart >= clipEnd) return null;
     const x = this.#fractionFor(clipStart);
     const w = this.#fractionFor(clipEnd) - x;
@@ -4508,244 +5087,346 @@ var Roadmap = class _Roadmap extends VBElement {
     bar.style.setProperty("--rm-x", x.toFixed(4));
     bar.style.setProperty("--rm-w", w.toFixed(4));
     bar.dataset.lane = laneName;
-    bar.dataset.start = _Roadmap.#toISO(start);
-    bar.dataset.end = _Roadmap.#toISO(end);
-    if (initiative.dataset.status) bar.dataset.status = initiative.dataset.status;
+    bar.dataset.start = toISODate(start);
+    bar.dataset.end = toISODate(end);
+    const status = (
+      /** @type {HTMLElement} */
+      initiative.dataset.status || ""
+    );
+    if (status) bar.dataset.status = status;
     if (initiative.id) bar.dataset.sourceId = initiative.id;
-    if (this.#editable) bar.setAttribute("draggable", "true");
+    bar.tabIndex = 0;
+    bar.setAttribute("role", "button");
+    this.#initiativeFor.set(bar, initiative);
     const title = initiative.querySelector("h1, h2, h3, h4, h5, h6");
     const heading = document.createElement("span");
     heading.className = "rm-bar-title";
     heading.textContent = title ? title.textContent.trim() : (initiative.textContent || "").trim().split("\n")[0];
     bar.appendChild(heading);
-    bar.setAttribute("aria-label", `${heading.textContent} \u2014 ${bar.dataset.start} to ${bar.dataset.end} in ${laneName}`);
-    bar.addEventListener("click", (e) => {
-      if (this.#dragInfo) return;
-      this.dispatchEvent(new CustomEvent("product-roadmap:select", {
-        bubbles: true,
-        detail: {
-          initiative,
-          lane: laneName,
-          start: bar.dataset.start,
-          end: bar.dataset.end,
-          status: bar.dataset.status || null
-        }
-      }));
-    });
+    if (status) {
+      const badge = document.createElement("span");
+      badge.className = "rm-bar-status";
+      badge.textContent = statusLabel(status);
+      bar.appendChild(badge);
+    }
+    bar.setAttribute(
+      "aria-label",
+      `${heading.textContent} \u2014 ${formatDate(start)} to ${formatDate(end)} in ${laneName}` + (status ? `, status: ${statusLabel(status).toLowerCase()}` : "")
+    );
     if (this.#editable) {
+      bar.setAttribute("aria-describedby", `${this.#uid}-help`);
       const handle = document.createElement("span");
       handle.className = "rm-bar-handle";
-      handle.setAttribute("aria-label", "Resize end date");
+      handle.setAttribute("aria-hidden", "true");
+      handle.title = "Drag to change the end date";
       bar.appendChild(handle);
-      handle.addEventListener("pointerdown", (e) => this.#startResize(e, bar, initiative));
-      bar.addEventListener("pointerdown", (e) => {
-        if (e.target === handle) return;
-        this.#startMove(e, bar, initiative);
-      });
-      bar.addEventListener("dragstart", (e) => {
-        if (e.dataTransfer) {
-          e.dataTransfer.effectAllowed = "move";
-          e.dataTransfer.setData("text/plain", initiative.id || bar.dataset.sourceId || "");
-        }
-        this.#draggingInitiative = initiative;
-        this.#draggingFromLane = laneName;
-      });
-      bar.addEventListener("dragend", () => {
-        this.#draggingInitiative = null;
-        this.#draggingFromLane = null;
-      });
     }
     return bar;
   }
-  /* --- pointer drag (move along time axis) --- */
-  #startMove(e, bar, initiative) {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    const trackRect = bar.parentElement.getBoundingClientRect();
-    const startX = e.clientX;
-    const startFraction = parseFloat(bar.style.getPropertyValue("--rm-x")) || 0;
-    const widthFraction = parseFloat(bar.style.getPropertyValue("--rm-w")) || 0;
-    this.#dragInfo = { kind: "move", bar, initiative, trackRect, startX, startFraction, widthFraction };
-    bar.setPointerCapture(e.pointerId);
-    bar.addEventListener("pointermove", this.#onPointerMove);
-    bar.addEventListener("pointerup", this.#onPointerUp);
-    bar.addEventListener("pointercancel", this.#onPointerUp);
-  }
-  #startResize(e, bar, initiative) {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const trackRect = bar.parentElement.getBoundingClientRect();
-    const startX = e.clientX;
-    const startFraction = parseFloat(bar.style.getPropertyValue("--rm-x")) || 0;
-    const widthFraction = parseFloat(bar.style.getPropertyValue("--rm-w")) || 0;
-    this.#dragInfo = { kind: "resize", bar, initiative, trackRect, startX, startFraction, widthFraction };
-    bar.setPointerCapture(e.pointerId);
-    bar.addEventListener("pointermove", this.#onPointerMove);
-    bar.addEventListener("pointerup", this.#onPointerUp);
-    bar.addEventListener("pointercancel", this.#onPointerUp);
-  }
-  #onPointerMove = (e) => {
-    if (!this.#dragInfo) return;
-    const { kind, bar, trackRect, startX, startFraction, widthFraction } = this.#dragInfo;
-    const dxFraction = (e.clientX - startX) / trackRect.width;
-    if (kind === "move") {
-      const newStart = Math.max(0, Math.min(1 - widthFraction, startFraction + dxFraction));
-      bar.style.setProperty("--rm-x", newStart.toFixed(4));
-    } else if (kind === "resize") {
-      const newWidth = Math.max(0.02, Math.min(1 - startFraction, widthFraction + dxFraction));
-      bar.style.setProperty("--rm-w", newWidth.toFixed(4));
-    }
-  };
-  #onPointerUp = (e) => {
-    if (!this.#dragInfo) return;
-    const { kind, bar, initiative } = this.#dragInfo;
-    bar.releasePointerCapture(e.pointerId);
-    bar.removeEventListener("pointermove", this.#onPointerMove);
-    bar.removeEventListener("pointerup", this.#onPointerUp);
-    bar.removeEventListener("pointercancel", this.#onPointerUp);
-    const xFrac = parseFloat(bar.style.getPropertyValue("--rm-x")) || 0;
-    const wFrac = parseFloat(bar.style.getPropertyValue("--rm-w")) || 0;
-    const snappedStart = this.#snapDate(this.#dateForFraction(xFrac));
-    const snappedEnd = this.#snapDate(this.#dateForFraction(xFrac + wFrac));
-    bar.dataset.start = _Roadmap.#toISO(snappedStart);
-    bar.dataset.end = _Roadmap.#toISO(snappedEnd);
-    const snappedX = this.#fractionFor(snappedStart);
-    const snappedW = this.#fractionFor(snappedEnd) - snappedX;
-    bar.style.setProperty("--rm-x", snappedX.toFixed(4));
-    bar.style.setProperty("--rm-w", snappedW.toFixed(4));
-    if (initiative) {
-      initiative.setAttribute("data-start", bar.dataset.start ?? "");
-      initiative.setAttribute("data-end", bar.dataset.end ?? "");
-    }
-    this.dispatchEvent(new CustomEvent(kind === "move" ? "product-roadmap:reschedule" : "product-roadmap:resize", {
+  /* --- selection --- */
+  /** @param {HTMLElement} bar */
+  #select(bar) {
+    const initiative = this.#initiativeFor.get(bar);
+    if (!initiative) return;
+    this.dispatchEvent(new CustomEvent("product-roadmap:select", {
       bubbles: true,
       detail: {
         initiative,
         lane: bar.dataset.lane,
         start: bar.dataset.start,
-        end: bar.dataset.end
+        end: bar.dataset.end,
+        status: bar.dataset.status || null
       }
     }));
+  }
+  /** @param {Event} e */
+  #barFromEvent(e) {
+    const t = (
+      /** @type {Element} */
+      e.target
+    );
+    const bar = (
+      /** @type {HTMLElement | null} */
+      t?.closest?.(".rm-bar")
+    );
+    return bar && this.contains(bar) ? bar : null;
+  }
+  #onClick = (e) => {
+    const bar = this.#barFromEvent(e);
+    if (!bar) return;
+    if (this.#suppressClick) return;
+    this.#select(bar);
+  };
+  #onKeyDown = (e) => {
+    const ke = (
+      /** @type {KeyboardEvent} */
+      e
+    );
+    const bar = this.#barFromEvent(ke);
+    if (!bar || ke.target !== bar) return;
+    if (ke.key === "Enter" || ke.key === " ") {
+      ke.preventDefault();
+      this.#select(bar);
+      return;
+    }
+    if (!this.#editable) return;
+    const initiative = this.#initiativeFor.get(bar);
+    if (!initiative) return;
+    const p = this.#periodMonths;
+    if (ke.altKey && (ke.key === "ArrowUp" || ke.key === "ArrowDown")) {
+      ke.preventDefault();
+      const names = this.#sourceLanes.map((l) => l.getAttribute("data-lane") || "");
+      const idx = names.indexOf(bar.dataset.lane || "");
+      const next = names[idx + (ke.key === "ArrowUp" ? -1 : 1)];
+      if (idx === -1 || next === void 0) return;
+      this.#commit(initiative, bar.dataset.lane || "", next, null, null, "move");
+      return;
+    }
+    if (ke.key !== "ArrowLeft" && ke.key !== "ArrowRight") return;
+    ke.preventDefault();
+    const dir = ke.key === "ArrowLeft" ? -1 : 1;
+    const start = parseISODate(bar.dataset.start);
+    const endExcl = addDays(parseISODate(bar.dataset.end), 1);
+    if (ke.shiftKey) {
+      if (dir > 0 && endExcl >= this.#endExcl) return;
+      const nextEndExcl = addMonths(endExcl, dir * p);
+      if (nextEndExcl <= start) return;
+      this.#commit(initiative, bar.dataset.lane || "", null, start, addDays(nextEndExcl, -1), "resize");
+    } else {
+      if (dir < 0 && start <= this.#start) return;
+      if (dir > 0 && endExcl >= this.#endExcl) return;
+      const nextStart = addMonths(start, dir * p);
+      const nextEndExcl = addMonths(endExcl, dir * p);
+      this.#commit(initiative, bar.dataset.lane || "", null, nextStart, addDays(nextEndExcl, -1), "reschedule");
+    }
+  };
+  /* --- pointer drag (time axis + cross-lane) --- */
+  #onPointerDown = (e) => {
+    const pe = (
+      /** @type {PointerEvent} */
+      e
+    );
+    if (!this.#editable || pe.button !== 0) return;
+    const bar = this.#barFromEvent(pe);
+    if (!bar) return;
+    const track = bar.parentElement;
+    if (!track) return;
+    const isHandle = (
+      /** @type {Element} */
+      pe.target.classList?.contains("rm-bar-handle")
+    );
+    this.#dragInfo = {
+      kind: isHandle ? "resize" : "move",
+      pointerId: pe.pointerId,
+      bar,
+      trackRect: track.getBoundingClientRect(),
+      startX: pe.clientX,
+      startY: pe.clientY,
+      startFraction: parseFloat(bar.style.getPropertyValue("--rm-x")) || 0,
+      widthFraction: parseFloat(bar.style.getPropertyValue("--rm-w")) || 0,
+      moved: false,
+      targetLane: bar.dataset.lane || ""
+    };
+  };
+  #onPointerMove = (e) => {
+    const pe = (
+      /** @type {PointerEvent} */
+      e
+    );
+    const info = this.#dragInfo;
+    if (!info || pe.pointerId !== info.pointerId) return;
+    const dx = pe.clientX - info.startX;
+    const dy = pe.clientY - info.startY;
+    if (!info.moved) {
+      if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+      info.moved = true;
+      info.bar.setAttribute("data-dragging", "");
+      try {
+        info.bar.setPointerCapture(pe.pointerId);
+      } catch {
+      }
+    }
+    const dxFraction = dx / info.trackRect.width;
+    if (info.kind === "move") {
+      const newStart = Math.max(0, Math.min(1 - info.widthFraction, info.startFraction + dxFraction));
+      info.bar.style.setProperty("--rm-x", newStart.toFixed(4));
+      let target = info.bar.dataset.lane || "";
+      for (
+        const track of
+        /** @type {NodeListOf<HTMLElement>} */
+        this.querySelectorAll(".rm-track")
+      ) {
+        const r = track.getBoundingClientRect();
+        if (pe.clientY >= r.top && pe.clientY <= r.bottom) {
+          target = track.dataset.lane || "";
+        }
+        track.toggleAttribute("data-drop-target", false);
+      }
+      info.targetLane = target;
+      if (target !== info.bar.dataset.lane) {
+        this.querySelector(`.rm-track[data-lane="${CSS.escape(target)}"]`)?.setAttribute("data-drop-target", "");
+      }
+    } else {
+      const newWidth = Math.max(0.01, Math.min(1 - info.startFraction, info.widthFraction + dxFraction));
+      info.bar.style.setProperty("--rm-w", newWidth.toFixed(4));
+    }
+  };
+  #onPointerUp = (e) => {
+    const pe = (
+      /** @type {PointerEvent} */
+      e
+    );
+    const info = this.#dragInfo;
+    if (!info || pe.pointerId !== info.pointerId) return;
+    this.#dragInfo = null;
+    if (!info.moved) return;
+    this.#suppressClick = true;
     setTimeout(() => {
-      this.#dragInfo = null;
+      this.#suppressClick = false;
     }, 0);
+    const initiative = this.#initiativeFor.get(info.bar);
+    if (!initiative) return;
+    const xFrac = parseFloat(info.bar.style.getPropertyValue("--rm-x")) || 0;
+    const wFrac = parseFloat(info.bar.style.getPropertyValue("--rm-w")) || 0;
+    let start = parseISODate(info.bar.dataset.start);
+    let endExcl = addDays(parseISODate(info.bar.dataset.end), 1);
+    if (info.kind === "move") {
+      const dFrac = xFrac - info.startFraction;
+      start = this.#snapToBoundary(this.#dateForFraction(this.#rawFractionFor(start) + dFrac));
+      endExcl = this.#snapToBoundary(this.#dateForFraction(this.#rawFractionFor(endExcl) + dFrac));
+    } else {
+      const dFrac = wFrac - info.widthFraction;
+      endExcl = this.#snapToBoundary(this.#dateForFraction(this.#rawFractionFor(endExcl) + dFrac));
+    }
+    if (endExcl <= start) endExcl = addMonths(start, this.#periodMonths);
+    const fromLane = info.bar.dataset.lane || "";
+    const toLane = info.kind === "move" && info.targetLane !== fromLane ? info.targetLane : null;
+    this.#commit(initiative, fromLane, toLane, start, addDays(endExcl, -1), info.kind === "move" ? "reschedule" : "resize");
   };
-  #onTrackDragOver = (e) => {
-    if (!this.#draggingInitiative) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-  #onTrackDrop = (e) => {
-    if (!this.#draggingInitiative) return;
-    e.preventDefault();
-    const targetLane = e.currentTarget.dataset.lane;
-    const initiative = this.#draggingInitiative;
-    const fromLane = this.#draggingFromLane;
-    if (targetLane === fromLane) return;
-    const newSourceLane = this.#sourceLanes.find((l) => l.getAttribute("data-lane") === targetLane);
-    if (newSourceLane) newSourceLane.appendChild(initiative);
-    this.dispatchEvent(new CustomEvent("product-roadmap:move", {
-      bubbles: true,
-      detail: {
-        initiative,
-        fromLane,
-        toLane: targetLane,
-        start: initiative.getAttribute("data-start"),
-        end: initiative.getAttribute("data-end")
-      }
-    }));
+  #onPointerCancel = (e) => {
+    const pe = (
+      /** @type {PointerEvent} */
+      e
+    );
+    if (!this.#dragInfo || pe.pointerId !== this.#dragInfo.pointerId) return;
+    this.#dragInfo = null;
     this.#render();
   };
-  /* --- date math --- */
-  #fractionFor(date) {
-    if (!this.#start) return 0;
-    const ms = date.getTime() - this.#start.getTime();
-    return Math.max(0, Math.min(1, ms / this.#totalMs));
-  }
-  #dateForFraction(frac) {
-    const start = this.#start ?? /* @__PURE__ */ new Date();
-    return new Date(start.getTime() + frac * this.#totalMs);
-  }
-  #snapDate(date) {
-    if (this.#view === "month") {
-      return new Date(date.getFullYear(), date.getMonth(), 1);
+  /**
+   * Apply a date and/or lane change to the source <article>, fire the
+   * matching events, and re-render. Unchanged values fire nothing.
+   * @param {Element} initiative
+   * @param {string} fromLane
+   * @param {string | null} toLane - new lane, or null to stay
+   * @param {Date | null} start - new start, or null to keep
+   * @param {Date | null} end - new inclusive end, or null to keep
+   * @param {'reschedule' | 'resize' | 'move'} dateEvent - event to fire if the dates changed
+   */
+  #commit(initiative, fromLane, toLane, start, end, dateEvent) {
+    const oldStart = toISODate(_Roadmap.#parseDate(initiative.getAttribute("data-start"), "start"));
+    const oldEnd = toISODate(_Roadmap.#parseDate(initiative.getAttribute("data-end"), "end"));
+    const newStart = start ? toISODate(start) : oldStart;
+    const newEnd = end ? toISODate(end) : oldEnd;
+    const datesChanged = newStart !== oldStart || newEnd !== oldEnd;
+    const targetLane = toLane !== null && toLane !== fromLane ? this.#sourceLanes.find((l) => l.getAttribute("data-lane") === toLane) : null;
+    const laneChanged = !!targetLane;
+    if (datesChanged) {
+      initiative.setAttribute("data-start", newStart);
+      initiative.setAttribute("data-end", newEnd);
     }
-    const month = date.getMonth();
-    const qStartMonth = Math.floor(month / 3) * 3;
-    return new Date(date.getFullYear(), qStartMonth, 1);
+    if (targetLane) targetLane.appendChild(initiative);
+    this.#render();
+    if (!datesChanged && !laneChanged) return;
+    const lane = laneChanged ? toLane : fromLane;
+    const title = initiative.querySelector("h1, h2, h3, h4, h5, h6")?.textContent?.trim() || "Initiative";
+    this.#announce(`${title}: ${formatDate(parseISODate(newStart))} to ${formatDate(parseISODate(newEnd))} in ${lane}`);
+    if (datesChanged && dateEvent !== "move") {
+      this.dispatchEvent(new CustomEvent(`product-roadmap:${dateEvent}`, {
+        bubbles: true,
+        detail: { initiative, lane, start: newStart, end: newEnd }
+      }));
+    }
+    if (laneChanged) {
+      this.dispatchEvent(new CustomEvent("product-roadmap:move", {
+        bubbles: true,
+        detail: { initiative, fromLane, toLane, start: newStart, end: newEnd }
+      }));
+    }
+  }
+  /** @param {string} msg */
+  #announce(msg) {
+    if (this.#liveRegion) this.#liveRegion.textContent = msg;
+  }
+  /* --- date math (calendar days, DST-safe) --- */
+  /** @param {Date} date */
+  #fractionFor(date) {
+    if (!this.#start || !this.#totalDays) return 0;
+    return Math.max(0, Math.min(1, daysBetween(this.#start, date) / this.#totalDays));
+  }
+  /** Unclamped position of `date` on the range (< 0 before it, > 1 after). @param {Date} date */
+  #rawFractionFor(date) {
+    if (!this.#start || !this.#totalDays) return 0;
+    return daysBetween(this.#start, date) / this.#totalDays;
+  }
+  /** @param {number} frac */
+  #dateForFraction(frac) {
+    return addDays(this.#start ?? /* @__PURE__ */ new Date(), Math.round(frac * this.#totalDays));
+  }
+  /** @param {Date} date */
+  #periodStart(date) {
+    return this.#view === "month" ? startOfMonth(date) : startOfQuarter(date);
+  }
+  /** Round to the nearest period boundary (quarter or month start). @param {Date} date */
+  #snapToBoundary(date) {
+    const a = this.#periodStart(date);
+    const b = addMonths(a, this.#periodMonths);
+    return daysBetween(a, date) <= daysBetween(date, b) ? a : b;
   }
   #enumerateTicks() {
     const ticks = [];
     const start = this.#start;
-    const end = this.#end;
+    const end = this.#endExcl;
     if (!start || !end) return ticks;
-    if (this.#view === "quarter") {
-      let cursor = this.#snapDate(start);
-      while (cursor < end) {
-        const next = new Date(cursor.getFullYear(), cursor.getMonth() + 3, 1);
-        const startFraction = this.#fractionFor(cursor < start ? start : cursor);
-        const endFraction = this.#fractionFor(next > end ? end : next);
-        const q = Math.floor(cursor.getMonth() / 3) + 1;
-        ticks.push({ startFraction, endFraction, label: `Q${q} ${cursor.getFullYear()}` });
-        cursor = next;
-      }
-    } else {
-      let cursor = new Date(start.getFullYear(), start.getMonth(), 1);
-      while (cursor < end) {
-        const next = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-        const startFraction = this.#fractionFor(cursor < start ? start : cursor);
-        const endFraction = this.#fractionFor(next > end ? end : next);
-        const m = cursor.toLocaleString(void 0, { month: "short" });
-        ticks.push({ startFraction, endFraction, label: `${m} ${cursor.getFullYear()}` });
-        cursor = next;
-      }
+    const p = this.#periodMonths;
+    for (let cursor = this.#periodStart(start); cursor < end; cursor = addMonths(cursor, p)) {
+      const next = addMonths(cursor, p);
+      const startFraction = this.#fractionFor(cursor < start ? start : cursor);
+      const endFraction = this.#fractionFor(next > end ? end : next);
+      const label = this.#view === "quarter" ? `Q${Math.floor(cursor.getMonth() / 3) + 1} ${cursor.getFullYear()}` : `${cursor.toLocaleString(void 0, { month: "short" })} ${cursor.getFullYear()}`;
+      ticks.push({ startFraction, endFraction, label });
     }
     return ticks;
   }
-  /** Parse "2026-Q3", "2026-Q3-end", or ISO date. `kind` decides how
-      "YYYY-Qn" without explicit position resolves: 'start' → first day
-      of the quarter; 'end' → last day. */
+  /** Parse "2026-Q3" or an ISO date. `kind` decides how "YYYY-Qn"
+      resolves: 'start' → first day of the quarter; 'end' → last day.
+      @param {string | null} value @param {'start' | 'end'} kind */
   static #parseDate(value, kind) {
     if (!value) return null;
-    const q = String(value).match(/^(\d{4})-Q([1-4])$/i);
+    const q = String(value).trim().match(/^(\d{4})-Q([1-4])$/i);
     if (q) {
       const year = Number(q[1]);
-      const quarter = Number(q[2]);
-      const monthStart = (quarter - 1) * 3;
-      if (kind === "end") {
-        return new Date(year, monthStart + 3, 0);
-      }
-      return new Date(year, monthStart, 1);
+      const monthStart = (Number(q[2]) - 1) * 3;
+      return kind === "end" ? new Date(year, monthStart + 3, 0) : new Date(year, monthStart, 1);
     }
-    const iso = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
-    const d = new Date(value);
-    return isNaN(d.getTime()) ? null : d;
-  }
-  static #toISO(d) {
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${d.getFullYear()}-${m}-${day}`;
+    return parseISODate(value);
   }
   /** @type {Date | null} */
   #start = null;
-  /** @type {Date | null} */
-  #end = null;
-  #totalMs = 0;
+  /** @type {Date | null} first day AFTER the visible range */
+  #endExcl = null;
+  #totalDays = 0;
   /** @type {"quarter" | "month"} */
   #view = "quarter";
   #editable = false;
+  #suppressClick = false;
   /** @type {Element[]} */
   #sourceLanes = [];
+  /** @type {WeakMap<HTMLElement, Element>} rendered bar → source <article> */
+  #initiativeFor = /* @__PURE__ */ new WeakMap();
   /** @type {HTMLElement | null} */
-  #wrapper = null;
-  /** @type {{ kind: string, bar: HTMLElement, initiative?: Element, trackRect: DOMRect, startX: number, startFraction: number, widthFraction: number } | null} */
+  #liveRegion = null;
+  /** @type {{ kind: 'move' | 'resize', pointerId: number, bar: HTMLElement, trackRect: DOMRect, startX: number, startY: number, startFraction: number, widthFraction: number, moved: boolean, targetLane: string } | null} */
   #dragInfo = null;
-  /** @type {Element | null} */
-  #draggingInitiative = null;
-  /** @type {Element | null} */
-  #draggingFromLane = null;
 };
 registerComponent("product-roadmap", Roadmap);
 
@@ -4761,7 +5442,7 @@ function VBCollection(Base) {
     }
     /** @type {any[]} */
     #items = [];
-    /** @type {Mapunknown, Element} */
+    /** @type {Map<unknown, Element>} */
     #nodes = /* @__PURE__ */ new Map();
     get items() {
       return this.#items;
@@ -4834,7 +5515,7 @@ function VBCollection(Base) {
      * instead of recreating them.
      *
      * @param {any[]} items
-     * @param {Mapunknown, Element} nodeMap  key → existing element
+     * @param {Map<unknown, Element>} nodeMap  key → existing element
      */
     _seedCollection(items, nodeMap) {
       this.#items = items;
@@ -4865,203 +5546,176 @@ var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
   static #instanceCount = 0;
   /** @type {HTMLDivElement | null} */
   #columnsEl = null;
-  /** @type {Recordstring, HTMLElement} */
+  /** @type {Record<string, HTMLElement>} */
   #surfaces = {};
-  /** @type {Recordstring, HTMLElement} */
+  /** @type {Record<string, HTMLElement>} */
   #columnEls = {};
   /** @type {HTMLDivElement | null} */
   #liveRegion = null;
+  /** @type {HTMLHeadingElement | null} */
+  #titleEl = null;
   /** @type {string} */
   #groupId = "";
-  /** @type {Array{ id: string, label: string, wip: number | null, color: string | null, children: HTMLElement[] }} */
+  /** @type {Array<{ id: string, label: string, wip: number | null, color: string | null }>} */
   #columns = [];
-  /** @type {((item: any) = Element) | null} */
+  /** @type {((item: any) => Element) | null} */
   #renderItem = null;
+  /** Shell built (survives disconnect so a moved board keeps its cards). */
+  #built = false;
+  /** Listeners attached for the current connection. */
+  #wired = false;
+  #readyFired = false;
+  #loader = new SrcLoader();
   setup() {
-    this.#groupId = `kb-${++_KanbanBoard.#instanceCount}`;
+    this.#ensureGroupId();
+    if (!this.#built) {
+      this.#built = true;
+      this.#buildFromSections();
+    }
+    if (!this.#wired) {
+      this.#wired = true;
+      this.listen(this, "drag-surface:reorder", this.#onReorder);
+      this.listen(this, "drag-surface:transfer", this.#onTransfer);
+    }
+    const src = this.getAttribute("src");
+    if (src) {
+      if (src !== this.#loader.url) this._loadSrc(src);
+      return;
+    }
+    if (!this.#readyFired) this.#dispatchReady();
+  }
+  /**
+   * First build: parse the authored `<section data-column>` children,
+   * move their cards into drag-surfaces, and add the title + live region.
+   */
+  #buildFromSections() {
     const sections = (
       /** @type {HTMLElement[]} */
       [
         ...this.querySelectorAll(":scope > section[data-column]")
       ]
     );
-    this.#columns = sections.map((section) => {
-      const id = section.getAttribute("data-column") || "";
-      const rawLabel = section.getAttribute("data-column-label") || "";
-      const label = rawLabel || this.#titleCase(id);
-      const wipAttr = section.getAttribute("data-wip");
-      const wip = wipAttr ? parseInt(wipAttr, 10) : null;
-      const color = section.getAttribute("data-column-color") || null;
-      const children = (
-        /** @type {HTMLElement[]} */
-        [...section.children]
-      );
-      return { id, label, wip, color, children };
-    });
-    for (const section of sections) {
-      section.remove();
-    }
-    this.#columnsEl = document.createElement("div");
-    this.#columnsEl.className = "kb-columns";
-    this.#columnsEl.setAttribute("role", "region");
-    this.#columnsEl.setAttribute("aria-label", "Kanban board");
-    let totalItems = 0;
-    for (const col of this.#columns) {
-      const column = document.createElement("section");
-      column.className = "kb-column";
-      column.setAttribute("data-column-id", col.id);
-      if (col.color) column.setAttribute("data-column-tint", col.color);
-      const header = document.createElement("header");
-      header.className = "kb-column-header";
-      const h3 = document.createElement("h3");
-      h3.textContent = col.label;
-      const countBadge = document.createElement("output");
-      countBadge.className = "kb-count";
-      countBadge.textContent = String(col.children.length);
-      h3.appendChild(countBadge);
-      if (col.wip !== null && !isNaN(col.wip)) {
-        const wipBadge = document.createElement("span");
-        wipBadge.className = "kb-wip";
-        wipBadge.textContent = `/ ${col.wip}`;
-        wipBadge.setAttribute("aria-label", `WIP limit ${col.wip}`);
-        h3.appendChild(wipBadge);
-      }
-      header.appendChild(h3);
-      column.appendChild(header);
-      const surface = document.createElement("drag-surface");
-      surface.setAttribute("group", this.#groupId);
-      surface.setAttribute("aria-label", `${col.label} items`);
-      surface.setAttribute("data-layout", "stack");
-      surface.setAttribute("data-layout-gap", "xs");
-      if (col.children.length > 0) {
-        for (const child of col.children) {
-          if (!child.hasAttribute("draggable")) {
-            child.setAttribute("draggable", "true");
-          }
-          if (!child.hasAttribute("data-id")) {
-            child.dataset.id = `kb-item-${totalItems}`;
-          }
-          surface.appendChild(child);
-        }
-        totalItems += col.children.length;
-      } else {
-        const placeholder = document.createElement("p");
-        placeholder.className = "kb-empty";
-        placeholder.textContent = "No items";
-        surface.appendChild(placeholder);
-      }
-      column.appendChild(surface);
-      this.#columnsEl.appendChild(column);
-      this.#surfaces[col.id] = surface;
-      this.#columnEls[col.id] = column;
-      if (col.wip !== null && col.children.length > col.wip) {
-        column.setAttribute("data-wip-exceeded", "");
-      }
-    }
+    const parsed = sections.map((section) => this.#parseSection(section));
+    for (const section of sections) section.remove();
+    this.#syncTitle();
+    this.#liveRegion = createLiveRegion("kb-live-region");
+    this.#columns = parsed.map((p) => p.meta);
+    this.#columnsEl = this.#assembleShell(parsed.map((p) => p.children));
+    this.append(this.#columnsEl, this.#liveRegion);
+    this._postRender();
+    this.#seedFromDom();
+  }
+  /**
+   * @param {HTMLElement} section
+   * @returns {{ meta: { id: string, label: string, wip: number | null, color: string | null }, children: HTMLElement[] }}
+   */
+  #parseSection(section) {
+    const id = section.getAttribute("data-column") || "";
+    const label = section.getAttribute("data-column-label") || titleCase(id);
+    const wipAttr = section.getAttribute("data-wip");
+    const wip = wipAttr ? parseInt(wipAttr, 10) : null;
+    const color = section.getAttribute("data-column-color") || null;
+    const children = (
+      /** @type {HTMLElement[]} */
+      [...section.children]
+    );
+    return { meta: { id, label, wip: wip !== null && isNaN(wip) ? null : wip, color }, children };
+  }
+  /** Create, update, or remove the optional heading from the title attribute. */
+  #syncTitle() {
     const title = this.getAttribute("title");
     if (title) {
-      const heading = document.createElement("h2");
-      heading.className = "kb-title";
-      heading.textContent = title;
-      this.appendChild(heading);
+      if (!this.#titleEl) {
+        this.#titleEl = document.createElement("h2");
+        this.#titleEl.className = "kb-title";
+        this.prepend(this.#titleEl);
+      }
+      this.#titleEl.textContent = title;
+    } else if (this.#titleEl) {
+      this.#titleEl.remove();
+      this.#titleEl = null;
     }
-    this.appendChild(this.#columnsEl);
-    this.#liveRegion = document.createElement("div");
-    this.#liveRegion.className = "kb-live-region";
-    this.#liveRegion.setAttribute("role", "status");
-    this.#liveRegion.setAttribute("aria-live", "polite");
-    this.#liveRegion.setAttribute("aria-atomic", "true");
-    this.appendChild(this.#liveRegion);
-    this.listen(this, "drag-surface:reorder", (e) => {
-      const detail = (
-        /** @type {CustomEvent} */
-        e.detail
-      );
-      const surface = (
-        /** @type {HTMLElement | null} */
-        /** @type {HTMLElement} */
-        e.target.closest("drag-surface")
-      );
-      const columnId = this.#findColumnForSurface(surface);
-      if (!columnId) return;
-      this.#updateCount(columnId);
-      this.#syncItemsFromDom("drag");
-      this.dispatchEvent(new CustomEvent("kanban-board:reorder", {
-        bubbles: true,
-        detail: {
-          itemId: detail.itemId,
-          column: columnId,
-          oldIndex: detail.oldIndex,
-          newIndex: detail.newIndex
-        }
-      }));
-    });
-    this.listen(this, "drag-surface:transfer", (e) => {
-      const detail = (
-        /** @type {CustomEvent} */
-        e.detail
-      );
-      const fromSurface = detail.fromSurface;
-      const toSurface = detail.toSurface;
-      const fromColumn = this.#findColumnForSurface(fromSurface);
-      const toColumn = this.#findColumnForSurface(toSurface);
-      if (!fromColumn || !toColumn) return;
-      if (detail.item) {
-        detail.item.setAttribute("data-column", toColumn);
-      }
-      this.#updateCount(fromColumn);
-      this.#updateCount(toColumn);
-      const toPlaceholder = toSurface.querySelector(".kb-empty");
-      if (toPlaceholder) toPlaceholder.remove();
-      const fromDraggables = fromSurface.querySelectorAll(':scope > [draggable="true"]');
-      if (fromDraggables.length === 0 && !fromSurface.querySelector(".kb-empty")) {
-        const placeholder = document.createElement("p");
-        placeholder.className = "kb-empty";
-        placeholder.textContent = "No items";
-        fromSurface.appendChild(placeholder);
-      }
-      const itemLabel = this.#itemLabel(detail.item);
-      const fromLabel = this.#columnLabel(fromColumn);
-      const toLabel = this.#columnLabel(toColumn);
-      this.#announce(`${itemLabel} moved from ${fromLabel} to ${toLabel}`);
-      this.#syncItemsFromDom("drag");
-      this.dispatchEvent(new CustomEvent("kanban-board:transfer", {
-        bubbles: true,
-        detail: {
-          itemId: detail.itemId,
-          fromColumn,
-          toColumn,
-          newIndex: detail.newIndex,
-          item: detail.item
-        }
-      }));
-      const toCount = toSurface.querySelectorAll(':scope > [draggable="true"]').length;
-      const toColMeta = this.#columns.find((c) => c.id === toColumn);
-      if (toColMeta?.wip !== null && toColMeta?.wip !== void 0 && toCount > toColMeta.wip) {
-        this.dispatchEvent(new CustomEvent("kanban-board:wip-exceeded", {
-          bubbles: true,
-          detail: {
-            column: toColumn,
-            limit: toColMeta.wip,
-            count: toCount
-          }
-        }));
-      }
-    });
-    this.#seedFromDom();
-    const src = this.getAttribute("src");
-    if (src) {
-      this._loadSrc(src);
-      return;
-    }
+    this.#columnsEl?.setAttribute("aria-label", title || "Kanban board");
+  }
+  #dispatchReady() {
+    this.#readyFired = true;
     this.dispatchEvent(new CustomEvent("kanban-board:ready", {
       bubbles: true,
       detail: {
         columnCount: this.#columns.length,
-        itemCount: totalItems
+        itemCount: this.items.length
       }
     }));
   }
+  /** @param {Event} e */
+  #onReorder = (e) => {
+    const detail = (
+      /** @type {CustomEvent} */
+      e.detail
+    );
+    const surface = (
+      /** @type {HTMLElement | null} */
+      /** @type {HTMLElement} */
+      e.target.closest("drag-surface")
+    );
+    const columnId = this.#findColumnForSurface(surface);
+    if (!columnId) return;
+    this.#updateCount(columnId);
+    this.#syncItemsFromDom("drag");
+    this.dispatchEvent(new CustomEvent("kanban-board:reorder", {
+      bubbles: true,
+      detail: {
+        itemId: detail.itemId,
+        column: columnId,
+        oldIndex: detail.oldIndex,
+        newIndex: detail.newIndex
+      }
+    }));
+  };
+  /** @param {Event} e */
+  #onTransfer = (e) => {
+    const detail = (
+      /** @type {CustomEvent} */
+      e.detail
+    );
+    const fromSurface = detail.fromSurface;
+    const toSurface = detail.toSurface;
+    const fromColumn = this.#findColumnForSurface(fromSurface);
+    const toColumn = this.#findColumnForSurface(toSurface);
+    if (!fromColumn || !toColumn) return;
+    if (detail.item) detail.item.setAttribute("data-column", toColumn);
+    this.#updateCount(fromColumn);
+    this.#updateCount(toColumn);
+    syncPlaceholder(toSurface, "kb-empty", "No items");
+    syncPlaceholder(fromSurface, "kb-empty", "No items");
+    announce(
+      this.#liveRegion,
+      `${itemLabel(detail.item)} moved from ${this.#columnLabel(fromColumn)} to ${this.#columnLabel(toColumn)}`
+    );
+    this.#syncItemsFromDom("drag");
+    this.dispatchEvent(new CustomEvent("kanban-board:transfer", {
+      bubbles: true,
+      detail: {
+        itemId: detail.itemId,
+        fromColumn,
+        toColumn,
+        newIndex: detail.newIndex,
+        item: detail.item
+      }
+    }));
+    const toCount = toSurface.querySelectorAll(':scope > [draggable="true"]').length;
+    const toColMeta = this.#columns.find((c) => c.id === toColumn);
+    if (toColMeta && toColMeta.wip != null && toCount > toColMeta.wip) {
+      this.dispatchEvent(new CustomEvent("kanban-board:wip-exceeded", {
+        bubbles: true,
+        detail: {
+          column: toColumn,
+          limit: toColMeta.wip,
+          count: toCount
+        }
+      }));
+    }
+  };
   /**
    * Walk the rendered drag-surfaces and register each draggable child by
    * its data-id so VBCollection's diff treats them as managed nodes.
@@ -5108,26 +5762,16 @@ var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
     this._emit("items-changed", { items: next }, source);
   }
   teardown() {
-    const title = this.querySelector(".kb-title");
-    if (title) title.remove();
-    if (this.#columnsEl) {
-      this.#columnsEl.remove();
-      this.#columnsEl = null;
-    }
-    if (this.#liveRegion) {
-      this.#liveRegion.remove();
-      this.#liveRegion = null;
-    }
-    this.#surfaces = {};
-    this.#columnEls = {};
-    this.#columns = [];
+    this.#wired = false;
   }
   // ── Data API (HTML-first / JS-first dual contract) ──────────────
   /**
    * The current column definitions. After upgrade this reflects the parsed
-   * `section data-column` children. Setting replaces all columns and
-   * rebuilds the shell — items already in nodes get re-routed to the new
-   * surfaces; orphaned items (column id no longer present) are dropped.
+   * `<section data-column>` children. Setting replaces all columns and
+   * rebuilds the shell: existing cards whose `column` still exists are
+   * moved (same DOM nodes) into the new columns; cards whose column is
+   * gone are removed from the board and from `.items` (an
+   * `items-changed` event with source `api` reports the drop).
    */
   get columns() {
     return this.#columns.map((c) => ({
@@ -5140,20 +5784,44 @@ var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
   set columns(value) {
     const next = (value || []).map((c) => ({
       id: c.id,
-      label: c.label || this.#titleCase(c.id),
+      label: c.label || titleCase(c.id),
       wip: c.wip ?? null,
-      color: c.color ?? null,
-      children: []
+      color: c.color ?? null
     }));
+    if (!this.#built) {
+      this.#built = true;
+      this.#liveRegion = createLiveRegion("kb-live-region");
+      this.appendChild(this.#liveRegion);
+    }
     const oldShell = this.#columnsEl;
-    this.#surfaces = {};
-    this.#columnEls = {};
     this.#columns = next;
     const newShell = this.#assembleShell();
     this.#columnsEl = newShell;
+    this.#syncTitle();
+    const before = this.items;
+    const kept = [];
+    const nodeMap = /* @__PURE__ */ new Map();
+    for (const it of before) {
+      const key = _KanbanBoard.keyOf(it);
+      const el = this._nodeFor(key);
+      const surface = this.#surfaces[it.column];
+      if (!el) continue;
+      if (surface) {
+        surface.appendChild(el);
+        kept.push(it);
+        nodeMap.set(key, el);
+      } else {
+        el.remove();
+      }
+    }
+    const order = new Map(next.map((c, i) => [c.id, i]));
+    kept.sort((a, b) => (order.get(a.column) ?? 0) - (order.get(b.column) ?? 0));
+    this._seedCollection(kept, nodeMap);
+    this._postRender();
+    if (kept.length !== before.length) this._emit("items-changed", { items: kept }, "api");
     const swap = () => {
       if (oldShell) oldShell.remove();
-      this.appendChild(newShell);
+      this.#attachShell(newShell);
     };
     if (this.hasAttribute("data-upgraded") && oldShell) {
       viewTransitionSwap(this, swap, "kb-vt");
@@ -5163,7 +5831,7 @@ var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
   }
   /**
    * Optional custom item renderer. When set, replaces the default
-   * `work-item` factory used by the `.items` setter.
+   * `<work-item>` factory used by the `.items` setter.
    */
   get renderItem() {
     return this.#renderItem;
@@ -5173,7 +5841,7 @@ var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
   }
   /**
    * VBCollection hook: build a fresh element for a new key.
-   * Default: a `work-item` with the item's fields applied via .data.
+   * Default: a `<work-item>` with the item's fields applied via .data.
    * Always returns a draggable element with data-id set for drag-surface.
    */
   _renderItem(item) {
@@ -5211,23 +5879,13 @@ var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
    * placeholders after every diff.
    */
   _postRender() {
-    for (const id of Object.keys(this.#surfaces)) {
+    for (const [id, surface] of Object.entries(this.#surfaces)) {
       this.#updateCount(id);
-      const surface = this.#surfaces[id];
-      const draggables = surface.querySelectorAll(':scope > [draggable="true"]');
-      const placeholder = surface.querySelector(":scope > .kb-empty");
-      if (draggables.length === 0 && !placeholder) {
-        const p = document.createElement("p");
-        p.className = "kb-empty";
-        p.textContent = "No items";
-        surface.appendChild(p);
-      } else if (draggables.length > 0 && placeholder) {
-        placeholder.remove();
-      }
+      syncPlaceholder(surface, "kb-empty", "No items");
     }
   }
   /**
-   * Default renderer: build a `work-item` and apply item fields via .data.
+   * Default renderer: build a `<work-item>` and apply item fields via .data.
    * Falls back to a plain `<article>` if work-item isn't registered.
    */
   #defaultRenderItem(item) {
@@ -5258,16 +5916,24 @@ var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
   }
   /**
    * Build the kb-columns shell from the current `#columns` metas and
-   * populate `#surfaces` / `#columnEls`. Returns the detached shell so
-   * the caller decides when to attach it (sync, or inside a View
-   * Transition callback).
+   * populate `#surfaces` / `#columnEls`. `children[i]` (optional) are the
+   * authored cards for column i; they are moved into its drag-surface.
+   * Returns the detached shell so the caller decides when to attach it
+   * (sync, or inside a View Transition callback).
+   *
+   * @param {HTMLElement[][]} [children]
+   * @returns {HTMLDivElement}
    */
-  #assembleShell() {
+  #assembleShell(children = []) {
+    this.#ensureGroupId();
+    this.#surfaces = {};
+    this.#columnEls = {};
     const shell = document.createElement("div");
     shell.className = "kb-columns";
     shell.setAttribute("role", "region");
-    shell.setAttribute("aria-label", "Kanban board");
-    for (const col of this.#columns) {
+    shell.setAttribute("aria-label", this.getAttribute("title") || "Kanban board");
+    let seq = 0;
+    this.#columns.forEach((col, i) => {
       const column = document.createElement("section");
       column.className = "kb-column";
       column.setAttribute("data-column-id", col.id);
@@ -5280,7 +5946,7 @@ var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
       countBadge.className = "kb-count";
       countBadge.textContent = "0";
       h3.appendChild(countBadge);
-      if (col.wip != null && !isNaN(col.wip)) {
+      if (col.wip != null) {
         const wipBadge = document.createElement("span");
         wipBadge.className = "kb-wip";
         wipBadge.textContent = `/ ${col.wip}`;
@@ -5294,74 +5960,102 @@ var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
       surface.setAttribute("aria-label", `${col.label} items`);
       surface.setAttribute("data-layout", "stack");
       surface.setAttribute("data-layout-gap", "xs");
-      const placeholder = document.createElement("p");
-      placeholder.className = "kb-empty";
-      placeholder.textContent = "No items";
-      surface.appendChild(placeholder);
+      for (const child of children[i] || []) {
+        if (!child.hasAttribute("draggable")) child.setAttribute("draggable", "true");
+        if (!child.hasAttribute("data-id")) child.dataset.id = `kb-item-${seq}`;
+        seq += 1;
+        surface.appendChild(child);
+      }
       column.appendChild(surface);
       shell.appendChild(column);
       this.#surfaces[col.id] = surface;
       this.#columnEls[col.id] = column;
-    }
+    });
     return shell;
   }
   // ── Attribute changes ────────────────────────────────
   attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue === newValue || !this.isConnected) return;
-    if (name === "src") this._loadSrc(newValue);
+    if (oldValue === newValue || !this.#built) return;
+    if (name === "src" && newValue && newValue !== this.#loader.url) this._loadSrc(newValue);
+    if (name === "src" && !newValue) this.#loader.cancel();
+    if (name === "title") this.#syncTitle();
   }
   // ── JSON loading ────────────────────────────────────
+  /**
+   * Fetch `{ columns: [{ id, label?, wip?, color?, items: [...] }] }` and
+   * replace the board with it. One request per src value; a newer src
+   * aborts an older in-flight one. Once the data has rendered, fires
+   * `kanban-board:items-changed` (source 'src'), and `kanban-board:ready`
+   * if it has not fired yet (ready is once per element).
+   * @param {string} url
+   */
   async _loadSrc(url) {
     if (!url) return;
     try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      while (this.firstChild) this.firstChild.remove();
-      for (const col of data.columns || []) {
-        const section = document.createElement("section");
-        section.setAttribute("data-column", col.id);
-        if (col.label) section.setAttribute("data-column-label", col.label);
-        if (col.wip != null) section.setAttribute("data-wip", String(col.wip));
-        if (col.color) section.setAttribute("data-column-color", col.color);
-        for (const item of col.items || []) {
-          let el;
-          if (item.persona || item.action || item.storyId) {
-            el = document.createElement("user-story");
-            el.setAttribute("detail", item.detail || "minimal");
-            if (item.storyId) el.setAttribute("story-id", item.storyId);
-            if (item.persona) el.setAttribute("persona", item.persona);
-            if (item.action) el.setAttribute("action", item.action);
-            if (item.benefit) el.setAttribute("benefit", item.benefit);
-            if (item.priority) el.setAttribute("priority", item.priority);
-            if (item.status) el.setAttribute("status", item.status);
-            if (item.points) el.setAttribute("points", String(item.points));
-          } else {
-            el = document.createElement("article");
-            el.className = "kb-card";
-            el.textContent = item.text || item.label || "";
-          }
-          el.setAttribute("draggable", "true");
-          el.dataset.id = item.id || item.storyId || "";
-          section.appendChild(el);
-        }
-        this.appendChild(section);
-      }
-      const swap = () => {
-        this.teardown();
-        this.removeAttribute("data-upgraded");
-        this.setup();
+      const result = await this.#loader.fetchJson(url);
+      if (!result) return;
+      const { data, isCurrent } = result;
+      const children = [];
+      const metas = (data.columns || []).map((col) => {
+        children.push((col.items || []).map((item) => this.#cardFromJson(item)));
+        const wip = col.wip != null ? parseInt(String(col.wip), 10) : null;
+        return {
+          id: String(col.id ?? ""),
+          label: col.label || titleCase(String(col.id ?? "")),
+          wip: wip !== null && isNaN(wip) ? null : wip,
+          color: col.color || null
+        };
+      });
+      const render = () => {
+        this.#columnsEl?.remove();
+        this.#columns = metas;
+        this.#columnsEl = this.#assembleShell(children);
+        this.#attachShell(this.#columnsEl);
+        this._postRender();
+        this.#seedFromDom();
       };
-      if (this.hasAttribute("data-upgraded") && this.#columnsEl) {
-        viewTransitionSwap(this, swap, "kb-vt");
-      } else {
-        swap();
-      }
+      const tx = viewTransitionSwap(this, render, "kb-vt");
+      if (tx) await tx.updateCallbackDone;
+      if (!isCurrent()) return;
+      this._emit("items-changed", { items: this.items }, "src");
+      if (!this.#readyFired) this.#dispatchReady();
     } catch (err) {
       console.warn(`[kanban-board] Failed to load src="${url}":`, err);
     }
   }
+  /**
+   * JSON item → card element. Story-shaped records become a `<user-story>`
+   * with slotted persona/action/benefit/title; anything else a plain card.
+   * @param {Record<string, any>} item
+   * @returns {HTMLElement}
+   */
+  #cardFromJson(item) {
+    let el;
+    if (isStoryRecord(item)) {
+      el = createStoryCard(item, "minimal");
+    } else {
+      el = document.createElement("article");
+      el.className = "kb-card";
+      el.textContent = item.text || item.label || item.title || "";
+    }
+    el.setAttribute("draggable", "true");
+    const id = item.id || item.storyId;
+    if (id) el.dataset.id = String(id);
+    return el;
+  }
   // ── Helpers ──────────────────────────────────────────
+  /** Assign this board's drag-surface group id once. */
+  #ensureGroupId() {
+    if (!this.#groupId) this.#groupId = `kb-${++_KanbanBoard.#instanceCount}`;
+  }
+  /**
+   * Insert the columns shell just before the live region (after the title).
+   * @param {HTMLElement} shell
+   */
+  #attachShell(shell) {
+    const region = this.#liveRegion;
+    this.insertBefore(shell, region?.parentNode ? region : null);
+  }
   /**
    * Reverse-lookup: find the column id that owns a given drag-surface.
    * @param {HTMLElement | null} surface
@@ -5401,34 +6095,7 @@ var KanbanBoard = class _KanbanBoard extends VBCollection(VBElement) {
    */
   #columnLabel(columnId) {
     const col = this.#columns.find((c) => c.id === columnId);
-    return col?.label || this.#titleCase(columnId);
-  }
-  /**
-   * Announce a message via the live region.
-   * @param {string} msg
-   */
-  #announce(msg) {
-    if (!this.#liveRegion) return;
-    this.#liveRegion.textContent = "";
-    requestAnimationFrame(() => {
-      if (this.#liveRegion) this.#liveRegion.textContent = msg;
-    });
-  }
-  /**
-   * Get a human-readable label for a board item.
-   * @param {HTMLElement} item
-   * @returns {string}
-   */
-  #itemLabel(item) {
-    return item.getAttribute("story-id") || item.getAttribute("data-id") || item.textContent?.trim().slice(0, 40) || "item";
-  }
-  /**
-   * Convert a hyphenated or lowercase id to Title Case.
-   * @param {string} str
-   * @returns {string}
-   */
-  #titleCase(str) {
-    return str.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    return col?.label || titleCase(columnId);
   }
 };
 registerComponent(
@@ -5447,45 +6114,87 @@ var StoryMap = class _StoryMap extends VBElement {
   #scroll = null;
   /** @type {HTMLDivElement | null} */
   #columnsEl = null;
-  /** @type {Recordstring, HTMLElement} */
+  /** @type {Record<string, HTMLElement>} */
   #surfaces = {};
   /** @type {HTMLDivElement | null} */
   #liveRegion = null;
+  /** @type {HTMLHeadingElement | null} */
+  #titleEl = null;
   /** @type {string} */
   #groupId = "";
-  /** @type {Array{ id: string, label: string, journeyPhase: string | null, children: HTMLElement[] }} */
+  /** @type {ActivityMeta[]} */
   #activities = [];
+  /** Last story records assigned via `.activities` / src, keyed by data-id. */
+  /** @type {Map<string, Record<string, any>>} */
+  #records = /* @__PURE__ */ new Map();
+  /** Shell built (survives disconnect so a moved map keeps its stories). */
+  #built = false;
+  /** Listeners attached for the current connection. */
+  #wired = false;
+  #readyFired = false;
+  #loader = new SrcLoader();
   setup() {
-    this.#groupId = `sm-${++_StoryMap.#instanceCount}`;
-    const sections = (
-      /** @type {HTMLElement[]} */
-      [
-        ...this.querySelectorAll(":scope > section[data-activity]")
-      ]
-    );
-    this.#activities = sections.map((section) => {
-      const id = section.getAttribute("data-activity") || "";
-      const rawLabel = section.getAttribute("data-activity-label") || "";
-      const label = rawLabel || this.#titleCase(id);
-      const journeyPhase = section.getAttribute("data-journey-phase") || null;
-      const children = (
+    if (!this.#groupId) this.#groupId = `sm-${++_StoryMap.#instanceCount}`;
+    if (!this.#built) {
+      this.#built = true;
+      const sections = (
         /** @type {HTMLElement[]} */
-        [...section.children]
+        [
+          ...this.querySelectorAll(":scope > section[data-activity]")
+        ]
       );
-      return { id, label, journeyPhase, children };
-    });
-    for (const section of sections) {
-      section.remove();
+      const parsed = sections.map((section) => _StoryMap.#parseSection(section));
+      for (const section of sections) section.remove();
+      this.#syncTitle();
+      this.#scroll = document.createElement("div");
+      this.#scroll.className = "sm-scroll";
+      this.#scroll.setAttribute("role", "region");
+      this.#scroll.setAttribute("tabindex", "0");
+      this.#liveRegion = createLiveRegion("sm-live-region");
+      this.#renderColumns(parsed.map((p) => p.meta), parsed.map((p) => p.children));
+      this.append(this.#scroll, this.#liveRegion);
     }
-    this.#scroll = document.createElement("div");
-    this.#scroll.className = "sm-scroll";
-    this.#scroll.setAttribute("role", "region");
-    this.#scroll.setAttribute("aria-label", "Story map");
-    this.#scroll.setAttribute("tabindex", "0");
-    this.#columnsEl = document.createElement("div");
-    this.#columnsEl.className = "sm-columns";
-    let totalStories = 0;
-    for (const activity of this.#activities) {
+    if (!this.#wired) {
+      this.#wired = true;
+      this.listen(this, "drag-surface:reorder", this.#onReorder);
+      this.listen(this, "drag-surface:transfer", this.#onTransfer);
+    }
+    const src = this.getAttribute("src");
+    if (src) {
+      if (src !== this.#loader.url) this._loadSrc(src);
+      return;
+    }
+    if (!this.#readyFired) this.#dispatchReady();
+  }
+  teardown() {
+    this.#wired = false;
+  }
+  /**
+   * @param {HTMLElement} section
+   * @returns {{ meta: ActivityMeta, children: HTMLElement[] }}
+   */
+  static #parseSection(section) {
+    const id = section.getAttribute("data-activity") || "";
+    const label = section.getAttribute("data-activity-label") || titleCase(id);
+    const journeyPhase = section.getAttribute("data-journey-phase") || null;
+    const children = (
+      /** @type {HTMLElement[]} */
+      [...section.children]
+    );
+    return { meta: { id, label, journeyPhase }, children };
+  }
+  /**
+   * Replace the columns inside the scroll container. `children[i]` are the
+   * story cards for activity i (moved, not cloned).
+   * @param {ActivityMeta[]} metas
+   * @param {HTMLElement[][]} children
+   */
+  #renderColumns(metas, children) {
+    this.#activities = metas;
+    this.#surfaces = {};
+    const columns = document.createElement("div");
+    columns.className = "sm-columns";
+    metas.forEach((activity, i) => {
       const column = document.createElement("section");
       column.className = "sm-column";
       column.setAttribute("data-activity-column", activity.id);
@@ -5495,7 +6204,6 @@ var StoryMap = class _StoryMap extends VBElement {
       h3.textContent = activity.label;
       const countBadge = document.createElement("span");
       countBadge.className = "sm-activity-count";
-      countBadge.textContent = String(activity.children.length);
       h3.appendChild(countBadge);
       header.appendChild(h3);
       column.appendChild(header);
@@ -5504,241 +6212,245 @@ var StoryMap = class _StoryMap extends VBElement {
       surface.setAttribute("aria-label", `${activity.label} stories`);
       surface.setAttribute("data-layout", "stack");
       surface.setAttribute("data-layout-gap", "xs");
-      if (activity.children.length > 0) {
-        for (const child of activity.children) {
-          surface.appendChild(child);
-        }
-        totalStories += activity.children.length;
-      } else {
-        const placeholder = document.createElement("p");
-        placeholder.className = "sm-empty";
-        placeholder.textContent = "No stories yet";
-        surface.appendChild(placeholder);
-      }
+      for (const child of children[i] || []) surface.appendChild(child);
       column.appendChild(surface);
-      this.#columnsEl.appendChild(column);
+      columns.appendChild(column);
       this.#surfaces[activity.id] = surface;
-    }
+      this.#updateCount(activity.id);
+      syncPlaceholder(surface, "sm-empty", "No stories yet");
+    });
+    this.#columnsEl?.remove();
+    this.#columnsEl = columns;
+    this.#scroll?.appendChild(columns);
+    this.#scroll?.setAttribute("aria-label", this.getAttribute("title") || "Story map");
+  }
+  /** Create, update, or remove the optional heading from the title attribute. */
+  #syncTitle() {
     const title = this.getAttribute("title");
     if (title) {
-      const heading = document.createElement("h2");
-      heading.className = "sm-title";
-      heading.textContent = title;
-      this.appendChild(heading);
-    }
-    this.#scroll.appendChild(this.#columnsEl);
-    this.appendChild(this.#scroll);
-    this.#liveRegion = document.createElement("div");
-    this.#liveRegion.className = "sm-live-region";
-    this.#liveRegion.setAttribute("role", "status");
-    this.#liveRegion.setAttribute("aria-live", "polite");
-    this.#liveRegion.setAttribute("aria-atomic", "true");
-    this.appendChild(this.#liveRegion);
-    this.listen(this, "drag-surface:reorder", (e) => {
-      const detail = (
-        /** @type {CustomEvent} */
-        e.detail
-      );
-      const surface = (
-        /** @type {HTMLElement | null} */
-        /** @type {HTMLElement} */
-        e.target.closest("drag-surface")
-      );
-      const activityId = this.#findActivityForSurface(surface);
-      if (!activityId) return;
-      this.#updateCount(activityId);
-      this.dispatchEvent(new CustomEvent("story-map:reorder", {
-        bubbles: true,
-        detail: {
-          itemId: detail.itemId,
-          activity: activityId,
-          oldIndex: detail.oldIndex,
-          newIndex: detail.newIndex
-        }
-      }));
-    });
-    this.listen(this, "drag-surface:transfer", (e) => {
-      const detail = (
-        /** @type {CustomEvent} */
-        e.detail
-      );
-      const fromSurface = detail.fromSurface;
-      const toSurface = detail.toSurface;
-      const fromActivity = this.#findActivityForSurface(fromSurface);
-      const toActivity = this.#findActivityForSurface(toSurface);
-      if (!fromActivity || !toActivity) return;
-      this.#updateCount(fromActivity);
-      this.#updateCount(toActivity);
-      const toPlaceholder = toSurface.querySelector(".sm-empty");
-      if (toPlaceholder) toPlaceholder.remove();
-      const fromDraggables = fromSurface.querySelectorAll(':scope > [draggable="true"]');
-      if (fromDraggables.length === 0 && !fromSurface.querySelector(".sm-empty")) {
-        const placeholder = document.createElement("p");
-        placeholder.className = "sm-empty";
-        placeholder.textContent = "No stories yet";
-        fromSurface.appendChild(placeholder);
+      if (!this.#titleEl) {
+        this.#titleEl = document.createElement("h2");
+        this.#titleEl.className = "sm-title";
+        this.prepend(this.#titleEl);
       }
-      const itemLabel = this.#itemLabel(detail.item);
-      this.#announce(`${itemLabel} moved from ${fromActivity} to ${toActivity}`);
-      this.dispatchEvent(new CustomEvent("story-map:transfer", {
-        bubbles: true,
-        detail: {
-          itemId: detail.itemId,
-          fromActivity,
-          toActivity,
-          newIndex: detail.newIndex
-        }
-      }));
-    });
-    const src = this.getAttribute("src");
-    if (src) {
-      this._loadSrc(src);
-      return;
+      this.#titleEl.textContent = title;
+    } else if (this.#titleEl) {
+      this.#titleEl.remove();
+      this.#titleEl = null;
+    }
+    this.#scroll?.setAttribute("aria-label", title || "Story map");
+  }
+  #dispatchReady() {
+    this.#readyFired = true;
+    let storyCount = 0;
+    for (const surface of Object.values(this.#surfaces)) {
+      storyCount += surface.querySelectorAll(':scope > [draggable="true"]').length;
     }
     this.dispatchEvent(new CustomEvent("story-map:ready", {
       bubbles: true,
-      detail: {
-        activityCount: this.#activities.length,
-        storyCount: totalStories
-      }
+      detail: { activityCount: this.#activities.length, storyCount }
     }));
   }
-  teardown() {
-    if (this.#scroll) {
-      this.#scroll.remove();
-      this.#scroll = null;
-    }
-    if (this.#liveRegion) {
-      this.#liveRegion.remove();
-      this.#liveRegion = null;
-    }
-    this.#columnsEl = null;
-    this.#surfaces = {};
-    this.#activities = [];
-  }
+  /** @param {Event} e */
+  #onReorder = (e) => {
+    const detail = (
+      /** @type {CustomEvent} */
+      e.detail
+    );
+    const surface = (
+      /** @type {HTMLElement | null} */
+      /** @type {HTMLElement} */
+      e.target.closest("drag-surface")
+    );
+    const activityId = this.#findActivityForSurface(surface);
+    if (!activityId) return;
+    this.#updateCount(activityId);
+    this.dispatchEvent(new CustomEvent("story-map:reorder", {
+      bubbles: true,
+      detail: {
+        itemId: detail.itemId,
+        activity: activityId,
+        oldIndex: detail.oldIndex,
+        newIndex: detail.newIndex
+      }
+    }));
+  };
+  /** @param {Event} e */
+  #onTransfer = (e) => {
+    const detail = (
+      /** @type {CustomEvent} */
+      e.detail
+    );
+    const fromSurface = detail.fromSurface;
+    const toSurface = detail.toSurface;
+    const fromActivity = this.#findActivityForSurface(fromSurface);
+    const toActivity = this.#findActivityForSurface(toSurface);
+    if (!fromActivity || !toActivity) return;
+    this.#updateCount(fromActivity);
+    this.#updateCount(toActivity);
+    syncPlaceholder(toSurface, "sm-empty", "No stories yet");
+    syncPlaceholder(fromSurface, "sm-empty", "No stories yet");
+    announce(
+      this.#liveRegion,
+      `${itemLabel(detail.item)} moved from ${this.#activityLabel(fromActivity)} to ${this.#activityLabel(toActivity)}`
+    );
+    this.dispatchEvent(new CustomEvent("story-map:transfer", {
+      bubbles: true,
+      detail: {
+        itemId: detail.itemId,
+        fromActivity,
+        toActivity,
+        newIndex: detail.newIndex
+      }
+    }));
+  };
   // ── Data API (HTML-first / JS-first dual contract) ──────────────
   /**
-   * Read the current activities + stories as a nested data array.
-   * Each activity: `{ id, label, journeyPhase?, stories: [...] }`.
-   * Each story: `{ id?, title?, ... }` (passed through to renderItem).
+   * Read the current activities + stories as a nested data array, in DOM
+   * order (drags are reflected):
+   *   `[{ id, label, journeyPhase?, stories: [{ id, ...record }] }]`.
+   * A story assigned through `.activities` or `src` returns the record it
+   * was given (so the getter round-trips through the setter); an authored
+   * `<user-story>` returns its `.data`; any other card `{ id, title }`.
    */
   get activities() {
     return this.#activities.map((a) => ({
       id: a.id,
       label: a.label,
       journeyPhase: a.journeyPhase || void 0,
-      stories: [...this.#surfaces[a.id]?.querySelectorAll(':scope > [draggable="true"]') || []].map((el) => ({
-        id: el.getAttribute("data-id") || void 0,
-        storyId: el.getAttribute("story-id") || void 0,
-        title: el.querySelector('[slot="title"]')?.textContent?.trim() || void 0
-      }))
+      stories: [...this.#surfaces[a.id]?.querySelectorAll(':scope > [draggable="true"]') || []].map((el) => this.#storyRecord(
+        /** @type {HTMLElement} */
+        el
+      ))
     }));
   }
   /**
    * Replace the entire story map. Accepts a nested tree:
-   *   [{ id, label, journeyPhase?, stories: [{ id, ... }] }]
-   * Stories are rendered as user-story elements (via .data) by default;
-   * override via `.renderStory`.
+   *   `[{ id, label?, journeyPhase?, stories: [{ id, title?, persona?, action?, benefit?, ... }] }]`
+   * Stories render as `<user-story>` cards (persona/action/benefit/title
+   * become slotted children) by default; override via `.renderStory`.
    *
-   * v1 is record-shaped — full rebuild on assignment. Per-story
-   * preservation across diffs is on the roadmap.
+   * Record-shaped: the columns are rebuilt on assignment (no per-story
+   * node preservation). Assigning before the element upgrades is fine —
+   * the tree is rendered on connect.
    *
-   * Emits story-map:activities-changed { activities, source: 'property' }.
+   * Emits `story-map:activities-changed { activities, source: 'property' }`.
    */
   set activities(value) {
     const next = Array.isArray(value) ? value : [];
-    while (this.firstChild) this.firstChild.remove();
-    for (const a of next) {
-      const section = document.createElement("section");
-      section.setAttribute("data-activity", a.id || "");
-      if (a.label) section.setAttribute("data-activity-label", a.label);
-      if (a.journeyPhase) section.setAttribute("data-journey-phase", a.journeyPhase);
-      for (const story of a.stories || []) {
-        let el;
-        const self = (
-          /** @type {any} */
-          this
-        );
-        if (typeof self.renderStory === "function") {
-          const out = self.renderStory(story);
-          el = out instanceof Element ? out : null;
-        }
-        if (!el) {
-          if (customElements.get("user-story")) {
-            el = document.createElement("user-story");
-            el.data = story;
-          } else {
-            el = document.createElement("article");
-            el.className = "sm-card";
-            el.textContent = story.title || story.id || "";
-          }
-        }
-        if (!el.hasAttribute("draggable")) el.setAttribute("draggable", "true");
-        if (story.id && !el.hasAttribute("data-id")) el.setAttribute("data-id", String(story.id));
-        section.appendChild(el);
-      }
-      this.appendChild(section);
-    }
-    const swap = () => {
-      this.teardown();
-      this.removeAttribute("data-upgraded");
-      this.setup();
-    };
-    if (this.hasAttribute("data-upgraded") && this.#scroll) {
-      viewTransitionSwap(this, swap, "sm-vt");
+    this.#records.clear();
+    const children = [];
+    const metas = next.map((a) => {
+      const id = String(a.id ?? "");
+      children.push((a.stories || []).map((story) => this.#cardFromRecord(story, void 0)));
+      return { id, label: a.label || titleCase(id), journeyPhase: a.journeyPhase || null };
+    });
+    if (!this.#built) {
+      for (const section of this.querySelectorAll(":scope > section[data-activity]")) section.remove();
+      metas.forEach((meta, i) => {
+        const section = document.createElement("section");
+        section.setAttribute("data-activity", meta.id);
+        section.setAttribute("data-activity-label", meta.label);
+        if (meta.journeyPhase) section.setAttribute("data-journey-phase", meta.journeyPhase);
+        section.append(...children[i]);
+        this.appendChild(section);
+      });
     } else {
-      swap();
+      viewTransitionSwap(this, () => this.#renderColumns(metas, children), "sm-vt");
     }
     this.dispatchEvent(new CustomEvent("story-map:activities-changed", {
       detail: { activities: next, source: "property" },
       bubbles: true
     }));
   }
+  /**
+   * Build a draggable card for a story record and remember the record.
+   * @param {Record<string, any>} story
+   * @param {string | undefined} defaultDetail
+   * @returns {HTMLElement}
+   */
+  #cardFromRecord(story, defaultDetail) {
+    let el = null;
+    const self = (
+      /** @type {any} */
+      this
+    );
+    if (typeof self.renderStory === "function") {
+      const out = self.renderStory(story);
+      el = out instanceof Element ? out : null;
+    }
+    if (!el) el = createStoryCard(story, defaultDetail);
+    const card = (
+      /** @type {HTMLElement} */
+      el
+    );
+    if (!card.hasAttribute("draggable")) card.setAttribute("draggable", "true");
+    const id = story.id ?? story.storyId;
+    if (id != null && !card.hasAttribute("data-id")) card.setAttribute("data-id", String(id));
+    const key = card.getAttribute("data-id");
+    if (key) this.#records.set(key, story);
+    return card;
+  }
+  /**
+   * @param {HTMLElement} el
+   * @returns {Record<string, any>}
+   */
+  #storyRecord(el) {
+    const id = el.getAttribute("data-id") || void 0;
+    const known = id ? this.#records.get(id) : void 0;
+    if (known) return { ...known, id: known.id ?? id };
+    const data = (
+      /** @type {any} */
+      el.data
+    );
+    if (el.localName === "user-story" && data && typeof data === "object") {
+      const out = { id };
+      for (const [k, v] of Object.entries(data)) if (v !== void 0) out[k] = v;
+      return out;
+    }
+    return {
+      id,
+      storyId: el.getAttribute("story-id") || void 0,
+      title: (el.querySelector('[slot="title"]')?.textContent || el.textContent || "").replace(/\s+/g, " ").trim() || void 0
+    };
+  }
   // ── Attribute changes ────────────────────────────────
   attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue === newValue || !this.isConnected) return;
-    if (name === "src") this._loadSrc(newValue);
+    if (oldValue === newValue || !this.#built) return;
+    if (name === "src" && newValue && newValue !== this.#loader.url) this._loadSrc(newValue);
+    if (name === "src" && !newValue) this.#loader.cancel();
+    if (name === "title") this.#syncTitle();
   }
   // ── JSON loading ────────────────────────────────────
+  /**
+   * Fetch `{ activities: [{ id, label?, journeyPhase?, stories: [...] }] }`
+   * and replace the map with it. One request per src value; a newer src
+   * aborts an older in-flight one. Once the data has rendered, fires
+   * `story-map:activities-changed` (source 'src'), and `story-map:ready`
+   * if it has not fired yet (ready is once per element).
+   * @param {string} url
+   */
   async _loadSrc(url) {
     if (!url) return;
     try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      while (this.firstChild) this.firstChild.remove();
-      for (const activity of data.activities || []) {
-        const section = document.createElement("section");
-        section.setAttribute("data-activity", activity.id);
-        section.setAttribute("data-activity-label", activity.label || activity.id);
-        if (activity.journeyPhase) section.setAttribute("data-journey-phase", activity.journeyPhase);
-        for (const story of activity.stories || []) {
-          const el = document.createElement("user-story");
-          el.setAttribute("draggable", "true");
-          el.dataset.id = story.id || story.storyId;
-          if (story.storyId || story.id) el.setAttribute("story-id", story.storyId || story.id);
-          if (story.title) el.setAttribute("title", story.title);
-          if (story.persona) el.setAttribute("persona", story.persona);
-          if (story.action) el.setAttribute("action", story.action);
-          if (story.benefit) el.setAttribute("benefit", story.benefit);
-          if (story.priority) el.setAttribute("priority", story.priority);
-          if (story.status) el.setAttribute("status", story.status);
-          if (story.points) el.setAttribute("points", String(story.points));
-          el.setAttribute("detail", story.detail || "compact");
-          section.appendChild(el);
-        }
-        this.appendChild(section);
-      }
-      const swap = () => {
-        this.teardown();
-        this.removeAttribute("data-upgraded");
-        this.setup();
-      };
-      if (this.hasAttribute("data-upgraded") && this.#scroll) {
-        viewTransitionSwap(this, swap, "sm-vt");
-      } else {
-        swap();
-      }
+      const result = await this.#loader.fetchJson(url);
+      if (!result) return;
+      const { data, isCurrent } = result;
+      this.#records.clear();
+      const children = [];
+      const metas = (data.activities || []).map((activity) => {
+        const id = String(activity.id ?? "");
+        children.push((activity.stories || []).map((story) => this.#cardFromRecord(story, "compact")));
+        return { id, label: activity.label || titleCase(id), journeyPhase: activity.journeyPhase || null };
+      });
+      const tx = viewTransitionSwap(this, () => this.#renderColumns(metas, children), "sm-vt");
+      if (tx) await tx.updateCallbackDone;
+      if (!isCurrent()) return;
+      this.dispatchEvent(new CustomEvent("story-map:activities-changed", {
+        detail: { activities: this.activities, source: "src" },
+        bubbles: true
+      }));
+      if (!this.#readyFired) this.#dispatchReady();
     } catch (err) {
       console.warn(`[story-map] Failed to load src="${url}":`, err);
     }
@@ -5756,6 +6468,10 @@ var StoryMap = class _StoryMap extends VBElement {
     }
     return null;
   }
+  /** @param {string} activityId */
+  #activityLabel(activityId) {
+    return this.#activities.find((a) => a.id === activityId)?.label || titleCase(activityId);
+  }
   /**
    * Update the count badge in the column header for a given activity.
    * @param {string} activityId
@@ -5765,36 +6481,8 @@ var StoryMap = class _StoryMap extends VBElement {
     if (!surface) return;
     const count = surface.querySelectorAll(':scope > [draggable="true"]').length;
     const column = surface.closest("[data-activity-column]");
-    if (!column) return;
-    const badge = column.querySelector(".sm-activity-count");
+    const badge = column?.querySelector(".sm-activity-count");
     if (badge) badge.textContent = String(count);
-  }
-  /**
-   * Announce a message via the live region.
-   * @param {string} msg
-   */
-  #announce(msg) {
-    if (!this.#liveRegion) return;
-    this.#liveRegion.textContent = "";
-    requestAnimationFrame(() => {
-      if (this.#liveRegion) this.#liveRegion.textContent = msg;
-    });
-  }
-  /**
-   * Get a human-readable label for a story item.
-   * @param {HTMLElement} item
-   * @returns {string}
-   */
-  #itemLabel(item) {
-    return item.getAttribute("story-id") || item.getAttribute("data-id") || item.textContent?.trim().slice(0, 40) || "item";
-  }
-  /**
-   * Convert a hyphenated or lowercase id to Title Case.
-   * @param {string} str
-   * @returns {string}
-   */
-  #titleCase(str) {
-    return str.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   }
 };
 registerComponent("story-map", StoryMap);
@@ -6335,7 +7023,7 @@ var VBStore = {
    * @param {string} namespace
    * @param {string} key
    * @param {{ maxAge?: number }} [options]
-   * @returns {Promiseunknown | null}
+   * @returns {Promise<unknown | null>}
    */
   async get(namespace, key, options) {
     const raw = await getBackend().getRaw(fullKey(namespace, key));
@@ -6359,7 +7047,7 @@ var VBStore = {
    * List every `{ key, data, timestamp }` entry in a namespace.
    * Unparseable entries are skipped silently.
    * @param {string} namespace
-   * @returns {PromiseArray<{ key: string, data: unknown, timestamp: number }>}
+   * @returns {Promise<Array<{ key: string, data: unknown, timestamp: number }>>}
    */
   async list(namespace) {
     const prefix = namespacePrefix(namespace);
@@ -6391,7 +7079,7 @@ var VBStore = {
   /**
    * Persist many entries under the same namespace.
    * @param {string} namespace
-   * @param {Array[string, unknown]} entries
+   * @param {Array<[string, unknown]>} entries
    */
   async setMany(namespace, entries) {
     for (const [key, value] of entries) {
@@ -6402,7 +7090,9 @@ var VBStore = {
 
 // src/utils/copy-init.js
 var COPIED_DURATION = 1500;
-var ANNOUNCE_DURATION = 1e3;
+var ANNOUNCE_DURATION = 5e3;
+var COPY_EVENT = "vb:copy";
+var PASTE_EVENT = "vb:paste";
 var SELECTOR = "[data-copy], [data-copy-target], [data-paste-target]";
 var DEFAULT_ANNOUNCE = "Copied to clipboard";
 var DEFAULT_PASTE_ANNOUNCE = "Pasted from clipboard";
@@ -6418,7 +7108,7 @@ async function copyText(text, options = {}) {
   applyFeedback({ button, duration, announceMessage, eventDetail: { text } });
   return true;
 }
-function applyFeedback({ button, duration, announceMessage, eventDetail, state = "copied", eventName = "copy" }) {
+function applyFeedback({ button, duration, announceMessage, eventDetail, state = "copied", eventName = COPY_EVENT }) {
   if (button) {
     button.dataset.state = state;
     const prior = resetTimers.get(button);
@@ -6432,7 +7122,7 @@ function applyFeedback({ button, duration, announceMessage, eventDetail, state =
       detail: eventDetail
     }));
   }
-  announce(announceMessage, button ?? document.body);
+  announce2(announceMessage);
 }
 async function pasteFromClipboard(target, options = {}) {
   const { button, announceMessage = DEFAULT_PASTE_ANNOUNCE, duration = COPIED_DURATION } = options;
@@ -6456,7 +7146,7 @@ async function pasteFromClipboard(target, options = {}) {
     announceMessage,
     eventDetail: { text },
     state: "pasted",
-    eventName: "paste"
+    eventName: PASTE_EVENT
   });
   return text;
 }
@@ -6489,14 +7179,33 @@ function getText(button) {
   }
   return "";
 }
-function announce(message, context) {
-  const el = document.createElement("div");
+var clearTimer;
+function liveRegion() {
+  let el = (
+    /** @type {HTMLElement | null} */
+    document.querySelector("body > [data-vb-clipboard-status]")
+  );
+  if (el) return el;
+  el = document.createElement("div");
+  el.setAttribute("data-vb-clipboard-status", "");
   el.setAttribute("role", "status");
   el.setAttribute("aria-live", "polite");
-  el.className = "visually-hidden";
-  el.textContent = message;
-  context.appendChild(el);
-  setTimeout(() => el.remove(), ANNOUNCE_DURATION);
+  el.setAttribute("aria-atomic", "true");
+  el.style.cssText = "position:absolute;inline-size:1px;block-size:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;";
+  document.body.appendChild(el);
+  return el;
+}
+function announce2(message) {
+  if (!document.body) return;
+  const region = liveRegion();
+  region.textContent = "";
+  requestAnimationFrame(() => {
+    region.textContent = message;
+    clearTimeout(clearTimer);
+    clearTimer = setTimeout(() => {
+      if (region.textContent === message) region.textContent = "";
+    }, ANNOUNCE_DURATION);
+  });
 }
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => initCopyButtons());
@@ -6537,11 +7246,19 @@ var MemoryAdapter = class {
     this.#pins.set(pin.id, pin);
     return pin;
   }
-  async update(id, changes) {
-    const pin = this.#pins.get(id);
-    if (!pin) throw new Error(`Pin ${id} not found`);
-    Object.assign(pin, changes);
-    return pin;
+  /**
+   * Merge `changes` into the stored pin. Upserts: a pin this adapter has
+   * never seen (loaded via `src` or `.pins`) is stored from `pin` (or just
+   * its id) plus the changes, so resolving / replying always works.
+   * @param {string} id
+   * @param {object} changes
+   * @param {object} [pin] the component's full copy of the pin
+   */
+  async update(id, changes, pin) {
+    const stored = this.#pins.get(id) ?? { ...pin ?? {}, id };
+    Object.assign(stored, changes);
+    this.#pins.set(id, stored);
+    return stored;
   }
   async remove(id) {
     this.#pins.delete(id);
@@ -6569,10 +7286,16 @@ var LocalStorageAdapter = class {
     await this.#write(pins);
     return pin;
   }
-  async update(id, changes) {
+  /**
+   * Merge `changes` into the stored pin; upserts like MemoryAdapter.update.
+   * @param {string} id
+   * @param {object} changes
+   * @param {object} [pin]
+   */
+  async update(id, changes, pin) {
     const pins = await this.#read();
-    const idx = pins.findIndex((p) => p.id === id);
-    if (idx === -1) throw new Error(`Pin ${id} not found`);
+    let idx = pins.findIndex((p) => p.id === id);
+    if (idx === -1) idx = pins.push({ ...pin ?? {}, id }) - 1;
     Object.assign(pins[idx], changes);
     await this.#write(pins);
     return pins[idx];
@@ -6619,14 +7342,61 @@ var RestAdapter = class {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   }
 };
+var pct = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0;
+};
 var ReviewSurface = class extends HTMLElement {
   static get observedAttributes() {
     return ["src", "editable", "adapter", "endpoint", "storage-key", "author", "compact", "show-resolved"];
   }
-  #slotCache = /* @__PURE__ */ new Map();
+  /** True after the first connect (adapter resolved, initial load started). */
+  #initialized = false;
+  /** True once the initial data (src / adapter / .pins) has settled. */
+  #loaded = false;
+  #readyFired = false;
+  /** Set when `.pins` is assigned; stops the first connect reloading from the adapter. */
+  #pinsAssigned = false;
+  /** Bumped by every load and every `.pins` / importPins() so stale adapter loads are dropped. */
+  #loadSeq = 0;
+  /** The src request; aborted by a newer src, src removal, `.pins`, importPins() or an adapter load. */
+  #loader = new SrcLoader();
+  /** @type {HTMLElement} */
+  #overlay;
+  /** @type {HTMLElement} */
+  #popoverHost;
+  /** @type {HTMLElement} */
+  #toolbarHost;
+  /** @type {HTMLElement} */
+  #status;
+  /** @type {HTMLElement} */
+  #live;
   constructor() {
     super();
-    this.attachShadow({ mode: "open" });
+    const root = this.attachShadow({ mode: "open" });
+    root.innerHTML = `<style>${styles5}</style>
+      <div class="rs-status state-msg" hidden></div>
+      <div class="rs-container">
+        <slot></slot>
+        <div class="rs-overlay" role="group" aria-label="Review pins"></div>
+        <div class="rs-popover-host" style="display:contents"></div>
+      </div>
+      <div class="rs-toolbar-host" style="display:contents"></div>
+      <div class="rs-live" role="status" aria-live="polite" aria-atomic="true"></div>`;
+    const q = (sel) => (
+      /** @type {HTMLElement} */
+      root.querySelector(sel)
+    );
+    this.#status = q(".rs-status");
+    this.#overlay = q(".rs-overlay");
+    this.#popoverHost = q(".rs-popover-host");
+    this.#toolbarHost = q(".rs-toolbar-host");
+    this.#live = q(".rs-live");
+    root.addEventListener("click", (e) => this.#onClick(e));
+    root.addEventListener("keydown", (e) => this.#onKeydown(
+      /** @type {KeyboardEvent} */
+      e
+    ));
     this.__pins = [];
     this.__adapter = null;
     this._activePin = null;
@@ -6639,16 +7409,22 @@ var ReviewSurface = class extends HTMLElement {
   }
   /**
    * Replace the pin list and re-render. Idempotent — assigning the
-   * same array reference is a no-op. Emits review-surface:pins-changed
-   * with `source: 'property'` so reactive consumers can filter their
-   * own assignments out of the event stream.
+   * same array reference is a no-op. May be assigned before the element
+   * is connected: the first connect then keeps these pins instead of
+   * loading from the adapter. Emits review-surface:pins-changed with
+   * `source: 'property'`.
    * @param {Object[]} data
    */
   set pins(data) {
     const next = Array.isArray(data) ? data : [];
     if (this.__pins === next) return;
-    this.__pins = next;
-    if (this.isConnected) this._render();
+    this.__pins = /** @type {any} */
+    next;
+    this.#pinsAssigned = true;
+    this.#loader.cancel();
+    this.#loadSeq++;
+    this.#loaded = true;
+    if (this.#initialized) this._render();
     this.dispatchEvent(new CustomEvent("review-surface:pins-changed", {
       detail: { pins: next, source: "property" },
       bubbles: true,
@@ -6659,27 +7435,31 @@ var ReviewSurface = class extends HTMLElement {
   get adapter() {
     return this.__adapter;
   }
-  /** @param {Object} adapterInstance */
+  /**
+   * Set a persistence adapter. Before connect it is simply kept (the
+   * first connect loads from it unless `.pins` was assigned); once
+   * connected, pins are reloaded from it.
+   * @param {Object} adapterInstance
+   */
   set adapter(adapterInstance) {
-    this.__adapter = adapterInstance;
-    if (this.isConnected) this._loadFromAdapter();
-  }
-  /* ── Slot caching ───────────────────────────────── */
-  #cacheSlotValues() {
-    for (const child of this.children) {
-      const slot = child.getAttribute("slot");
-      if (slot) this.#slotCache.set(slot, child.textContent.trim());
-    }
-  }
-  _resolve(attr) {
-    return this.getAttribute(attr) || this.#slotCache.get(attr) || "";
+    this.__adapter = /** @type {any} */
+    adapterInstance;
+    if (this.#initialized && this.isConnected) this._loadFromAdapter();
   }
   /* ── Lifecycle ─────────────────────────────────── */
   connectedCallback() {
-    this.#cacheSlotValues();
     this.setAttribute("data-upgraded", "");
-    this.#resolveAdapter();
-    if (this.hasAttribute("src")) {
+    if (this.#initialized) {
+      this._render();
+      return;
+    }
+    this.#initialized = true;
+    if (!this.__adapter) this.#resolveAdapter();
+    this.dispatchEvent(new CustomEvent("review-surface:upgraded", { bubbles: true, composed: true }));
+    if (this.#pinsAssigned) {
+      this.#loaded = true;
+      this._render();
+    } else if (this.hasAttribute("src")) {
       this._loadSrc(this.getAttribute("src"));
     } else {
       this._loadFromAdapter();
@@ -6688,11 +7468,14 @@ var ReviewSurface = class extends HTMLElement {
   disconnectedCallback() {
     this.removeAttribute("data-upgraded");
     this.removeAttribute("data-annotating");
+    this._annotating = false;
   }
   attributeChangedCallback(name) {
-    if (!this.isConnected) return;
+    if (!this.#initialized || !this.isConnected) return;
     if (name === "src") {
-      this._loadSrc(this.getAttribute("src"));
+      const src = this.getAttribute("src");
+      if (src) this._loadSrc(src);
+      else if (this.#loader.cancel()) this._loadFromAdapter();
     } else if (name === "adapter" || name === "endpoint" || name === "storage-key") {
       this.#resolveAdapter();
       this._loadFromAdapter();
@@ -6722,40 +7505,65 @@ var ReviewSurface = class extends HTMLElement {
     }
   }
   /* ── Data loading ──────────────────────────────── */
+  /**
+   * Fetch pins from `src` (an array, or `{ pins }`). A newer src aborts the
+   * older request; `.pins`, importPins(), an adapter load or removing src
+   * abort it too.
+   * @param {string | null} src
+   */
   async _loadSrc(src) {
-    if (!src || !this.shadowRoot) return;
-    this.shadowRoot.innerHTML = `<style>${styles5}</style><div class="state-msg">Loading\u2026</div>`;
+    if (!src) return;
+    this.#loadSeq++;
+    this.#showStatus("Loading\u2026");
+    let result;
     try {
-      const res = await fetch(src);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      this.__pins = Array.isArray(data) ? data : data.pins || [];
-      this._render();
+      result = await this.#loader.fetchJson(src);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.shadowRoot.innerHTML = `<style>${styles5}</style><div class="state-msg state-msg--error">Could not load pins: ${esc(msg)}</div>`;
+      this.#showStatus(`Could not load pins: ${msg}`, true);
+      return;
     }
+    if (!result) return;
+    const { data } = result;
+    this.__pins = Array.isArray(data) ? data : data?.pins || [];
+    this.#loaded = true;
+    this._render();
   }
   async _loadFromAdapter() {
     if (!this.__adapter) return;
+    this.#loader.cancel();
+    const seq = ++this.#loadSeq;
+    let pins;
     try {
-      this.__pins = await this.__adapter.load();
+      pins = await this.__adapter.load();
     } catch {
-      this.__pins = [];
+      pins = [];
     }
+    if (seq !== this.#loadSeq) return;
+    this.__pins = Array.isArray(pins) ? pins : [];
+    this.#loaded = true;
     this._render();
+  }
+  /**
+   * @param {string} message
+   * @param {boolean} [error]
+   */
+  #showStatus(message, error = false) {
+    this.#status.textContent = message;
+    this.#status.classList.toggle("state-msg--error", error);
+    this.#status.hidden = false;
   }
   /* ── Public API ────────────────────────────────── */
   /**
    * Add a pin programmatically.
    * @param {{ x: number, y: number, text: string, author?: string }} pinData
-   * @returns {PromiseObject}
+   * @returns {Promise<Object>}
    */
   async addPin(pinData) {
     const pin = {
       id: crypto.randomUUID(),
-      x: Math.max(0, Math.min(100, pinData.x)),
-      y: Math.max(0, Math.min(100, pinData.y)),
+      x: pct(pinData.x),
+      y: pct(pinData.y),
       text: pinData.text || "",
       author: pinData.author || this.getAttribute("author") || "Anonymous",
       createdAt: (/* @__PURE__ */ new Date()).toISOString(),
@@ -6810,7 +7618,7 @@ var ReviewSurface = class extends HTMLElement {
       resolvedAt: (/* @__PURE__ */ new Date()).toISOString()
     };
     if (this.__adapter) {
-      await this.__adapter.update(id, changes);
+      await this.__adapter.update(id, changes, pin);
     }
     Object.assign(pin, changes);
     this._render();
@@ -6830,7 +7638,7 @@ var ReviewSurface = class extends HTMLElement {
     if (!pin) return;
     const changes = { resolved: false, resolvedBy: null, resolvedAt: null };
     if (this.__adapter) {
-      await this.__adapter.update(id, changes);
+      await this.__adapter.update(id, changes, pin);
     }
     Object.assign(pin, changes);
     this._render();
@@ -6854,6 +7662,9 @@ var ReviewSurface = class extends HTMLElement {
    */
   importPins(data) {
     this.__pins = Array.isArray(data) ? structuredClone(data) : [];
+    this.#loader.cancel();
+    this.#loadSeq++;
+    this.#loaded = true;
     this._activePin = null;
     this._render();
   }
@@ -6863,36 +7674,100 @@ var ReviewSurface = class extends HTMLElement {
     return this.__pins.filter((p) => showResolved || !p.resolved).sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime());
   }
   _render() {
-    if (!this.shadowRoot) return;
     const editable = this.hasAttribute("editable");
     const visible = this.#visiblePins();
     const activePin = this._activePin ? this.__pins.find((p) => p.id === this._activePin) : null;
+    if (this._activePin && !activePin) this._activePin = null;
     this.setAttribute("pin-count", String(visible.length));
-    this.shadowRoot.innerHTML = `<style>${styles5}</style>
-      <div class="rs-container">
-        <slot></slot>
-        <div class="rs-overlay" role="img" aria-label="Review annotation surface">
-          ${visible.map((pin, i) => this._renderPin(pin, i + 1)).join("")}
-        </div>
-        ${activePin ? this._renderPopover(activePin, editable) : ""}
-      </div>
-      ${editable ? this._renderToolbar(visible.length) : ""}
-      <div class="rs-live" aria-live="polite" aria-atomic="true"></div>`;
-    this._bindListeners(editable);
-    this.dispatchEvent(new CustomEvent("review-surface:ready", {
+    const focus = this.#captureFocus();
+    this.#status.hidden = true;
+    this.#overlay.innerHTML = visible.map((pin, i) => this._renderPin(pin, i + 1)).join("");
+    this.#popoverHost.innerHTML = activePin ? this._renderPopover(activePin, editable) : "";
+    this.#toolbarHost.innerHTML = editable ? this._renderToolbar(visible.length) : "";
+    this.#restoreFocus(focus);
+    if (this.#loaded && !this.#readyFired) {
+      this.#readyFired = true;
+      this.dispatchEvent(new CustomEvent("review-surface:ready", {
+        bubbles: true,
+        composed: true,
+        detail: { pinCount: visible.length }
+      }));
+    }
+  }
+  /* ── Focus preservation ────────────────────────── */
+  /**
+   * Describe the focused shadow control so the equivalent node can be
+   * re-focused after its host is re-rendered.
+   * @returns {{ selector: string, value?: string, inPopover: boolean } | null}
+   */
+  #captureFocus() {
+    const el = (
+      /** @type {HTMLElement | null} */
+      this.shadowRoot?.activeElement ?? null
+    );
+    if (!el) return null;
+    const inPopover = !!el.closest(".rs-popover");
+    let selector = "";
+    if (el.classList.contains("rs-pin")) selector = `.rs-pin[data-pin-id="${CSS.escape(el.dataset.pinId ?? "")}"]`;
+    else if (el.dataset.action) selector = `[data-action="${CSS.escape(el.dataset.action)}"]`;
+    else if (el.classList.contains("rs-input__field")) selector = ".rs-input__field";
+    else if (el.classList.contains("rs-popover")) selector = ".rs-popover";
+    const value = el instanceof HTMLTextAreaElement ? el.value : void 0;
+    return { selector, value, inPopover };
+  }
+  /** @param {{ selector: string, value?: string, inPopover: boolean } | null} focus */
+  #restoreFocus(focus) {
+    if (!focus) return;
+    const root = (
+      /** @type {ShadowRoot} */
+      this.shadowRoot
+    );
+    let target = focus.selector ? (
+      /** @type {HTMLElement | null} */
+      root.querySelector(focus.selector)
+    ) : null;
+    if (target instanceof HTMLTextAreaElement && focus.value !== void 0) target.value = focus.value;
+    if (!target && focus.inPopover) target = root.querySelector(".rs-popover");
+    if (!target) target = this.#pinButton(this._activePin) ?? root.querySelector('[data-action="toggle-mode"]');
+    target?.focus();
+  }
+  /** @param {string|null|undefined} id */
+  #pinButton(id) {
+    if (!id) return null;
+    return (
+      /** @type {HTMLElement | null} */
+      this.shadowRoot?.querySelector(`.rs-pin[data-pin-id="${CSS.escape(id)}"]`) ?? null
+    );
+  }
+  /**
+   * Open a pin's popover and move focus into it.
+   * @param {string} id
+   */
+  #openPin(id) {
+    this._activePin = id;
+    this._render();
+    (this.shadowRoot?.querySelector(".rs-popover") ?? null)?.focus();
+    this.dispatchEvent(new CustomEvent("review-surface:select", {
       bubbles: true,
       composed: true,
-      detail: { pinCount: visible.length }
+      detail: { pin: this.__pins.find((p) => p.id === id) }
     }));
+  }
+  /** Close the popover and return focus to its pin. */
+  #closePin() {
+    const id = this._activePin;
+    this._activePin = null;
+    this._render();
+    this.#pinButton(id)?.focus();
   }
   /* ── Pin marker ────────────────────────────────── */
   _renderPin(pin, number) {
-    const preview = pin.text ? pin.text.slice(0, 50) : "Empty pin";
-    return `<button class="rs-pin"
+    const preview = pin.text ? String(pin.text).slice(0, 50) : "Empty pin";
+    return `<button type="button" class="rs-pin"
       data-pin-id="${esc(pin.id)}"
       ${pin.resolved ? "data-resolved" : ""}
       ${this._activePin === pin.id ? "data-active" : ""}
-      style="left:${pin.x}%;top:${pin.y}%"
+      style="left:${pct(pin.x)}%;top:${pct(pin.y)}%"
       aria-label="Pin ${number}: ${esc(preview)}"
       aria-expanded="${this._activePin === pin.id}"
       aria-haspopup="dialog">
@@ -6902,36 +7777,37 @@ var ReviewSurface = class extends HTMLElement {
   /* ── Popover ───────────────────────────────────── */
   _renderPopover(pin, editable) {
     const number = this.#visiblePins().findIndex((p) => p.id === pin.id) + 1;
-    return `<div class="rs-popover" data-open
-      style="left:${Math.min(pin.x, 70)}%;top:${pin.y}%"
+    const label = number > 0 ? `Pin ${number}` : "Pin";
+    return `<div class="rs-popover" data-open tabindex="-1"
+      style="left:${Math.min(pct(pin.x), 70)}%;top:${pct(pin.y)}%"
       role="dialog"
       aria-labelledby="rs-popover-title-${esc(pin.id)}">
 
       <div class="rs-popover__header">
         <span class="rs-popover__title" id="rs-popover-title-${esc(pin.id)}">
-          Pin ${number}
+          ${label}
           ${pin.resolved ? `<span class="rs-resolved-badge">${lucideSvg(UX_ICONS.checkCircle)} Resolved</span>` : ""}
         </span>
         <div class="rs-popover__actions">
           ${editable && !pin.resolved ? `
-            <button class="rs-popover__btn rs-popover__btn--resolve" data-action="resolve" data-pin-id="${esc(pin.id)}"
+            <button type="button" class="rs-popover__btn rs-popover__btn--resolve" data-action="resolve" data-pin-id="${esc(pin.id)}"
               aria-label="Resolve pin" title="Resolve">${lucideSvg(UX_ICONS.checkCircle)}</button>` : ""}
           ${editable && pin.resolved ? `
-            <button class="rs-popover__btn" data-action="unresolve" data-pin-id="${esc(pin.id)}"
+            <button type="button" class="rs-popover__btn" data-action="unresolve" data-pin-id="${esc(pin.id)}"
               aria-label="Re-open pin" title="Re-open">${lucideSvg(UX_ICONS.messageCircle)}</button>` : ""}
           ${editable ? `
-            <button class="rs-popover__btn rs-popover__btn--delete" data-action="delete" data-pin-id="${esc(pin.id)}"
+            <button type="button" class="rs-popover__btn rs-popover__btn--delete" data-action="delete" data-pin-id="${esc(pin.id)}"
               aria-label="Delete pin" title="Delete">${lucideSvg(UX_ICONS.x)}</button>` : ""}
-          <button class="rs-popover__btn" data-action="close"
+          <button type="button" class="rs-popover__btn" data-action="close"
             aria-label="Close">${lucideSvg(UX_ICONS.x)}</button>
         </div>
       </div>
 
       <div class="rs-comment">
         <div class="rs-comment__meta">
-          <span class="rs-comment__avatar" style="background:${hashColor(pin.author || "Anonymous")}">${initials(pin.author || "Anonymous")}</span>
+          <span class="rs-comment__avatar" style="background:${hashColor(pin.author || "Anonymous")}">${esc(initials(pin.author || "Anonymous"))}</span>
           <span class="rs-comment__author">${esc(pin.author || "Anonymous")}</span>
-          <span class="rs-comment__time">${this.#formatTime(pin.createdAt)}</span>
+          <span class="rs-comment__time">${esc(this.#formatTime(pin.createdAt))}</span>
         </div>
         <div class="rs-comment__text">${esc(pin.text)}</div>
       </div>
@@ -6941,9 +7817,9 @@ var ReviewSurface = class extends HTMLElement {
           ${pin.replies.map((reply) => `
             <div class="rs-reply">
               <div class="rs-comment__meta">
-                <span class="rs-comment__avatar" style="background:${hashColor(reply.author || "Anonymous")}">${initials(reply.author || "Anonymous")}</span>
+                <span class="rs-comment__avatar" style="background:${hashColor(reply.author || "Anonymous")}">${esc(initials(reply.author || "Anonymous"))}</span>
                 <span class="rs-comment__author">${esc(reply.author || "Anonymous")}</span>
-                <span class="rs-comment__time">${this.#formatTime(reply.createdAt)}</span>
+                <span class="rs-comment__time">${esc(this.#formatTime(reply.createdAt))}</span>
               </div>
               <div class="rs-comment__text">${esc(reply.text)}</div>
             </div>
@@ -6953,8 +7829,8 @@ var ReviewSurface = class extends HTMLElement {
       ${editable ? `
         <div class="rs-input">
           <textarea class="rs-input__field" placeholder="Reply\u2026" rows="1"
-            aria-label="Reply to pin ${number}"></textarea>
-          <button class="rs-input__submit" data-action="reply" data-pin-id="${esc(pin.id)}"
+            aria-label="Reply to ${label.toLowerCase()}"></textarea>
+          <button type="button" class="rs-input__submit" data-action="reply" data-pin-id="${esc(pin.id)}"
             aria-label="Send reply">${lucideSvg(UX_ICONS.send)}</button>
         </div>` : ""}
 
@@ -6963,146 +7839,109 @@ var ReviewSurface = class extends HTMLElement {
   /* ── Toolbar ───────────────────────────────────── */
   _renderToolbar(count) {
     return `<div class="rs-toolbar" role="toolbar" aria-label="Review tools">
-      <button class="rs-toolbar__btn" data-action="toggle-mode"
+      <button type="button" class="rs-toolbar__btn" data-action="toggle-mode"
         aria-pressed="${this._annotating}"
         title="Toggle annotate mode">
         ${lucideSvg(UX_ICONS.mapPin)} Annotate
       </button>
-      <button class="rs-toolbar__btn" data-action="export"
+      <button type="button" class="rs-toolbar__btn" data-action="export"
         title="Export pins as JSON">
         ${lucideSvg(UX_ICONS.download)} Export
       </button>
       <output class="rs-toolbar__count">${count} pin${count !== 1 ? "s" : ""}</output>
     </div>`;
   }
-  /* ── Event binding ─────────────────────────────── */
-  _bindListeners(editable) {
-    const root = this.shadowRoot;
-    if (!root) return;
-    root.querySelectorAll(".rs-pin").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const id = (
-          /** @type {HTMLElement} */
-          btn.dataset.pinId ?? null
-        );
-        this._activePin = this._activePin === id ? null : id;
-        this._render();
-        if (this._activePin) {
-          this.dispatchEvent(new CustomEvent("review-surface:select", {
-            bubbles: true,
-            composed: true,
-            detail: { pin: this.__pins.find((p) => p.id === id) }
-          }));
-        }
-      });
-    });
-    const overlay = root.querySelector(".rs-overlay");
-    if (overlay && editable) {
-      overlay.addEventListener("click", (e) => {
-        if (!this._annotating) return;
-        const me = (
-          /** @type {MouseEvent} */
-          e
-        );
-        const target = (
-          /** @type {Element | null} */
-          me.target
-        );
-        if (target?.closest(".rs-pin")) return;
-        const rect = overlay.getBoundingClientRect();
-        const x = (me.clientX - rect.left) / rect.width * 100;
-        const y = (me.clientY - rect.top) / rect.height * 100;
-        this.#promptNewPin(x, y);
-      });
+  /* ── Event handling (delegated on the shadow root) ── */
+  /** @param {Event} e */
+  #onClick(e) {
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+    const pinBtn = (
+      /** @type {HTMLElement | null} */
+      target.closest(".rs-pin")
+    );
+    if (pinBtn) {
+      e.stopPropagation();
+      const id = pinBtn.dataset.pinId ?? null;
+      if (this._activePin === id) this.#closePin();
+      else if (id) this.#openPin(id);
+      return;
     }
-    root.querySelectorAll("[data-action]").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const action = (
-          /** @type {HTMLElement} */
-          btn.dataset.action
-        );
-        const pinId = (
-          /** @type {HTMLElement} */
-          btn.dataset.pinId
-        );
-        switch (action) {
-          case "close":
-            this._activePin = null;
-            this._render();
-            break;
-          case "resolve":
-            if (pinId) this.resolvePin(pinId);
-            break;
-          case "unresolve":
-            if (pinId) this.unresolvePin(pinId);
-            break;
-          case "delete":
-            if (pinId) this.removePin(pinId);
-            break;
-          case "toggle-mode":
-            this._annotating = !this._annotating;
-            if (this._annotating) {
-              this.setAttribute("data-annotating", "");
-            } else {
-              this.removeAttribute("data-annotating");
-            }
-            this._render();
-            this.dispatchEvent(new CustomEvent("review-surface:mode", {
-              bubbles: true,
-              composed: true,
-              detail: { mode: this._annotating ? "annotate" : "view" }
-            }));
-            break;
-          case "export":
-            this.#exportToClipboard();
-            break;
-          case "reply":
-            this.#submitReply(pinId);
-            break;
-        }
-      });
-    });
-    const replyField = root.querySelector(".rs-input__field");
-    if (replyField) {
-      replyField.addEventListener("keydown", (e) => {
-        const ke = (
-          /** @type {KeyboardEvent} */
-          e
-        );
-        if (ke.key === "Enter" && !ke.shiftKey) {
-          ke.preventDefault();
-          const replyBtn = (
-            /** @type {HTMLElement | null} */
-            root.querySelector('[data-action="reply"]')
-          );
-          const pinId = replyBtn?.dataset.pinId;
+    const actionBtn = (
+      /** @type {HTMLElement | null} */
+      target.closest("[data-action]")
+    );
+    if (actionBtn) {
+      e.stopPropagation();
+      const pinId = actionBtn.dataset.pinId;
+      switch (actionBtn.dataset.action) {
+        case "close":
+          this.#closePin();
+          break;
+        case "resolve":
+          if (pinId) this.resolvePin(pinId);
+          break;
+        case "unresolve":
+          if (pinId) this.unresolvePin(pinId);
+          break;
+        case "delete":
+          if (pinId) this.removePin(pinId);
+          break;
+        case "toggle-mode":
+          this.#setAnnotating(!this._annotating);
+          break;
+        case "export":
+          this.#exportToClipboard();
+          break;
+        case "reply":
           if (pinId) this.#submitReply(pinId);
-        }
-      });
+          break;
+      }
+      return;
     }
-    root.addEventListener("keydown", (e) => {
-      const ke = (
-        /** @type {KeyboardEvent} */
+    if (target === this.#overlay && this._annotating && this.hasAttribute("editable")) {
+      const me = (
+        /** @type {MouseEvent} */
         e
       );
-      if (ke.key === "Escape") {
-        if (this._activePin) {
-          this._activePin = null;
-          this._render();
-        } else if (this._annotating) {
-          this._annotating = false;
-          this.removeAttribute("data-annotating");
-          this._render();
-          this.dispatchEvent(new CustomEvent("review-surface:mode", {
-            bubbles: true,
-            composed: true,
-            detail: { mode: "view" }
-          }));
-        }
+      const rect = this.#overlay.getBoundingClientRect();
+      const x = (me.clientX - rect.left) / rect.width * 100;
+      const y = (me.clientY - rect.top) / rect.height * 100;
+      this.#promptNewPin(x, y);
+    }
+  }
+  /** @param {KeyboardEvent} e */
+  #onKeydown(e) {
+    const target = e.target;
+    if (e.key === "Enter" && !e.shiftKey && target instanceof Element && target.matches(".rs-input__field")) {
+      e.preventDefault();
+      const pinId = (
+        /** @type {HTMLElement | null} */
+        (this.shadowRoot?.querySelector('[data-action="reply"]') ?? null)?.dataset.pinId
+      );
+      if (pinId) this.#submitReply(pinId);
+      return;
+    }
+    if (e.key === "Escape") {
+      if (this._activePin) {
+        e.stopPropagation();
+        this.#closePin();
+      } else if (this._annotating) {
+        e.stopPropagation();
+        this.#setAnnotating(false);
       }
-    });
+    }
+  }
+  /** @param {boolean} on */
+  #setAnnotating(on) {
+    this._annotating = on;
+    this.toggleAttribute("data-annotating", on);
+    this._render();
+    this.dispatchEvent(new CustomEvent("review-surface:mode", {
+      bubbles: true,
+      composed: true,
+      detail: { mode: on ? "annotate" : "view" }
+    }));
   }
   /* ── Internal helpers ──────────────────────────── */
   async #promptNewPin(x, y) {
@@ -7110,13 +7949,7 @@ var ReviewSurface = class extends HTMLElement {
     const pin = await this.addPin({ x, y, text: "", author });
     this._activePin = pin.id;
     this._render();
-    requestAnimationFrame(() => {
-      const field = (
-        /** @type {HTMLTextAreaElement | null} */
-        this.shadowRoot?.querySelector(".rs-input__field") ?? null
-      );
-      field?.focus();
-    });
+    (this.shadowRoot?.querySelector(".rs-input__field") ?? null)?.focus();
   }
   async #submitReply(pinId) {
     const field = (
@@ -7134,31 +7967,20 @@ var ReviewSurface = class extends HTMLElement {
       author: this.getAttribute("author") || "Anonymous",
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
     };
-    if (!pin.replies) pin.replies = [];
-    if (!pin.text) {
-      pin.text = text;
-      if (this.__adapter) {
-        await this.__adapter.update(pinId, { text });
-      }
-    } else {
-      pin.replies.push(reply);
-      if (this.__adapter) {
-        await this.__adapter.update(pinId, { replies: pin.replies });
-      }
+    const changes = pin.text ? { replies: [...pin.replies ?? [], reply] } : { text };
+    if (this.__adapter) {
+      await this.__adapter.update(pinId, changes, pin);
     }
+    Object.assign(pin, changes);
+    if (!pin.replies) pin.replies = [];
+    field.value = "";
     this._render();
     this.#announce("Reply added");
-    requestAnimationFrame(() => {
-      const newField = (
-        /** @type {HTMLTextAreaElement | null} */
-        this.shadowRoot?.querySelector(".rs-input__field") ?? null
-      );
-      newField?.focus();
-    });
+    (this.shadowRoot?.querySelector(".rs-input__field") ?? null)?.focus();
     this.dispatchEvent(new CustomEvent("review-surface:update", {
       bubbles: true,
       composed: true,
-      detail: { pin, changes: { replies: pin.replies } }
+      detail: { pin, changes }
     }));
   }
   async #exportToClipboard() {
@@ -7178,6 +8000,7 @@ var ReviewSurface = class extends HTMLElement {
     if (!isoString) return "";
     try {
       const date = new Date(isoString);
+      if (Number.isNaN(date.getTime())) return "";
       const now = /* @__PURE__ */ new Date();
       const diffMs = now.getTime() - date.getTime();
       const diffMins = Math.floor(diffMs / 6e4);
@@ -7192,205 +8015,176 @@ var ReviewSurface = class extends HTMLElement {
       return "";
     }
   }
+  /**
+   * Write to the persistent live region (never re-rendered, so the
+   * message survives the render that follows every change).
+   * @param {string} message
+   */
   #announce(message) {
-    const live = this.shadowRoot?.querySelector(".rs-live");
-    if (live) live.textContent = message;
+    this.#live.textContent = message;
   }
 };
 registerComponent("review-surface", ReviewSurface);
 
 // src/web-components/gantt-chart/logic.js
-var DAY = 864e5;
-var WEEK = DAY * 7;
-var MONTH = DAY * 30;
-var QUARTER = DAY * 91;
-var YEAR = DAY * 365;
-function toTimestamp(value) {
-  if (typeof value === "number") return value;
-  const d = new Date(value);
-  return d.getTime();
+function pickFormatter(rangeDays) {
+  if (rangeDays <= 90) {
+    return (d) => formatDate(d, { month: "short", day: "numeric" });
+  }
+  if (rangeDays <= 365) {
+    return (d) => formatDate(d, { month: "short", year: "2-digit" });
+  }
+  return (d) => formatDate(d, { year: "numeric" });
 }
-function pickFormatter(rangeMs) {
-  if (rangeMs <= WEEK * 3) {
-    return (d) => d.toLocaleDateString(void 0, { month: "short", day: "numeric" });
-  }
-  if (rangeMs <= MONTH * 3) {
-    return (d) => d.toLocaleDateString(void 0, { month: "short", day: "numeric" });
-  }
-  if (rangeMs <= YEAR) {
-    return (d) => d.toLocaleDateString(void 0, { month: "short", year: "2-digit" });
-  }
-  return (d) => d.toLocaleDateString(void 0, { year: "numeric" });
-}
-function resolveView(rangeMs) {
-  if (rangeMs <= WEEK * 3) return "day";
-  if (rangeMs <= MONTH * 3) return "week";
-  if (rangeMs <= YEAR) return "month";
+function resolveView(rangeDays) {
+  if (rangeDays <= 21) return "day";
+  if (rangeDays <= 90) return "week";
+  if (rangeDays <= 365) return "month";
   return "quarter";
 }
-function esc2(s) {
-  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+var STEP_DAYS = { day: 1, week: 7, month: 30, quarter: 91 };
+function longDate(ts) {
+  return formatDate(new Date(ts), { year: "numeric", month: "short", day: "numeric" });
 }
-var GanttChart = class _GanttChart extends VBElement {
+var STATUS_LABELS2 = {
+  "not-started": "Not started",
+  "in-progress": "In progress",
+  done: "Done",
+  blocked: "Blocked"
+};
+function statusLabel2(s) {
+  return STATUS_LABELS2[s] || (s.charAt(0).toUpperCase() + s.slice(1)).replace(/-/g, " ");
+}
+function idList(v) {
+  if (Array.isArray(v)) return v.map(String);
+  if (v == null || v === "") return [];
+  return String(v).split(",").map((s) => s.trim()).filter(Boolean);
+}
+function normalizeProgress(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.min(1, n > 1 ? n / 100 : n);
+}
+function normalizeTasks(list) {
+  const out = [];
+  (list || []).forEach((t, i) => {
+    const start = parseISODate(t?.start);
+    if (!start) return;
+    const end = parseISODate(t.end) ?? start;
+    out.push({
+      id: t.id != null && t.id !== "" ? String(t.id) : `gc-task-${i}`,
+      name: t.name ?? `Task ${i + 1}`,
+      start: start.getTime(),
+      end: Math.max(end.getTime(), start.getTime()),
+      progress: normalizeProgress(t.progress),
+      group: t.group || null,
+      depends: idList(t.depends),
+      status: t.status || null,
+      assignee: t.assignee || null,
+      milestone: !!t.milestone,
+      color: t.color || null,
+      storyIds: idList(t.storyIds),
+      itemIds: idList(t.itemIds)
+    });
+  });
+  return out;
+}
+var instanceCounter2 = 0;
+var GanttChart = class extends VBElement {
   static get observedAttributes() {
     return ["src", "title", "view", "show-today", "show-progress", "show-dependencies", "compact"];
   }
+  #uid = `gc-${++instanceCounter2}`;
   /** @type {HTMLDivElement|null} */
   #container = null;
   /** @type {HTMLDivElement|null} */
   #liveRegion = null;
   /** @type {HTMLElement|null} */
   #titleEl = null;
-  /** @type {ArrayObject} */
+  /** @type {Array<any>} */
   #tasks = [];
-  /** @type {number} */
-  #rangeStart = 0;
-  /** @type {number} */
-  #rangeEnd = 0;
-  /** @type {number} */
-  #rangeTotal = 0;
+  /**
+   * Where #tasks came from. 'table' re-parses the author's <table> on each
+   * connect; 'property' and 'src' keep #tasks and generate the SR table.
+   * @type {'table' | 'property' | 'src'}
+   */
+  #source = "table";
+  /** One in-flight src request; `url` guards against refetching on reconnect. */
+  #loader = new SrcLoader();
+  #readyFired = false;
+  #internalAttr = false;
+  /** Local-midnight Date of the first day in range. */
+  #rangeStart = /* @__PURE__ */ new Date(0);
+  /** Calendar days spanned by the range (≥ 1). */
+  #rangeDays = 1;
+  constructor() {
+    super();
+    if (Object.prototype.hasOwnProperty.call(this, "tasks")) {
+      const value = (
+        /** @type {any} */
+        this.tasks
+      );
+      delete /** @type {any} */
+      this.tasks;
+      this.tasks = value;
+    }
+  }
   setup() {
-    const table = this.querySelector(":scope > table");
-    if (!table) return false;
-    this.#tasks = this.#parseTasks(table);
-    if (this.#tasks.length === 0) return false;
-    this.#rangeStart = Math.min(...this.#tasks.map((t) => t.start));
-    this.#rangeEnd = Math.max(...this.#tasks.map((t) => t.end));
-    this.#rangeTotal = this.#rangeEnd - this.#rangeStart;
-    if (this.#rangeTotal <= 0) this.#rangeTotal = DAY;
-    this.#build(table);
-    this.dispatchEvent(new CustomEvent("gantt-chart:ready", {
-      bubbles: true,
-      detail: {
-        taskCount: this.#tasks.length,
-        dateRange: {
-          start: new Date(this.#rangeStart).toISOString(),
-          end: new Date(this.#rangeEnd).toISOString()
-        }
-      }
-    }));
+    this.listen(this, "click", this.#onClick);
+    this.listen(this, "keydown", this.#onKeyDown);
+    if (this.#source === "table") {
+      const table = this.querySelector(":scope > table");
+      this.#tasks = table ? this.#parseTasks(table) : [];
+    }
+    this.#render();
+    if (this.#tasks.length) this.#dispatchReady();
+    const src = this.getAttribute("src");
+    if (src && this.#source !== "property" && src !== this.#loader.url) this.#loadSrc(src);
     return true;
   }
   teardown() {
-    if (this.#titleEl) {
-      this.#titleEl.remove();
-      this.#titleEl = null;
-    }
-    if (this.#container) {
-      this.#container.remove();
-      this.#container = null;
-    }
-    if (this.#liveRegion) {
-      this.#liveRegion.remove();
-      this.#liveRegion = null;
-    }
-    const table = this.querySelector("table.gc-sr-only");
-    if (table) table.classList.remove("gc-sr-only");
-    this.#tasks = [];
+    this.#removeChrome();
+    const table = this.querySelector(":scope > table.gc-sr-only");
+    if (table && !table.hasAttribute("data-gc-generated")) table.classList.remove("gc-sr-only");
   }
-  /** @type {number} */
-  static #vtCounter = 0;
   attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue === newValue || !this.isConnected) return;
+    if (oldValue === newValue || this.#internalAttr) return;
+    if (!this.isConnected || !this.hasAttribute("data-upgraded")) return;
     if (name === "src") {
-      this._loadSrc(newValue);
-    } else if (this.hasAttribute("data-upgraded")) {
-      this.#refresh();
+      if (newValue) this.#loadSrc(newValue);
+      else this.#loader.cancel();
+      return;
     }
-  }
-  /**
-   * Tear down and re-setup, wrapped in a View Transition so the swap
-   * crossfades instead of flashing. Same pattern as diagram-wc and
-   * site-map.
-   */
-  #refresh() {
-    const swap = () => {
-      this.teardown();
-      this.removeAttribute("data-upgraded");
-      this.setup();
-    };
-    if (this.hasAttribute("data-upgraded") && "startViewTransition" in document && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      const name = `gc-vt-${++_GanttChart.#vtCounter}`;
-      this.style.viewTransitionName = name;
-      const tx = document.startViewTransition(swap);
-      tx.finished.finally(() => {
-        this.style.viewTransitionName = "";
-      });
-    } else {
-      swap();
-    }
+    viewTransitionSwap(this, () => this.#render(), "gc-vt");
   }
   // ── Data API (HTML-first / JS-first dual contract) ──────────────
   /**
-   * The current task list. After upgrade this reflects the parsed
-   * table rows; after assignment, it reflects whatever was passed in.
-   * Each entry: { id, name, start, end, progress?, group?, depends?,
-   * status?, assignee?, milestone?, color?, storyIds?, itemIds? }.
+   * The current task list (normalized). start/end are local-midnight
+   * timestamps; progress is a 0–1 fraction.
    */
   get tasks() {
     return this.#tasks;
   }
   /**
-   * Replace the task set and re-render. Accepts plain task objects with
-   * start/end as ISO strings or timestamps; both are normalized.
-   *
-   * Note: v1 is record-shaped (full rebuild on assignment). Per-bar
-   * preservation across diffs is on the roadmap for when drag-resize
-   * state preservation becomes a felt need.
+   * Replace the task set and re-render. start/end accept YYYY-MM-DD
+   * strings, Dates or timestamps; progress accepts 0–1 or 0–100 (> 1).
+   * The visually hidden table is regenerated from the new tasks.
    */
   set tasks(value) {
-    const next = (value || []).map((t, i) => ({
-      id: t.id ?? `gc-task-${i}`,
-      name: t.name ?? `Task ${i + 1}`,
-      start: typeof t.start === "number" ? t.start : toTimestamp(t.start),
-      end: typeof t.end === "number" ? t.end : t.end != null ? toTimestamp(t.end) : typeof t.start === "number" ? t.start : toTimestamp(t.start),
-      progress: t.progress ?? 0,
-      group: t.group ?? null,
-      depends: Array.isArray(t.depends) ? t.depends : t.depends ? String(t.depends).split(",").map((s) => s.trim()) : [],
-      status: t.status ?? null,
-      assignee: t.assignee ?? null,
-      milestone: !!t.milestone,
-      color: t.color ?? null,
-      storyIds: t.storyIds ?? [],
-      itemIds: t.itemIds ?? []
-    }));
-    if (this.#container || this.#titleEl || this.#liveRegion) {
-      if (this.#titleEl) {
-        this.#titleEl.remove();
-        this.#titleEl = null;
-      }
-      if (this.#container) {
-        this.#container.remove();
-        this.#container = null;
-      }
-      if (this.#liveRegion) {
-        this.#liveRegion.remove();
-        this.#liveRegion = null;
-      }
-    }
-    this.#tasks = next;
-    if (next.length > 0) {
-      this.#rangeStart = Math.min(...next.map((t) => t.start));
-      this.#rangeEnd = Math.max(...next.map((t) => t.end));
-      this.#rangeTotal = this.#rangeEnd - this.#rangeStart;
-      if (this.#rangeTotal <= 0) this.#rangeTotal = DAY;
-      let table = this.querySelector(":scope > table");
-      if (!table) {
-        table = document.createElement("table");
-        table.classList.add("gc-sr-only");
-        this.appendChild(table);
-      }
-      this.#build(table);
-    }
+    this.#loader.cancel();
+    this.#tasks = normalizeTasks(value);
+    this.#source = "property";
+    if (this.hasAttribute("data-upgraded")) this.#render();
     this.dispatchEvent(new CustomEvent("gantt-chart:tasks-changed", {
-      detail: { tasks: next, source: "property" },
+      detail: { tasks: this.#tasks, source: "property" },
       bubbles: true
     }));
   }
   /* ── Table parsing ─────────────────────────────── */
+  /** @param {Element} table */
   #parseTasks(table) {
     const rows = table.querySelectorAll("tbody tr");
-    const tasks = [];
+    const raw = [];
     for (let i = 0; i < rows.length; i++) {
       const row = (
         /** @type {HTMLTableRowElement} */
@@ -7398,56 +8192,107 @@ var GanttChart = class _GanttChart extends VBElement {
       );
       const times = row.querySelectorAll("time[datetime]");
       if (times.length < 2 && !row.hasAttribute("data-milestone")) continue;
-      const startStr = times[0]?.getAttribute("datetime");
-      const endStr = times.length > 1 ? times[1].getAttribute("datetime") : startStr;
-      if (!startStr) continue;
+      const start = times[0]?.getAttribute("datetime");
+      if (!start) continue;
       const progressEl = row.querySelector("progress");
-      const progressValue = progressEl ? progressEl.value / (progressEl.max || 100) : 0;
-      const name = row.cells[0]?.textContent?.trim() || `Task ${i + 1}`;
-      tasks.push({
+      raw.push({
         id: row.dataset.taskId || `gc-task-${i}`,
-        name,
-        start: toTimestamp(startStr),
-        end: toTimestamp(endStr),
-        progress: progressValue,
-        group: row.dataset.group || null,
-        depends: row.dataset.depends ? row.dataset.depends.split(",").map((s) => s.trim()) : [],
-        status: row.dataset.status || null,
-        assignee: row.dataset.assignee || null,
+        name: row.cells[0]?.textContent?.trim() || `Task ${i + 1}`,
+        start,
+        end: times.length > 1 ? times[1].getAttribute("datetime") : start,
+        // <progress> is explicit about its scale, so convert to a fraction here.
+        progress: progressEl ? progressEl.value / (progressEl.max || 1) : 0,
+        group: row.dataset.group,
+        depends: row.dataset.depends,
+        status: row.dataset.status,
+        assignee: row.dataset.assignee,
         milestone: row.hasAttribute("data-milestone"),
-        color: row.dataset.color || null,
-        storyIds: row.dataset.storyIds ? row.dataset.storyIds.split(",").map((s) => s.trim()) : [],
-        itemIds: row.dataset.itemIds ? row.dataset.itemIds.split(",").map((s) => s.trim()) : []
+        color: row.dataset.color,
+        storyIds: row.dataset.storyIds,
+        itemIds: row.dataset.itemIds
       });
     }
-    return tasks;
+    return normalizeTasks(raw);
   }
-  /* ── Build enhanced DOM ────────────────────────── */
+  /* ── Render ────────────────────────────────────── */
+  #removeChrome() {
+    this.#titleEl?.remove();
+    this.#titleEl = null;
+    this.#container?.remove();
+    this.#container = null;
+    this.#liveRegion?.remove();
+    this.#liveRegion = null;
+  }
+  /** The SR table: the author's for 'table', otherwise generated from #tasks. */
+  #syncTable() {
+    if (this.#source === "table") {
+      return (
+        /** @type {HTMLTableElement|null} */
+        this.querySelector(":scope > table")
+      );
+    }
+    this.querySelectorAll(":scope > table").forEach((t) => t.remove());
+    if (!this.#tasks.length) return null;
+    const table = this.#buildTable();
+    this.appendChild(table);
+    return table;
+  }
+  #render() {
+    this.#removeChrome();
+    const table = this.#syncTable();
+    if (!this.#tasks.length) return;
+    const starts = this.#tasks.map((t) => t.start);
+    const ends = this.#tasks.map((t) => t.end);
+    this.#rangeStart = new Date(Math.min(...starts));
+    this.#rangeDays = Math.max(1, daysBetween(this.#rangeStart, new Date(Math.max(...ends))));
+    this.#build(table);
+  }
+  /** @param {number | Date} ts @returns {number} 0–100 */
+  #pct(ts) {
+    const d = typeof ts === "number" ? new Date(ts) : ts;
+    return daysBetween(this.#rangeStart, d) / this.#rangeDays * 100;
+  }
+  /** `gantt-chart:ready`, at most once per element. */
+  #dispatchReady() {
+    if (this.#readyFired) return;
+    this.#readyFired = true;
+    this.dispatchEvent(new CustomEvent("gantt-chart:ready", {
+      bubbles: true,
+      detail: {
+        taskCount: this.#tasks.length,
+        dateRange: {
+          start: toISODate(this.#rangeStart),
+          end: toISODate(addDays(this.#rangeStart, this.#rangeDays))
+        }
+      }
+    }));
+  }
+  /** @param {HTMLTableElement | null} table */
   #build(table) {
     const title = this.getAttribute("title");
     const showToday = this.hasAttribute("show-today");
     const showProgress = this.hasAttribute("show-progress");
     const showDeps = this.hasAttribute("show-dependencies");
+    const anchor = table && table.parentNode === this ? table : null;
     if (title) {
       this.#titleEl = document.createElement("h2");
       this.#titleEl.className = "gc-title";
       this.#titleEl.textContent = title;
-      this.insertBefore(this.#titleEl, table);
+      this.insertBefore(this.#titleEl, anchor);
     }
     this.#container = document.createElement("div");
     this.#container.className = "gc-container";
     this.#container.setAttribute("role", "region");
     this.#container.setAttribute("aria-label", `Gantt chart${title ? ": " + title : ""}`);
-    const header = this.#buildTimelineHeader();
-    this.#container.appendChild(header);
+    const labels = this.#generateDateLabels();
+    this.#container.appendChild(this.#buildTimelineHeader(labels));
     const body = document.createElement("div");
     body.className = "gc-body";
     const taskList = document.createElement("div");
     taskList.className = "gc-task-list";
     const barsPanel = document.createElement("div");
     barsPanel.className = "gc-bars";
-    const gridLines = this.#buildGridLines();
-    barsPanel.appendChild(gridLines);
+    barsPanel.appendChild(this.#buildGridLines(labels));
     const grouped = this.#groupTasks();
     for (const [groupName, groupTasks] of grouped) {
       if (grouped.size > 1 && groupName) {
@@ -7470,18 +8315,22 @@ var GanttChart = class _GanttChart extends VBElement {
         taskName.className = "gc-task-name";
         taskName.textContent = task.name;
         taskRow.appendChild(taskName);
+        if (task.status) {
+          const status = document.createElement("span");
+          status.className = "gc-task-status";
+          status.setAttribute("data-status", task.status);
+          status.textContent = statusLabel2(task.status);
+          taskRow.appendChild(status);
+        }
         const taskDates = document.createElement("span");
         taskDates.className = "gc-task-dates";
-        taskDates.textContent = `${new Date(task.start).toLocaleDateString()} to ${new Date(task.end).toLocaleDateString()}`;
+        taskDates.textContent = task.milestone ? longDate(task.start) : `${longDate(task.start)} to ${longDate(task.end)}`;
         taskRow.appendChild(taskDates);
         taskList.appendChild(taskRow);
         const barRow = document.createElement("div");
         barRow.className = "gc-bar-row";
-        if (task.milestone) {
-          barRow.appendChild(this.#buildMilestone(task));
-        } else {
-          barRow.appendChild(this.#buildBar(task, showProgress));
-        }
+        barRow.setAttribute("data-task-id", task.id);
+        barRow.appendChild(task.milestone ? this.#buildMilestone(task) : this.#buildBar(task, showProgress));
         barsPanel.appendChild(barRow);
       }
     }
@@ -7489,59 +8338,73 @@ var GanttChart = class _GanttChart extends VBElement {
       const todayLine = this.#buildTodayLine();
       if (todayLine) barsPanel.appendChild(todayLine);
     }
-    if (showDeps) {
-      requestAnimationFrame(() => {
-        const svg = this.#buildDependencyArrows(barsPanel);
-        if (svg) barsPanel.appendChild(svg);
-      });
-    }
     body.appendChild(taskList);
     body.appendChild(barsPanel);
     this.#container.appendChild(body);
-    this.insertBefore(this.#container, table);
-    table.classList.add("gc-sr-only");
+    this.insertBefore(this.#container, anchor);
+    if (table) table.classList.add("gc-sr-only");
     this.#liveRegion = document.createElement("div");
     this.#liveRegion.className = "gc-sr-only";
     this.#liveRegion.setAttribute("role", "status");
     this.#liveRegion.setAttribute("aria-live", "polite");
     this.#liveRegion.setAttribute("aria-atomic", "true");
     this.appendChild(this.#liveRegion);
-    this.listen(this.#container, "click", (e) => {
-      const bar = (
-        /** @type {HTMLElement | null} */
-        /** @type {HTMLElement} */
-        e.target.closest(".gc-bar, .gc-milestone")
-      );
-      if (!bar) return;
-      const taskId = bar.dataset.taskId;
-      const task = this.#tasks.find((t) => t.id === taskId);
-      if (!task) return;
-      this.#announce(`Selected: ${task.name}`);
-      this.dispatchEvent(new CustomEvent("gantt-chart:task-click", {
-        bubbles: true,
-        detail: { task }
-      }));
-    });
-    this.listen(this.#container, "keydown", (e) => {
-      const ke = (
-        /** @type {KeyboardEvent} */
-        e
-      );
-      if (ke.key === "Enter" || ke.key === " ") {
-        const bar = (
-          /** @type {HTMLElement | null} */
-          /** @type {HTMLElement} */
-          ke.target.closest(".gc-bar, .gc-milestone")
-        );
-        if (bar) {
-          ke.preventDefault();
-          bar.click();
-        }
+    if (showDeps) {
+      requestAnimationFrame(() => {
+        if (!barsPanel.isConnected) return;
+        const svg = this.#buildDependencyArrows(barsPanel);
+        if (svg) barsPanel.appendChild(svg);
+      });
+    }
+  }
+  /* ── Generated SR table (property / src data) ──── */
+  #buildTable() {
+    const table = document.createElement("table");
+    table.setAttribute("data-gc-generated", "");
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+    for (const label of ["Task", "Start", "End", "Progress", "Status"]) {
+      const th = document.createElement("th");
+      th.scope = "col";
+      th.textContent = label;
+      headerRow.appendChild(th);
+    }
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    const tbody = document.createElement("tbody");
+    for (const task of this.#tasks) {
+      const tr = document.createElement("tr");
+      tr.dataset.taskId = task.id;
+      const tdName = document.createElement("td");
+      tdName.textContent = task.name;
+      tr.appendChild(tdName);
+      for (const ts of [task.start, task.end]) {
+        const td = document.createElement("td");
+        const time = document.createElement("time");
+        time.setAttribute("datetime", toISODate(new Date(ts)));
+        time.textContent = longDate(ts);
+        td.appendChild(time);
+        tr.appendChild(td);
       }
-    });
+      const tdProgress = document.createElement("td");
+      const progress = document.createElement("progress");
+      const pct2 = Math.round(task.progress * 100);
+      progress.max = 100;
+      progress.value = pct2;
+      progress.textContent = `${pct2}%`;
+      tdProgress.appendChild(progress);
+      tr.appendChild(tdProgress);
+      const tdStatus = document.createElement("td");
+      tdStatus.textContent = task.status ? statusLabel2(task.status) : "";
+      tr.appendChild(tdStatus);
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    return table;
   }
   /* ── Timeline header ───────────────────────────── */
-  #buildTimelineHeader() {
+  /** @param {Array<{position: number, text: string}>} labels */
+  #buildTimelineHeader(labels) {
     const header = document.createElement("div");
     header.className = "gc-timeline-header";
     const spacer = document.createElement("div");
@@ -7549,7 +8412,6 @@ var GanttChart = class _GanttChart extends VBElement {
     header.appendChild(spacer);
     const dates = document.createElement("div");
     dates.className = "gc-timeline-dates";
-    const labels = this.#generateDateLabels();
     for (const { position, text } of labels) {
       const label = document.createElement("span");
       label.className = "gc-date-label";
@@ -7563,77 +8425,43 @@ var GanttChart = class _GanttChart extends VBElement {
   /* ── Date labels ───────────────────────────────── */
   #generateDateLabels() {
     const viewAttr = this.getAttribute("view") || "auto";
-    const view = viewAttr === "auto" ? resolveView(this.#rangeTotal) : viewAttr;
-    const formatter = pickFormatter(this.#rangeTotal);
+    const view = STEP_DAYS[viewAttr] ? viewAttr : resolveView(this.#rangeDays);
+    const formatter = pickFormatter(this.#rangeDays);
+    const rangeStart = this.#rangeStart;
+    const rangeEnd = addDays(rangeStart, this.#rangeDays);
     const labels = [];
-    let stepMs;
-    switch (view) {
-      case "day":
-        stepMs = DAY;
-        break;
-      case "week":
-        stepMs = WEEK;
-        break;
-      case "month":
-        stepMs = MONTH;
-        break;
-      case "quarter":
-        stepMs = QUARTER;
-        break;
-      default:
-        stepMs = MONTH;
-    }
-    let cursor = new Date(this.#rangeStart);
+    let step;
+    let cursor;
     if (view === "week") {
-      const dayOfWeek = cursor.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
-      cursor.setDate(cursor.getDate() + daysToMonday);
+      const dow = rangeStart.getDay();
+      cursor = addDays(rangeStart, (8 - dow) % 7);
+      step = (d) => addDays(d, 7);
     } else if (view === "month") {
-      cursor.setDate(1);
-      if (cursor.getTime() < this.#rangeStart) {
-        cursor.setMonth(cursor.getMonth() + 1);
-      }
+      cursor = startOfMonth(rangeStart);
+      if (cursor < rangeStart) cursor = addMonths(cursor, 1);
+      step = (d) => addMonths(d, 1);
     } else if (view === "quarter") {
-      const month = cursor.getMonth();
-      const nextQuarterMonth = Math.ceil((month + 1) / 3) * 3;
-      cursor.setMonth(nextQuarterMonth);
-      cursor.setDate(1);
+      cursor = startOfQuarter(rangeStart);
+      if (cursor < rangeStart) cursor = addMonths(cursor, 3);
+      step = (d) => addMonths(d, 3);
+    } else {
+      cursor = startOfDay(rangeStart);
+      step = (d) => addDays(d, 1);
     }
-    const cursorTs = cursor.getTime();
-    if (cursorTs > this.#rangeStart + stepMs * 0.5) {
-      labels.push({
-        position: 0,
-        text: formatter(new Date(this.#rangeStart))
-      });
+    if (daysBetween(rangeStart, cursor) > STEP_DAYS[view] * 0.5) {
+      labels.push({ position: 0, text: formatter(rangeStart) });
     }
-    let current = cursorTs;
-    while (current <= this.#rangeEnd) {
-      const pct = (current - this.#rangeStart) / this.#rangeTotal * 100;
-      if (pct >= 0 && pct <= 100) {
-        labels.push({
-          position: pct,
-          text: formatter(new Date(current))
-        });
-      }
-      if (view === "month") {
-        const d = new Date(current);
-        d.setMonth(d.getMonth() + 1);
-        current = d.getTime();
-      } else if (view === "quarter") {
-        const d = new Date(current);
-        d.setMonth(d.getMonth() + 3);
-        current = d.getTime();
-      } else {
-        current += stepMs;
-      }
+    for (let d = cursor; d <= rangeEnd; d = step(d)) {
+      const pct2 = this.#pct(d);
+      if (pct2 >= 0 && pct2 <= 100) labels.push({ position: pct2, text: formatter(d) });
     }
     return labels;
   }
   /* ── Grid lines ────────────────────────────────── */
-  #buildGridLines() {
+  /** @param {Array<{position: number}>} labels */
+  #buildGridLines(labels) {
     const container = document.createElement("div");
     container.className = "gc-grid-lines";
-    const labels = this.#generateDateLabels();
     for (const { position } of labels) {
       if (position <= 0) continue;
       const line = document.createElement("div");
@@ -7653,19 +8481,26 @@ var GanttChart = class _GanttChart extends VBElement {
     }
     return groups;
   }
+  /* ── Accessible name ───────────────────────────── */
+  /** @param {any} task */
+  #taskLabel(task) {
+    const parts = [task.milestone ? `Milestone: ${task.name}, ${longDate(task.start)}` : `${task.name}: ${longDate(task.start)} to ${longDate(task.end)}`];
+    if (task.status) parts.push(`status: ${statusLabel2(task.status).toLowerCase()}`);
+    if (!task.milestone && task.progress > 0) parts.push(`${Math.round(task.progress * 100)}% complete`);
+    if (task.assignee) parts.push(`assigned to ${task.assignee}`);
+    return parts.join(", ");
+  }
   /* ── Build bar ─────────────────────────────────── */
+  /** @param {any} task @param {boolean} showProgress */
   #buildBar(task, showProgress) {
-    const leftPct = (task.start - this.#rangeStart) / this.#rangeTotal * 100;
-    const widthPct = (task.end - task.start) / this.#rangeTotal * 100;
+    const leftPct = this.#pct(task.start);
+    const widthPct = this.#pct(task.end) - leftPct;
     const bar = document.createElement("div");
     bar.className = "gc-bar";
     bar.setAttribute("data-task-id", task.id);
-    bar.setAttribute("role", "img");
+    bar.setAttribute("role", "button");
     bar.setAttribute("tabindex", "0");
-    bar.setAttribute(
-      "aria-label",
-      `${esc2(task.name)}: ${new Date(task.start).toLocaleDateString()} to ${new Date(task.end).toLocaleDateString()}` + (task.progress > 0 ? `, ${Math.round(task.progress * 100)}% complete` : "")
-    );
+    bar.setAttribute("aria-label", this.#taskLabel(task));
     bar.style.left = `${leftPct}%`;
     bar.style.width = `${Math.max(widthPct, 0.5)}%`;
     if (task.status) bar.setAttribute("data-status", task.status);
@@ -7679,33 +8514,35 @@ var GanttChart = class _GanttChart extends VBElement {
     if (widthPct > 8) {
       const label = document.createElement("span");
       label.className = "gc-bar-label";
+      label.setAttribute("aria-hidden", "true");
       label.textContent = task.name;
       bar.appendChild(label);
     }
     return bar;
   }
   /* ── Build milestone ───────────────────────────── */
+  /** @param {any} task */
   #buildMilestone(task) {
-    const leftPct = (task.start - this.#rangeStart) / this.#rangeTotal * 100;
     const diamond = document.createElement("div");
     diamond.className = "gc-milestone";
     diamond.setAttribute("data-task-id", task.id);
-    diamond.setAttribute("role", "img");
+    diamond.setAttribute("role", "button");
     diamond.setAttribute("tabindex", "0");
-    diamond.setAttribute("aria-label", `Milestone: ${esc2(task.name)}, ${new Date(task.start).toLocaleDateString()}`);
-    diamond.style.left = `${leftPct}%`;
+    diamond.setAttribute("aria-label", this.#taskLabel(task));
+    diamond.style.left = `${this.#pct(task.start)}%`;
     if (task.status) diamond.setAttribute("data-status", task.status);
     if (task.color) diamond.style.setProperty("--gc-bar-color", task.color);
     return diamond;
   }
   /* ── Today line ────────────────────────────────── */
   #buildTodayLine() {
-    const now = Date.now();
-    if (now < this.#rangeStart || now > this.#rangeEnd) return null;
-    const pct = (now - this.#rangeStart) / this.#rangeTotal * 100;
+    const now = /* @__PURE__ */ new Date();
+    const dayFraction = (now.getTime() - startOfDay(now).getTime()) / 864e5;
+    const days = daysBetween(this.#rangeStart, now) + dayFraction;
+    if (days < 0 || days > this.#rangeDays) return null;
     const line = document.createElement("div");
     line.className = "gc-today-line";
-    line.style.left = `${pct}%`;
+    line.style.left = `${days / this.#rangeDays * 100}%`;
     const label = document.createElement("span");
     label.className = "gc-today-label";
     label.textContent = "Today";
@@ -7713,21 +8550,30 @@ var GanttChart = class _GanttChart extends VBElement {
     return line;
   }
   /* ── Dependency arrows ─────────────────────────── */
+  /** @param {HTMLElement} barsPanel */
   #buildDependencyArrows(barsPanel) {
-    const depsExist = this.#tasks.some((t) => t.depends.length > 0);
-    if (!depsExist) return null;
+    if (!this.#tasks.some((t) => t.depends.length > 0)) return null;
+    const centreY = /* @__PURE__ */ new Map();
+    for (
+      const row of
+      /** @type {NodeListOf<HTMLElement>} */
+      barsPanel.querySelectorAll(":scope > .gc-bar-row")
+    ) {
+      centreY.set(row.dataset.taskId || "", row.offsetTop + row.offsetHeight / 2);
+    }
+    const height = Math.max(1, Math.round(barsPanel.scrollHeight));
     const ns = "http://www.w3.org/2000/svg";
-    const rowHeight = 36;
-    const rowCount = barsPanel.querySelectorAll(".gc-bar-row").length;
     const svg = document.createElementNS(ns, "svg");
     svg.setAttribute("class", "gc-deps");
-    svg.setAttribute("viewBox", `0 0 100 ${rowCount * rowHeight}`);
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("viewBox", `0 0 100 ${height}`);
     svg.setAttribute("preserveAspectRatio", "none");
     svg.style.width = "100%";
-    svg.style.height = "100%";
+    svg.style.height = `${height}px`;
+    const markerId = `${this.#uid}-arrowhead`;
     const defs = document.createElementNS(ns, "defs");
     const marker = document.createElementNS(ns, "marker");
-    marker.setAttribute("id", "gc-arrowhead");
+    marker.setAttribute("id", markerId);
     marker.setAttribute("markerWidth", "8");
     marker.setAttribute("markerHeight", "6");
     marker.setAttribute("refX", "8");
@@ -7743,94 +8589,93 @@ var GanttChart = class _GanttChart extends VBElement {
       for (const depId of task.depends) {
         const source = this.#tasks.find((t) => t.id === depId);
         if (!source) continue;
-        const sourceRight = (source.end - this.#rangeStart) / this.#rangeTotal * 100;
-        const targetLeft = (task.start - this.#rangeStart) / this.#rangeTotal * 100;
-        const sourceIdx = this.#getVisualRowIndex(source.id, barsPanel);
-        const targetIdx = this.#getVisualRowIndex(task.id, barsPanel);
-        if (sourceIdx === -1 || targetIdx === -1) continue;
-        const sourceY = sourceIdx * rowHeight + rowHeight / 2;
-        const targetY = targetIdx * rowHeight + rowHeight / 2;
-        const path = document.createElementNS(ns, "path");
+        const sourceY = centreY.get(source.id);
+        const targetY = centreY.get(task.id);
+        if (sourceY === void 0 || targetY === void 0) continue;
+        const sourceRight = this.#pct(source.end);
+        const targetLeft = this.#pct(task.start);
         const midX = sourceRight + (targetLeft - sourceRight) / 2;
+        const path = document.createElementNS(ns, "path");
         path.setAttribute("d", `M ${sourceRight} ${sourceY} C ${midX} ${sourceY}, ${midX} ${targetY}, ${targetLeft} ${targetY}`);
         path.setAttribute("class", "gc-dep-line");
+        path.setAttribute("data-from", source.id);
+        path.setAttribute("data-to", task.id);
+        path.setAttribute("marker-end", `url(#${markerId})`);
         path.setAttribute("vector-effect", "non-scaling-stroke");
         svg.appendChild(path);
       }
     }
     return svg;
   }
-  #getVisualRowIndex(taskId, barsPanel) {
-    const rows = barsPanel.querySelectorAll(".gc-bar-row");
-    for (let i = 0; i < rows.length; i++) {
-      const bar = rows[i].querySelector("[data-task-id]");
-      if (bar && bar.dataset.taskId === taskId) return i;
-    }
-    return -1;
+  /* ── Interaction (delegated once in setup) ─────── */
+  /** @param {Event} e */
+  #barFromEvent(e) {
+    const t = (
+      /** @type {Element} */
+      e.target
+    );
+    const bar = (
+      /** @type {HTMLElement | null} */
+      t?.closest?.(".gc-bar, .gc-milestone")
+    );
+    return bar && this.#container?.contains(bar) ? bar : null;
   }
+  #onClick = (e) => {
+    const bar = this.#barFromEvent(e);
+    if (!bar) return;
+    const task = this.#tasks.find((t) => t.id === bar.dataset.taskId);
+    if (!task) return;
+    this.#announce(`Selected: ${task.name}`);
+    this.dispatchEvent(new CustomEvent("gantt-chart:task-click", {
+      bubbles: true,
+      detail: { task }
+    }));
+  };
+  #onKeyDown = (e) => {
+    const ke = (
+      /** @type {KeyboardEvent} */
+      e
+    );
+    if (ke.key !== "Enter" && ke.key !== " ") return;
+    const bar = this.#barFromEvent(ke);
+    if (!bar) return;
+    ke.preventDefault();
+    bar.click();
+  };
   /* ── JSON loading ──────────────────────────────── */
-  async _loadSrc(url) {
-    if (!url) return;
+  /**
+   * Fetch src JSON and replace the tasks. A newer src, a `.tasks`
+   * assignment or removing src aborts this request (SrcLoader).
+   * @param {string} url
+   */
+  async #loadSrc(url) {
+    let result;
     try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      while (this.firstChild) this.firstChild.remove();
-      const table = document.createElement("table");
-      const thead = document.createElement("thead");
-      const headerRow = document.createElement("tr");
-      for (const label of ["Task", "Start", "End", "Progress"]) {
-        const th = document.createElement("th");
-        th.textContent = label;
-        headerRow.appendChild(th);
-      }
-      thead.appendChild(headerRow);
-      table.appendChild(thead);
-      const tbody = document.createElement("tbody");
-      for (const task of data.tasks || []) {
-        const tr = document.createElement("tr");
-        if (task.id) tr.dataset.taskId = task.id;
-        if (task.group) tr.dataset.group = task.group;
-        if (task.depends) tr.dataset.depends = Array.isArray(task.depends) ? task.depends.join(",") : task.depends;
-        if (task.status) tr.dataset.status = task.status;
-        if (task.assignee) tr.dataset.assignee = task.assignee;
-        if (task.milestone) tr.setAttribute("data-milestone", "");
-        if (task.color) tr.dataset.color = task.color;
-        if (task.storyIds) tr.dataset.storyIds = Array.isArray(task.storyIds) ? task.storyIds.join(",") : task.storyIds;
-        if (task.itemIds) tr.dataset.itemIds = Array.isArray(task.itemIds) ? task.itemIds.join(",") : task.itemIds;
-        const tdName = document.createElement("td");
-        tdName.textContent = task.name || "";
-        tr.appendChild(tdName);
-        const tdStart = document.createElement("td");
-        const timeStart = document.createElement("time");
-        timeStart.setAttribute("datetime", task.start);
-        timeStart.textContent = new Date(task.start).toLocaleDateString(void 0, { month: "short", day: "numeric" });
-        tdStart.appendChild(timeStart);
-        tr.appendChild(tdStart);
-        const tdEnd = document.createElement("td");
-        const timeEnd = document.createElement("time");
-        timeEnd.setAttribute("datetime", task.end || task.start);
-        timeEnd.textContent = new Date(task.end || task.start).toLocaleDateString(void 0, { month: "short", day: "numeric" });
-        tdEnd.appendChild(timeEnd);
-        tr.appendChild(tdEnd);
-        const tdProgress = document.createElement("td");
-        const progress = document.createElement("progress");
-        progress.value = task.progress || 0;
-        progress.max = 100;
-        progress.textContent = `${task.progress || 0}%`;
-        tdProgress.appendChild(progress);
-        tr.appendChild(tdProgress);
-        tbody.appendChild(tr);
-      }
-      table.appendChild(tbody);
-      this.appendChild(table);
-      if (data.title) this.setAttribute("title", data.title);
-      this.#refresh();
+      result = await this.#loader.fetchJson(url);
     } catch (err) {
       console.warn(`[gantt-chart] Failed to load src="${url}":`, err);
+      return;
     }
+    if (!result) return;
+    const { data } = result;
+    this.#tasks = normalizeTasks(data?.tasks || []);
+    this.#source = "src";
+    if (data?.title && data.title !== this.getAttribute("title")) {
+      this.#internalAttr = true;
+      this.setAttribute("title", data.title);
+      this.#internalAttr = false;
+    }
+    if (this.hasAttribute("data-upgraded")) {
+      this.#render();
+      this.#dispatchReady();
+    }
+    this.dispatchEvent(new CustomEvent("gantt-chart:tasks-changed", {
+      detail: { tasks: this.#tasks, source: "src" },
+      bubbles: true
+    }));
   }
   /* ── Live region ───────────────────────────────── */
+  /** @param {string} msg */
   #announce(msg) {
     if (!this.#liveRegion) return;
     this.#liveRegion.textContent = "";
@@ -8215,21 +9060,12 @@ var TYPE_ICONS = {
   spike: '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
   feature: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'
 };
-var PRIORITIES = {
-  critical: { label: "Critical", color: "#dc2626", bg: "rgba(220, 38, 38, 0.1)" },
-  high: { label: "High", color: "#ea580c", bg: "rgba(234, 88, 12, 0.1)" },
-  medium: { label: "Medium", color: "#ca8a04", bg: "rgba(202, 138, 4, 0.1)" },
-  low: { label: "Low", color: "#16a34a", bg: "rgba(22, 163, 74, 0.1)" }
-};
-var STATUSES = {
-  backlog: { label: "Backlog", color: "#6b7280", bg: "rgba(107, 114, 128, 0.1)" },
-  "to-do": { label: "To Do", color: "#3b82f6", bg: "rgba(59, 130, 246, 0.1)" },
-  "in-progress": { label: "In Progress", color: "#8b5cf6", bg: "rgba(139, 92, 246, 0.1)" },
-  review: { label: "Review", color: "#f59e0b", bg: "rgba(245, 158, 11, 0.1)" },
-  done: { label: "Done", color: "#22c55e", bg: "rgba(34, 197, 94, 0.1)" },
+var STATUSES2 = Object.freeze({
+  ...STATUSES,
   blocked: { label: "Blocked", color: "#dc2626", bg: "rgba(220, 38, 38, 0.1)" }
-};
-var WorkItem = class extends HTMLElement {
+});
+var WorkItem = class extends UXShadowElement {
+  static readyEvent = "work-item:ready";
   static get observedAttributes() {
     return [
       "item-id",
@@ -8244,52 +9080,25 @@ var WorkItem = class extends HTMLElement {
       "src"
     ];
   }
-  #slotCache = /* @__PURE__ */ new Map();
-  constructor() {
-    super();
-    this.attachShadow({ mode: "open" });
-  }
-  /* ── Slot caching ───────────────────────────────── */
-  #cacheSlotValues() {
-    for (const child of [...this.children]) {
-      const slotName = child.getAttribute("slot");
-      if (slotName) {
-        this.#slotCache.set(slotName, child.textContent.trim());
-      }
-    }
-  }
-  _resolve(attr) {
-    return this.getAttribute(attr) || this.#slotCache.get(attr) || "";
-  }
-  /* ── Lifecycle ─────────────────────────────────── */
-  connectedCallback() {
-    this.#cacheSlotValues();
+  /* ── Lifecycle (see UXShadowElement) ──────────── */
+  _setup() {
     if (this.itemId && !this.id) this.id = this.itemId;
-    if (this.hasAttribute("src")) {
-      this._loadSrc(this.getAttribute("src"));
-    }
-    this.#render();
-    this.setAttribute("data-upgraded", "");
   }
-  disconnectedCallback() {
-    this.removeAttribute("data-upgraded");
-  }
-  attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue !== newValue && this.shadowRoot) {
-      if (name === "src" && this.isConnected) {
-        this._loadSrc(newValue);
-      } else {
-        this.#render();
-      }
-    }
+  _readyDetail() {
+    return {
+      itemId: this.itemId,
+      title: this.itemTitle,
+      type: this.itemType,
+      priority: this.priority,
+      status: this.status
+    };
   }
   /* ── Getters ───────────────────────────────────── */
   get itemId() {
     return this.getAttribute("item-id") || "";
   }
   get itemTitle() {
-    const slotted = this.querySelector('[slot="title"]');
-    return slotted?.textContent?.trim() || this.#slotCache.get("title") || "";
+    return this._slotText("title");
   }
   get itemType() {
     return this.getAttribute("type") || "task";
@@ -8307,20 +9116,17 @@ var WorkItem = class extends HTMLElement {
     return this.getAttribute("assignee") || "";
   }
   get storyIds() {
-    const raw = this.getAttribute("story-ids") || "";
-    return raw ? raw.split(",").map((s) => s.trim()).filter(Boolean) : [];
+    return splitList(this.getAttribute("story-ids"));
   }
   get _detailLevel() {
-    if (this.getAttribute("detail")) return this.getAttribute("detail");
-    if (this.hasAttribute("compact")) return "compact";
-    return "full";
+    return detailLevel(this);
   }
   get _minimalLabel() {
     return this.itemTitle || this.itemId || "Work item";
   }
   /* ── Public API ────────────────────────────────── */
   updateStatus(newStatus) {
-    if (STATUSES[newStatus]) {
+    if (Object.hasOwn(STATUSES2, newStatus)) {
       this.setAttribute("status", newStatus);
       this.dispatchEvent(new CustomEvent("work-item:status", {
         detail: { status: newStatus, itemId: this.itemId },
@@ -8330,7 +9136,7 @@ var WorkItem = class extends HTMLElement {
     }
   }
   updatePriority(newPriority) {
-    if (PRIORITIES[newPriority]) {
+    if (Object.hasOwn(PRIORITIES, newPriority)) {
       this.setAttribute("priority", newPriority);
       this.dispatchEvent(new CustomEvent("work-item:priority", {
         detail: { priority: newPriority, itemId: this.itemId },
@@ -8363,19 +9169,13 @@ var WorkItem = class extends HTMLElement {
    * Idempotent for repeat calls.
    */
   set data(value) {
-    if (!value || typeof value !== "object") return;
-    this._applyData(value);
-    if (this.shadowRoot) this.#render();
-    this.dispatchEvent(new CustomEvent("work-item:data-changed", {
-      detail: { data: this.data, source: "property" },
-      bubbles: true,
-      composed: true
-    }));
+    this._setData(value);
   }
   /**
    * Apply a data record to attributes + slotted children. Used by both the
-   * .data setter and async _loadSrc. No render or event emit — caller decides.
-   * @param {Recordstring, unknown} data
+   * .data setter and the src loader. Slotted children are created only when
+   * absent (authored content wins). No render or event emit — caller decides.
+   * @param {Record<string, unknown>} data
    */
   _applyData(data) {
     for (const [jsonKey, attr] of [
@@ -8392,69 +9192,34 @@ var WorkItem = class extends HTMLElement {
     if (data.storyIds) {
       this.setAttribute("story-ids", Array.isArray(data.storyIds) ? data.storyIds.join(",") : String(data.storyIds));
     }
-    if (data.title && !this.querySelector('[slot="title"]')) {
-      const el = document.createElement("h3");
-      el.slot = "title";
-      el.textContent = String(data.title);
-      this.appendChild(el);
-    }
-    for (const key of ["description", "notes"]) {
-      if (data[key] && !this.querySelector(`[slot="${key}"]`)) {
-        const el = document.createElement("p");
-        el.slot = key;
-        el.textContent = String(data[key]);
-        this.appendChild(el);
-      }
-    }
-    if (data.checklist && !this.querySelector('[slot="checklist"]')) {
-      const ul = document.createElement("ul");
-      ul.slot = "checklist";
-      const items = Array.isArray(data.checklist) ? data.checklist : [data.checklist];
-      for (const item of items) {
-        const li = document.createElement("li");
-        li.textContent = String(item);
-        ul.appendChild(li);
-      }
-      this.appendChild(ul);
-    }
+    fillSlot(this, "title", data.title, { tag: "h3" });
+    fillSlot(this, "description", data.description);
+    fillSlot(this, "notes", data.notes);
+    fillSlot(this, "checklist", data.checklist, { list: true });
   }
-  /* ── JSON loading ──────────────────────────────── */
-  async _loadSrc(url) {
-    if (!url) return;
-    const root = (
-      /** @type {ShadowRoot} */
-      this.shadowRoot
-    );
-    root.innerHTML = `<style>${styles6}</style><div class="state-msg">Loading\u2026</div>`;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      this._applyData(data);
-      this.#render();
-    } catch (err) {
-      root.innerHTML = `<style>${styles6}</style><div class="state-msg state-msg--error">Could not load: ${esc(
-        /** @type {Error} */
-        err.message
-      )}</div>`;
-    }
+  /* ── JSON loading states ───────────────────────── */
+  _renderLoading() {
+    this.shadowRoot.innerHTML = `<style>${styles6}</style><div class="state-msg">Loading\u2026</div>`;
+  }
+  /** @param {Error} err */
+  _renderError(err) {
+    this.shadowRoot.innerHTML = `<style>${styles6}</style><div class="state-msg state-msg--error">Could not load: ${esc(err.message)}</div>`;
   }
   /* ── Render ────────────────────────────────────── */
-  #render() {
+  _render() {
     const root = (
       /** @type {ShadowRoot} */
       this.shadowRoot
     );
-    const priorityInfo = PRIORITIES[this.priority] || PRIORITIES.medium;
-    const statusInfo = STATUSES[this.status] || STATUSES.backlog;
+    const priorityInfo = lookup(PRIORITIES, this.priority, "medium");
+    const statusInfo = lookup(STATUSES2, this.status, "backlog");
     const type = this.itemType;
-    const typeIcon = TYPE_ICONS[type] || TYPE_ICONS.task;
+    const typeIcon = lookup(TYPE_ICONS, type, "task");
     const level = this._detailLevel;
     const ariaLabel = this.itemId ? `Work item: ${esc(this.itemId)}` : "Work item";
     if (level === "minimal") {
       root.innerHTML = `<style>${styles6}</style>
-        <article class="wi-card wi-card--minimal" role="article" aria-label="${ariaLabel}"
-          tabindex="0">
+        <article class="wi-card wi-card--minimal" role="article" aria-label="${ariaLabel}">
           <div class="wi-body">
             <div class="wi-meta">
               ${this.itemId ? `<span class="wi-id">${esc(this.itemId)}</span>` : ""}
@@ -8489,7 +9254,7 @@ var WorkItem = class extends HTMLElement {
 
           ${this.assignee ? `
             <div class="wi-assignee">
-              <span class="wi-assignee__avatar" style="background:${hashColor(this.assignee)}">${initials(this.assignee)}</span>
+              <span class="wi-assignee__avatar" style="background:${hashColor(this.assignee)}">${esc(initials(this.assignee))}</span>
               ${esc(this.assignee)}
             </div>` : ""}
 
@@ -8540,25 +9305,7 @@ var WorkItem = class extends HTMLElement {
         </div>
 
       </article>`;
-    if (level === "compact") {
-      for (const section of root.querySelectorAll(".wi-section")) {
-        const slot = section.querySelector("slot");
-        if (slot && slot.assignedNodes().length === 0) {
-          section.setAttribute("data-empty", "");
-        }
-      }
-    }
-    this.dispatchEvent(new CustomEvent("work-item:ready", {
-      detail: {
-        itemId: this.itemId,
-        title: this.itemTitle,
-        type,
-        priority: this.priority,
-        status: this.status
-      },
-      bubbles: true,
-      composed: true
-    }));
+    if (level === "compact") markEmptySections(root, ".wi-section");
   }
 };
 registerComponent("work-item", WorkItem);
@@ -8653,7 +9400,7 @@ var styles7 = `
   letter-spacing: 0.3px;
 }
 
-/* \u2500\u2500 Date (slotted time) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+/* \u2500\u2500 Date (slotted <time>) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 .adr-date-wrap {
   display: inline-flex;
   align-items: center;
@@ -8893,7 +9640,7 @@ var styles7 = `
 `;
 
 // src/web-components/adr-wc/logic.js
-var STATUSES2 = {
+var STATUSES3 = {
   proposed: { label: "Proposed", color: "#3b82f6", bg: "rgba(59, 130, 246, 0.1)" },
   accepted: { label: "Accepted", color: "#22c55e", bg: "rgba(34, 197, 94, 0.1)" },
   deprecated: { label: "Deprecated", color: "#f59e0b", bg: "rgba(245, 158, 11, 0.1)" },
@@ -8906,7 +9653,8 @@ var ICONS = {
   consequences: '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
   arrowRight: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>'
 };
-var AdrWc = class extends HTMLElement {
+var AdrWc = class extends UXShadowElement {
+  static readyEvent = "adr-wc:ready";
   static get observedAttributes() {
     return [
       "adr-id",
@@ -8918,41 +9666,12 @@ var AdrWc = class extends HTMLElement {
       "src"
     ];
   }
-  #slotCache = /* @__PURE__ */ new Map();
-  constructor() {
-    super();
-    this.attachShadow({ mode: "open" });
-  }
-  /* ── Slot caching ───────────────────────────────── */
-  #cacheSlotValues() {
-    for (const child of [...this.children]) {
-      const slotName = child.getAttribute("slot");
-      if (slotName) {
-        this.#slotCache.set(slotName, child.textContent.trim());
-      }
-    }
-  }
-  /* ── Lifecycle ─────────────────────────────────── */
-  connectedCallback() {
-    this.#cacheSlotValues();
+  /* ── Lifecycle (see UXShadowElement) ──────────── */
+  _setup() {
     if (this.adrId && !this.id) this.id = this.adrId;
-    if (this.hasAttribute("src")) {
-      this._loadSrc(this.getAttribute("src"));
-    }
-    this.#render();
-    this.setAttribute("data-upgraded", "");
   }
-  disconnectedCallback() {
-    this.removeAttribute("data-upgraded");
-  }
-  attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue !== newValue && this.shadowRoot) {
-      if (name === "src" && this.isConnected) {
-        this._loadSrc(newValue);
-      } else {
-        this.#render();
-      }
-    }
+  _readyDetail() {
+    return { adrId: this.adrId, title: this.adrTitle, status: this.status };
   }
   /* ── Getters ───────────────────────────────────── */
   get adrId() {
@@ -8963,26 +9682,21 @@ var AdrWc = class extends HTMLElement {
   }
   /** Read the title from the slotted heading's text content */
   get adrTitle() {
-    const slotted = this.querySelector('[slot="title"]');
-    return slotted?.textContent?.trim() || this.#slotCache.get("title") || "";
+    return this._slotText("title");
   }
-  /** Read the date from the slotted time's datetime attribute or text */
+  /** Read the date from the slotted <time>'s datetime attribute or text */
   get adrDate() {
-    const slotted = this.querySelector('[slot="date"]');
-    return slotted?.getAttribute("datetime") || slotted?.textContent?.trim() || this.#slotCache.get("date") || "";
+    const slotted2 = slottedChild(this, "date");
+    return slotted2?.getAttribute("datetime") || this._slotText("date");
   }
   get supersedes() {
-    const raw = this.getAttribute("supersedes") || "";
-    return raw ? raw.split(",").map((s) => s.trim()).filter(Boolean) : [];
+    return splitList(this.getAttribute("supersedes"));
   }
   get supersededBy() {
-    const raw = this.getAttribute("superseded-by") || "";
-    return raw ? raw.split(",").map((s) => s.trim()).filter(Boolean) : [];
+    return splitList(this.getAttribute("superseded-by"));
   }
   get _detailLevel() {
-    if (this.getAttribute("detail")) return this.getAttribute("detail");
-    if (this.hasAttribute("compact")) return "compact";
-    return "full";
+    return detailLevel(this);
   }
   get _minimalLabel() {
     return this.adrTitle || this.adrId || "ADR";
@@ -9008,20 +9722,13 @@ var AdrWc = class extends HTMLElement {
    * call. Idempotent for repeat calls.
    */
   set data(value) {
-    if (!value || typeof value !== "object") return;
-    this._applyData(value);
-    this.#cacheSlotValues();
-    if (this.shadowRoot) this.#render();
-    this.dispatchEvent(new CustomEvent("adr-wc:data-changed", {
-      detail: { data: this.data, source: "property" },
-      bubbles: true,
-      composed: true
-    }));
+    this._setData(value);
   }
   /**
    * Apply a data record to attributes + slotted children. Used by both
-   * the .data setter and async _loadSrc.
-   * @param {Recordstring, unknown} data
+   * the .data setter and the src loader. Slotted children are created only
+   * when absent (authored content wins).
+   * @param {Record<string, unknown>} data
    */
   _applyData(data) {
     if (data.adrId != null) this.setAttribute("adr-id", String(data.adrId));
@@ -9033,75 +9740,41 @@ var AdrWc = class extends HTMLElement {
     if (data.supersededBy) {
       this.setAttribute("superseded-by", Array.isArray(data.supersededBy) ? data.supersededBy.join(",") : String(data.supersededBy));
     }
-    if (data.title && !this.querySelector('[slot="title"]')) {
-      const h = document.createElement("h3");
-      h.slot = "title";
-      h.textContent = String(data.title);
-      this.appendChild(h);
-    }
-    if (data.date && !this.querySelector('[slot="date"]')) {
+    fillSlot(this, "title", data.title, { tag: "h3" });
+    if (data.date && !slottedChild(this, "date")) {
+      const raw = String(data.date);
+      const day = parseISODate(raw);
       const t = document.createElement("time");
       t.slot = "date";
-      t.setAttribute("datetime", String(data.date));
-      t.textContent = new Date(String(data.date)).toLocaleDateString(void 0, { year: "numeric", month: "long", day: "numeric" });
+      t.setAttribute("datetime", raw);
+      t.textContent = day ? formatDate(day) : raw;
       this.appendChild(t);
     }
-    for (const key of ["context", "decision"]) {
-      if (data[key] && !this.querySelector(`[slot="${key}"]`)) {
-        const p = document.createElement("p");
-        p.slot = key;
-        p.textContent = String(data[key]);
-        this.appendChild(p);
-      }
-    }
-    if (data.consequences && !this.querySelector('[slot="consequences"]')) {
-      const ul = document.createElement("ul");
-      ul.slot = "consequences";
-      const items = Array.isArray(data.consequences) ? data.consequences : [data.consequences];
-      for (const item of items) {
-        const li = document.createElement("li");
-        li.textContent = String(item);
-        ul.appendChild(li);
-      }
-      this.appendChild(ul);
-    }
+    fillSlot(this, "context", data.context);
+    fillSlot(this, "decision", data.decision);
+    fillSlot(this, "consequences", data.consequences, { list: true });
   }
-  /* ── JSON loading ──────────────────────────────── */
-  async _loadSrc(url) {
-    if (!url) return;
-    const root = (
-      /** @type {ShadowRoot} */
-      this.shadowRoot
-    );
-    root.innerHTML = `<style>${styles7}</style><div class="state-msg">Loading\u2026</div>`;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      this._applyData(data);
-      this.#cacheSlotValues();
-      this.#render();
-    } catch (err) {
-      root.innerHTML = `<style>${styles7}</style><div class="state-msg state-msg--error">Could not load: ${esc(
-        /** @type {Error} */
-        err.message
-      )}</div>`;
-    }
+  /* ── JSON loading states ───────────────────────── */
+  _renderLoading() {
+    this.shadowRoot.innerHTML = `<style>${styles7}</style><div class="state-msg">Loading\u2026</div>`;
+  }
+  /** @param {Error} err */
+  _renderError(err) {
+    this.shadowRoot.innerHTML = `<style>${styles7}</style><div class="state-msg state-msg--error">Could not load: ${esc(err.message)}</div>`;
   }
   /* ── Render ────────────────────────────────────── */
-  #render() {
+  _render() {
     const root = (
       /** @type {ShadowRoot} */
       this.shadowRoot
     );
-    const statusInfo = STATUSES2[this.status] || STATUSES2.proposed;
+    const statusInfo = lookup(STATUSES3, this.status, "proposed");
     const level = this._detailLevel;
     const ariaLabel = this.adrId ? `ADR: ${esc(this.adrId)}` : "Architectural Decision Record";
-    const hasDate = !!this.querySelector('[slot="date"]') || this.#slotCache.has("date");
+    const hasDate = !!slottedChild(this, "date") || this._slotCache.has("date");
     if (level === "minimal") {
       root.innerHTML = `<style>${styles7}</style>
-        <article class="adr-card adr-card--minimal" role="article" aria-label="${ariaLabel}"
-          tabindex="0">
+        <article class="adr-card adr-card--minimal" role="article" aria-label="${ariaLabel}">
           <div class="adr-body">
             <div class="adr-meta">
               ${this.adrId ? `<span class="adr-id">${esc(this.adrId)}</span>` : ""}
@@ -9182,23 +9855,7 @@ var AdrWc = class extends HTMLElement {
         </div>
 
       </article>`;
-    if (level === "compact") {
-      for (const section of root.querySelectorAll(".adr-section")) {
-        const slot = section.querySelector("slot");
-        if (slot && slot.assignedNodes().length === 0) {
-          section.setAttribute("data-empty", "");
-        }
-      }
-    }
-    this.dispatchEvent(new CustomEvent("adr-wc:ready", {
-      detail: {
-        adrId: this.adrId,
-        title: this.adrTitle,
-        status: this.status
-      },
-      bubbles: true,
-      composed: true
-    }));
+    if (level === "compact") markEmptySections(root, ".adr-section");
   }
 };
 registerComponent("adr-wc", AdrWc);
@@ -9212,12 +9869,12 @@ function defaultFormula(time, cost, focusFactor) {
   return Math.ceil(weeks * fte * f);
 }
 function fnv1a(str) {
-  let hash3 = 2166136261;
+  let hash = 2166136261;
   for (let i = 0; i < str.length; i++) {
-    hash3 ^= str.charCodeAt(i);
-    hash3 = Math.imul(hash3, 16777619);
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
   }
-  return (hash3 >>> 0).toString(36);
+  return (hash >>> 0).toString(36);
 }
 function stableStringify(value) {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
@@ -9511,7 +10168,7 @@ var IronTriangle = class extends VBElement {
   #manualPoints = null;
   #revisionLog = [];
   #qualitySummary = "";
-  /** @type {Recordstring, HTMLDialogElement} */
+  /** @type {Record<string, HTMLDialogElement>} */
   #dialogs = {};
   /** @type {HTMLOutputElement | null} */
   #readout = null;
@@ -10092,9 +10749,9 @@ var CapacityPlan = class extends VBElement {
   static get observedAttributes() {
     return ["data-bind-triangle", "data-bind-quality"];
   }
-  /** @type {(() = void) | null} */
+  /** @type {(() => void) | null} */
   #unbindTriangle = null;
-  /** @type {(() = void) | null} */
+  /** @type {(() => void) | null} */
   #unbindQuality = null;
   /** @type {MutationObserver | null} */
   #slotObserver = null;
@@ -10321,19 +10978,6 @@ var ILITY_LABELS = Object.freeze({
   internationalization: "Internationalization",
   privacy: "Privacy"
 });
-var ILITY_ABBR = Object.freeze({
-  accessibility: "a11y",
-  internationalization: "i18n",
-  maintainability: "maint",
-  observability: "obs",
-  compatibility: "compat",
-  portability: "porta",
-  performance: "perf",
-  reliability: "rely",
-  scalability: "scale",
-  security: "sec",
-  privacy: "priv"
-});
 var LEVEL_RATIO = Object.freeze({
   critical: 1,
   important: 0.6,
@@ -10461,11 +11105,11 @@ function buildTargetSvg({
     []
   ),
   vector = (
-    /** @type {Recordstring, string} */
+    /** @type {Record<string, string>} */
     {}
   ),
   costWeights = (
-    /** @type {Recordstring, number} */
+    /** @type {Record<string, number>} */
     {}
   ),
   capacityPoints = 0,
@@ -10627,21 +11271,21 @@ var QualityTarget = class extends VBElement {
   #internals;
   /** @type {string[]} */
   #ilities = [...DEFAULT_ILITIES];
-  /** @type {Recordstring, string} */
+  /** @type {Record<string, string>} */
   #vector = {};
-  /** @type {Recordstring, string} */
+  /** @type {Record<string, string>} */
   #rationales = {};
-  /** @type {ReadonlyRecord<string, number>} */
+  /** @type {Readonly<Record<string, number>>} */
   #costWeights = mergeCostWeights(DEFAULT_ILITIES);
   /** @type {string} */
   #overrunRationale = "";
   /** @type {boolean} */
   #wasOver = false;
-  /** @type {(() = void) | null} */
+  /** @type {(() => void) | null} */
   #unbindTriangle = null;
   /** @type {number | null} */
   #capacityPropOverride = null;
-  /** @type {Recordstring, HTMLDialogElement} */
+  /** @type {Record<string, HTMLDialogElement>} */
   #dialogs = {};
   /** @type {HTMLElement | null} */
   #footer = null;
@@ -11086,7 +11730,7 @@ var QualityTarget = class extends VBElement {
     this.#syncValidity();
   }
   /**
-   * Mirror validateVector() into ElementInternals so a parent form's
+   * Mirror validateVector() into ElementInternals so a parent <form>'s
    * checkValidity() / submit is blocked too, not just this element's own
    * checkValidity() method. The overrun textarea anchors the message when
    * the overrun rationale is the problem.

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" data-page="docs" data-fluid="" data-sticky="" data-icon-path="/vb-project-planning/cdn/icons">
 <head>
   <meta charset="utf-8">
@@ -85,10 +85,10 @@
 
   <title>adr-wc — VB Project Planning</title>
   <meta name="description" content="Architectural Decision Record card in MADR format with status badges, slotted title/date content, context/decision/consequences sections, and supersedes chain linking.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw01un2o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw08x8py">
   
 </head>
 <body style="overflow-x: clip;">
@@ -99,7 +99,7 @@
     <nav class="horizontal pills">
       <ul>
         <li><a href="/vb-project-planning/" data-nav-link="">Home</a></li>
-        <li><a class="active-parent" href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
+        <li><a href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
         <li><a href="/vb-project-planning/demos/" data-nav-link="">Demos</a></li>
         <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
         <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
@@ -141,7 +141,7 @@
           <strong class="mobile-section-title">Pages</strong>
           <ul>
             <li><a href="/vb-project-planning/">Home</a></li>
-            <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+            <li><a href="/vb-project-planning/elements/">Elements</a></li>
             <li><a href="/vb-project-planning/demos/">Demos</a></li>
             <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
             <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
@@ -170,10 +170,10 @@
         <label for="nav-drawer-toggle" class="nav-drawer-close" aria-label="Close navigation">
           <icon-wc name="x"></icon-wc>
         </label>
-        <p class="sidebar-title"><a class="active-parent" href="/vb-project-planning/elements/">All elements</a></p>
+        <p class="sidebar-title"><a href="/vb-project-planning/elements/">All elements</a></p>
 
 <ul>
-  <li><a class="active" href="/vb-project-planning/elements/adr-wc/">adr-wc</a></li>
+  <li><a href="/vb-project-planning/elements/adr-wc/">adr-wc</a></li>
   <li><a href="/vb-project-planning/elements/burndown-chart/">burndown-chart</a></li>
   <li><a href="/vb-project-planning/elements/capacity-plan/">capacity-plan</a></li>
   <li><a href="/vb-project-planning/elements/empathy-map/">empathy-map</a></li>
@@ -210,7 +210,7 @@
           <nav class="breadcrumb" aria-label="Breadcrumb" data-pagefind-ignore="">
             <ol>
               <li><a href="/vb-project-planning/">Home</a></li>
-              <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+              <li><a href="/vb-project-planning/elements/">Elements</a></li>
               <li><span aria-current="page">adr-wc</span></li>
             </ol>
           </nav>
@@ -726,20 +726,13 @@
   <section>
     <h2>Attributes</h2>
     <p>Attributes are for <strong>state and configuration</strong> — not content. The decision title and date are content and use slots instead.</p>
-    <table class="props-table">
-      <thead>
-        <tr><th>Attribute</th><th>Type</th><th>Default</th><th>Description</th></tr>
-      </thead>
-      <tbody>
-        <tr><td><code>adr-id</code></td><td>string</td><td>—</td><td>Identifier (e.g., "ADR-001"). Auto-sets HTML <code>id</code>.</td></tr>
-        <tr><td><code>status</code></td><td>string</td><td><code>"proposed"</code></td><td><code>proposed</code>, <code>accepted</code>, <code>deprecated</code>, <code>superseded</code></td></tr>
-        <tr><td><code>supersedes</code></td><td>string</td><td>—</td><td>Comma-separated ADR IDs this supersedes</td></tr>
-        <tr><td><code>superseded-by</code></td><td>string</td><td>—</td><td>Comma-separated ADR IDs that supersede this</td></tr>
-        <tr><td><code>detail</code></td><td>string</td><td><code>"full"</code></td><td><code>full</code>, <code>compact</code>, <code>minimal</code></td></tr>
-        <tr><td><code>compact</code></td><td>boolean</td><td>—</td><td>Alias for <code>detail="compact"</code></td></tr>
-        <tr><td><code>src</code></td><td>string (URL)</td><td>—</td><td>JSON data URL</td></tr>
-      </tbody>
-    </table>
+    <table class="props-table"><thead><tr><th>Attribute</th><th>Values</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>adr-id</code></td><td>string</td><td>—</td><td>ADR identifier (e.g., ADR-001); sets the HTML id on first connect when none is set</td></tr>
+<tr><td><code>status</code></td><td><code>"proposed"</code>, <code>"accepted"</code>, <code>"deprecated"</code>, <code>"superseded"</code></td><td><code>proposed</code></td><td>Decision status</td></tr>
+<tr><td><code>supersedes</code></td><td>string</td><td>—</td><td>Comma-separated ADR IDs this supersedes</td></tr>
+<tr><td><code>superseded-by</code></td><td>string</td><td>—</td><td>Comma-separated ADR IDs that supersede this</td></tr>
+<tr><td><code>detail</code></td><td><code>"full"</code>, <code>"compact"</code>, <code>"minimal"</code></td><td><code>full</code></td><td>Detail level. minimal shows id, status and title only.</td></tr>
+<tr><td><code>compact</code></td><td>boolean</td><td>—</td><td>Alias for detail=compact</td></tr>
+<tr><td><code>src</code></td><td>string</td><td>—</td><td>URL of a JSON ADR record. Fetched once per value; a newer value aborts the older request. A YYYY-MM-DD date is shown as that calendar day in every time zone.</td></tr></tbody></table>
   </section>
 
   <section>
@@ -1281,16 +1274,9 @@
 
   <section>
     <h2>Events</h2>
-    <table class="props-table">
-      <thead>
-        <tr><th>Event</th><th>Detail</th><th>When</th></tr>
-      </thead>
-      <tbody>
-        <tr><td><code>adr-wc:upgraded</code></td><td>—</td><td>Once after first connect. Wait for this before assigning <code>.data</code> from a framework.</td></tr>
-        <tr><td><code>adr-wc:data-changed</code></td><td><code>{ data, source: 'property' }</code></td><td>After <code>.data</code> assignment.</td></tr>
-        <tr><td><code>adr-wc:ready</code></td><td><code>{ adrId, title, status }</code></td><td>After render.</td></tr>
-      </tbody>
-    </table>
+    <table class="props-table"><thead><tr><th>Event</th><th>Detail</th><th>Description</th></tr></thead><tbody><tr><td><code>adr-wc:ready</code></td><td><code>{ adrId, title, status }</code></td><td>Once per element, after the first render at any detail level. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by attribute changes or moves.</td></tr>
+<tr><td><code>adr-wc:upgraded</code></td><td>—</td><td>Once, in a microtask after first connect. Wait for this before assigning .data from a framework.</td></tr>
+<tr><td><code>adr-wc:data-changed</code></td><td><code>{ data, source: 'property' }</code></td><td>After .data is assigned</td></tr></tbody></table>
   </section>
 
   <section>
@@ -1307,7 +1293,7 @@
         <tr>
           <td><code>.data</code></td>
           <td><code>{ adrId?, title?, status?, date?, supersedes?, supersededBy?, context?, decision?, consequences? }</code></td>
-          <td>Whole-record assignment. Sets state attributes <em>and</em> creates slotted children for any text fields not already present. Idempotent.</td>
+          <td>Whole-record assignment. Sets state attributes <em>and</em> creates slotted children for any text fields not already present (authored content wins). A <code>YYYY-MM-DD</code> date is rendered as that calendar day in every time zone. Idempotent.</td>
         </tr>
       </tbody>
     </table>
@@ -1813,6 +1799,7 @@ adr.data = {
       <li>The date slot uses <code>&lt;time&gt;</code> for machine-readable dates</li>
       <li>Status badge uses colored background (not color-only)</li>
       <li>Supersedes/superseded-by links are real <code>&lt;a&gt;</code> elements</li>
+      <li>Minimal cards (<code>detail="minimal"</code>) are static summaries, not tab stops; wrap one in a link if it should navigate somewhere</li>
       <li>Respects <code>prefers-reduced-motion: reduce</code></li>
     </ul>
   </section>
@@ -1846,7 +1833,7 @@ adr.data = {
     <span>Part of the <a href="https://vanilla-breeze.com">Vanilla Breeze</a> ecosystem</span>
   </site-legal>
   <nav aria-label="Footer links">
-    <a class="active-parent" href="/vb-project-planning/elements/">Elements</a>
+    <a href="/vb-project-planning/elements/">Elements</a>
     <a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">
       <icon-wc name="github" size="sm"></icon-wc> GitHub
     </a>
@@ -1878,10 +1865,10 @@ adr.data = {
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw01un2o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw08x8py"></script>
   
 </body>
 </html>

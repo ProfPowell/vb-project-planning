@@ -104,6 +104,12 @@ crumbLabel: Web Components
     });
 </script>
   </code-block>
+  <p>A drop has no position, so a coordinate-pinned child (<code>data-x</code> / <code>data-y</code>) that is dragged to another quadrant loses its coordinates: <code>data-x</code> and <code>data-y</code> are removed and it joins that quadrant's stack like any other card. Overlapping-pin clusters are recomputed after every move. The event detail carries no coordinates.</p>
+</section>
+
+<section>
+  <h2>Events</h2>
+  {{ eventsTable("quadrant-grid", apiRegistry) }}
 </section>
 
 <section>
@@ -118,7 +124,14 @@ crumbLabel: Web Components
 
 <section>
   <h2>Accessibility</h2>
-  <p>The grid host is a <code>&lt;section role="region"&gt;</code> with an axis-derived label. Each quadrant is its own <code>&lt;section&gt;</code> with an <code>aria-label</code>. Move events update a polite live region announcing the new quadrant.</p>
+  <ul>
+    <li>The grid is a <code>&lt;section role="region"&gt;</code> labelled from the axis labels (e.g. "Helpfulness × Origin quadrant grid").</li>
+    <li>Each quadrant is its own <code>&lt;section&gt;</code> with an <code>aria-label</code> from its <code>q*-label</code>. Quadrants are in the DOM in visual reading order &mdash; top-left (Q2), top-right (Q1), bottom-left (Q3), bottom-right (Q4) &mdash; so screen-reader and tab order match the layout.</li>
+    <li>In read-only mode each quadrant's children are a list (<code>&lt;ul&gt;</code> / <code>&lt;li&gt;</code>).</li>
+    <li>When coordinate pins overlap, each pin in the cluster becomes focusable (<code>tabindex="0"</code>, <code>role="group"</code> unless it already has a role) so keyboard users can fan the cluster out.</li>
+    <li>Axis and scale labels are <code>aria-hidden</code>; the region label carries the axis names.</li>
+    <li>With <code>draggable</code>, a polite live region announces moves using the item's text and the quadrant label (e.g. "Moved Add 2FA to Big Bets").</li>
+  </ul>
 </section>
 
 <section>

@@ -18,17 +18,63 @@
  *   <tr data-id="..."> on the row provides a stable id; falls back to
  *   the title.
  *
+ * Severity = likelihood × impact is computed here and written into the
+ * Severity cell (text + data-sort-value) so <data-table> sorts and
+ * heat-maps it. It deliberately does NOT use data-rollup="product": that
+ * multiplies every numeric-looking cell in the row ("2FA rollout",
+ * "3 vendor quotes"). A row missing either score has an empty severity.
+ *
+ * Quadrant placement: scores 1..SCALE map to 0..1 via (v - 1) / (SCALE - 1),
+ * so 1 sits on the low edge and SCALE on the high edge. A score is "high"
+ * only when it is above the midpoint (> 3 on the 1–5 scale); the midpoint
+ * itself (3) counts as low and is drawn on the centre line. Each dot gets
+ * an explicit data-quadrant so <quadrant-grid> doesn't apply its own
+ * "midpoint belongs to the higher quadrant" rule.
+ *
  * @attr {string} src   - URL to JSON: [{ id, title, likelihood, impact, owner, mitigation }]
  * @attr {string} label - Optional heading shown above the table
  *
- * @fires risk-register:ready  - { count } after first render
- * @fires risk-register:change - { row, field, value } on inline edit
+ * @fires risk-register:ready - { count } after first render
  */
 
 import { registerComponent } from '../../lib/bundle-registry.js';
 import { VBElement } from '../../lib/vb-element.js';
+import { esc } from '../../lib/escape.js';
 
 const SCALE = 5;
+/** Scores strictly above this are in the high half of an axis. */
+const MIDPOINT = (SCALE + 1) / 2;
+
+/**
+ * Normalize a likelihood/impact score to an integer 1..SCALE, or 0 when
+ * missing / not a number.
+ * @param {unknown} v
+ * @returns {number}
+ */
+function score(v) {
+  const n = parseInt(String(v ?? ''), 10);
+  if (!Number.isFinite(n) || n < 1) return 0;
+  return Math.min(SCALE, n);
+}
+
+/**
+ * Map a 1..SCALE score to a 0..1 coordinate.
+ * @param {number} v
+ */
+const toUnit = (v) => (v - 1) / (SCALE - 1);
+
+/**
+ * Quadrant index (Q1=top-right, Q2=top-left, Q3=bottom-left,
+ * Q4=bottom-right) for a likelihood (x) / impact (y) pair.
+ * @param {number} likelihood
+ * @param {number} impact
+ */
+function quadrantFor(likelihood, impact) {
+  const right = likelihood > MIDPOINT;
+  const top = impact > MIDPOINT;
+  if (top) return right ? 0 : 1;
+  return right ? 3 : 2;
+}
 
 class RiskRegister extends VBElement {
   setup() {
@@ -63,8 +109,8 @@ class RiskRegister extends VBElement {
       rows.push({
         id,
         title,
-        likelihood: parseInt(cells[1]?.textContent ?? '', 10) || 0,
-        impact:     parseInt(cells[2]?.textContent ?? '', 10) || 0,
+        likelihood: score(cells[1]?.textContent),
+        impact:     score(cells[2]?.textContent),
         owner:      cells[3]?.textContent?.trim() || '',
         mitigation: cells[4]?.textContent?.trim() || '',
       });
@@ -73,7 +119,12 @@ class RiskRegister extends VBElement {
   }
 
   #render(rows) {
-    this.#rows = rows;
+    this.#rows = rows.map((r) => ({
+      ...r,
+      likelihood: score(r?.likelihood),
+      impact: score(r?.impact),
+    }));
+    rows = this.#rows;
 
     // Wipe prior children except the source <template> so re-renders work.
     [...this.children].forEach((c) => { if (c.tagName !== 'TEMPLATE') c.remove(); });
@@ -110,22 +161,24 @@ class RiskRegister extends VBElement {
           <th data-sort="string">Title</th>
           <th data-sort="number">Likelihood</th>
           <th data-sort="number">Impact</th>
-          <th data-sort="number" data-rollup="product" data-heatmap="low-good">Severity</th>
+          <th data-sort="number" data-severity data-heatmap="low-good">Severity</th>
           <th data-sort="string">Owner</th>
           <th data-sort="string">Mitigation</th>
         </tr>
       </thead>
       <tbody>
-        ${rows.map((r) => `
-          <tr data-id="${RiskRegister.#escape(r.id)}">
-            <td>${RiskRegister.#escape(r.title)}</td>
+        ${rows.map((r) => {
+          const sev = r.likelihood && r.impact ? r.likelihood * r.impact : null;
+          return `
+          <tr data-id="${esc(r.id)}">
+            <td>${esc(r.title)}</td>
             <td>${r.likelihood || ''}</td>
             <td>${r.impact || ''}</td>
-            <td></td>
-            <td>${RiskRegister.#escape(r.owner)}</td>
-            <td>${RiskRegister.#escape(r.mitigation)}</td>
-          </tr>
-        `).join('')}
+            <td${sev === null ? '' : ` data-sort-value="${sev}"`}>${sev ?? ''}</td>
+            <td>${esc(r.owner)}</td>
+            <td>${esc(r.mitigation)}</td>
+          </tr>`;
+        }).join('')}
       </tbody>
     `;
     wrapper.appendChild(table);
@@ -148,21 +201,15 @@ class RiskRegister extends VBElement {
     for (const r of rows) {
       if (!r.likelihood || !r.impact) continue;
       const dot = document.createElement('span');
-      const x = Math.min(1, Math.max(0, r.likelihood / SCALE));
-      const y = Math.min(1, Math.max(0, r.impact / SCALE));
-      dot.setAttribute('data-x', x.toFixed(3));
-      dot.setAttribute('data-y', y.toFixed(3));
+      dot.setAttribute('data-x', toUnit(r.likelihood).toFixed(3));
+      dot.setAttribute('data-y', toUnit(r.impact).toFixed(3));
+      dot.setAttribute('data-quadrant', String(quadrantFor(r.likelihood, r.impact)));
       dot.setAttribute('data-id', r.id);
-      dot.setAttribute('title', `${r.title} — likelihood ${r.likelihood}, impact ${r.impact}`);
+      dot.setAttribute('title', `${r.title} — likelihood ${r.likelihood}, impact ${r.impact}, severity ${r.likelihood * r.impact}`);
       dot.textContent = r.title;
       grid.appendChild(dot);
     }
     return grid;
-  }
-
-  static #escape(s) {
-    return String(s ?? '').replace(/[&<>"']/g, (c) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
   /** @type {Array<{id:string,title:string,likelihood:number,impact:number,owner:string,mitigation:string}>} */

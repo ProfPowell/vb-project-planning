@@ -19,24 +19,6 @@ export function defaultFormula(time, cost, focusFactor) {
   return Math.ceil(weeks * fte * f);
 }
 
-/**
- * Format the formula string used as the human-readable explanation
- * shown beneath the readout. Matches the formula above; if either
- * factor is missing the string degrades gracefully.
- */
-export function defaultFormulaText(time, cost, focusFactor) {
-  const sprintCount = num(time?.sprintCount);
-  const sprintWeeks = num(time?.sprintWeeks) || 1;
-  const totalWeeks = sprintCount > 0 ? sprintCount * sprintWeeks : sprintWeeks;
-  const fte = num(cost?.teamFTE);
-  const f = clamp(num(focusFactor), 0, 1);
-  const points = defaultFormula(time, cost, focusFactor);
-  if (!points) return 'Set sprint length, team size, and focus factor to compute capacity.';
-  const weeksLabel = sprintCount > 0
-    ? `${sprintCount} × ${sprintWeeks}wk = ${totalWeeks}wk`
-    : `${sprintWeeks}wk`;
-  return `${weeksLabel} × ${fte} FTE × ${f} = ${(totalWeeks * fte * f).toFixed(1)} → ${points} points`;
-}
 
 /**
  * FNV-1a (32-bit) hash over a stable JSON serialization of the triangle.

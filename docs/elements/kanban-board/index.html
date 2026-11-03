@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" data-page="docs" data-fluid="" data-sticky="" data-icon-path="/vb-project-planning/cdn/icons">
 <head>
   <meta charset="utf-8">
@@ -85,10 +85,10 @@
 
   <title>kanban-board — VB Project Planning</title>
   <meta name="description" content="Columnar drag-and-drop board with user-defined columns, count badges, and optional WIP limits.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw01un2o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw08x8py">
   
 </head>
 <body style="overflow-x: clip;">
@@ -99,7 +99,7 @@
     <nav class="horizontal pills">
       <ul>
         <li><a href="/vb-project-planning/" data-nav-link="">Home</a></li>
-        <li><a class="active-parent" href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
+        <li><a href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
         <li><a href="/vb-project-planning/demos/" data-nav-link="">Demos</a></li>
         <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
         <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
@@ -141,7 +141,7 @@
           <strong class="mobile-section-title">Pages</strong>
           <ul>
             <li><a href="/vb-project-planning/">Home</a></li>
-            <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+            <li><a href="/vb-project-planning/elements/">Elements</a></li>
             <li><a href="/vb-project-planning/demos/">Demos</a></li>
             <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
             <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
@@ -170,7 +170,7 @@
         <label for="nav-drawer-toggle" class="nav-drawer-close" aria-label="Close navigation">
           <icon-wc name="x"></icon-wc>
         </label>
-        <p class="sidebar-title"><a class="active-parent" href="/vb-project-planning/elements/">All elements</a></p>
+        <p class="sidebar-title"><a href="/vb-project-planning/elements/">All elements</a></p>
 
 <ul>
   <li><a href="/vb-project-planning/elements/adr-wc/">adr-wc</a></li>
@@ -180,7 +180,7 @@
   <li><a href="/vb-project-planning/elements/gantt-chart/">gantt-chart</a></li>
   <li><a href="/vb-project-planning/elements/impact-effort/">impact-effort</a></li>
   <li><a href="/vb-project-planning/elements/iron-triangle/">iron-triangle</a></li>
-  <li><a class="active" href="/vb-project-planning/elements/kanban-board/">kanban-board</a></li>
+  <li><a href="/vb-project-planning/elements/kanban-board/">kanban-board</a></li>
   <li><a href="/vb-project-planning/elements/product-roadmap/">product-roadmap</a></li>
   <li><a href="/vb-project-planning/elements/quadrant-grid/">quadrant-grid</a></li>
   <li><a href="/vb-project-planning/elements/quality-target/">quality-target</a></li>
@@ -210,7 +210,7 @@
           <nav class="breadcrumb" aria-label="Breadcrumb" data-pagefind-ignore="">
             <ol>
               <li><a href="/vb-project-planning/">Home</a></li>
-              <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+              <li><a href="/vb-project-planning/elements/">Elements</a></li>
               <li><span aria-current="page">kanban-board</span></li>
             </ol>
           </nav>
@@ -742,16 +742,9 @@
 
 <section>
     <h2>Attributes</h2>
-    <table>
-      <thead>
-        <tr><th>Attribute</th><th>Type</th><th>Description</th></tr>
-      </thead>
-      <tbody>
-        <tr><td><code>src</code></td><td>string</td><td>URL to JSON data for columns and items</td></tr>
-        <tr><td><code>title</code></td><td>string</td><td>Optional heading displayed above the board</td></tr>
-        <tr><td><code>compact</code></td><td>boolean</td><td>Reduced spacing variant for dashboard-style layouts</td></tr>
-      </tbody>
-    </table>
+    <table class="props-table"><thead><tr><th>Attribute</th><th>Values</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>src</code></td><td>string</td><td>—</td><td>URL to JSON data for columns and items. Fetched once per value; a new value replaces the board and aborts an older in-flight request</td></tr>
+<tr><td><code>title</code></td><td>string</td><td>—</td><td>Optional heading above the board; also names the board region</td></tr>
+<tr><td><code>compact</code></td><td>boolean</td><td>—</td><td>Reduced spacing variant</td></tr></tbody></table>
 </section>
 
 <section>
@@ -1800,19 +1793,12 @@
 
 <section>
     <h2>Events</h2>
-    <table>
-      <thead>
-        <tr><th>Event</th><th>Detail</th><th>Description</th></tr>
-      </thead>
-      <tbody>
-        <tr><td><code>kanban-board:transfer</code></td><td><code>{ itemId, fromColumn, toColumn, newIndex, item }</code></td><td>Item moved between columns</td></tr>
-        <tr><td><code>kanban-board:reorder</code></td><td><code>{ itemId, column, oldIndex, newIndex }</code></td><td>Item reordered within a column</td></tr>
-        <tr><td><code>kanban-board:ready</code></td><td><code>{ columnCount, itemCount }</code></td><td>Fired after component initializes</td></tr>
-        <tr><td><code>kanban-board:wip-exceeded</code></td><td><code>{ column, limit, count }</code></td><td>Fired when a column exceeds its WIP limit</td></tr>
-        <tr><td><code>kanban-board:upgraded</code></td><td>—</td><td>Fired once after first connect; safe signal for assigning <code>.items</code> from a framework.</td></tr>
-        <tr><td><code>kanban-board:items-changed</code></td><td><code>{ items, source: 'api' \| 'drag' }</code></td><td>Fired after the items array changes for any reason. Filter on <code>source</code> to avoid feedback loops.</td></tr>
-      </tbody>
-    </table>
+    <table class="props-table"><thead><tr><th>Event</th><th>Detail</th><th>Description</th></tr></thead><tbody><tr><td><code>kanban-board:transfer</code></td><td><code>{ itemId, fromColumn, toColumn, newIndex, item }</code></td><td>Item moved between columns</td></tr>
+<tr><td><code>kanban-board:reorder</code></td><td><code>{ itemId, column, oldIndex, newIndex }</code></td><td>Item reordered within a column</td></tr>
+<tr><td><code>kanban-board:ready</code></td><td><code>{ columnCount, itemCount }</code></td><td>Fired once after the first render. With src, fired once the JSON has loaded and rendered. Once per element: not re-fired by a later src change (watch items-changed with source 'src') or when the board is moved in the DOM</td></tr>
+<tr><td><code>kanban-board:wip-exceeded</code></td><td><code>{ column, limit, count }</code></td><td>Fired when a drop takes a column over its WIP limit</td></tr>
+<tr><td><code>kanban-board:items-changed</code></td><td><code>{ items, source: 'api' | 'drag' | 'src' }</code></td><td>Fired after the items array changes: an .items assignment, or a .columns assignment that drops cards (source 'api'), a drag (source 'drag'), or each src load once its data has rendered (source 'src'). Filter on source to avoid feedback loops</td></tr>
+<tr><td><code>kanban-board:upgraded</code></td><td>—</td><td>Fired (in a microtask) each time the board connects and upgrades; a safe signal for assigning .columns / .items from a framework</td></tr></tbody></table>
 </section>
 
 <section>
@@ -1824,7 +1810,7 @@
         <tr><th>Property</th><th>Type</th><th>Description</th></tr>
       </thead>
       <tbody>
-        <tr><td><code>.columns</code></td><td><code>{ id, label?, wip?, color? }[]</code></td><td>Replaces all columns and rebuilds the shell. Setting an empty array clears the board.</td></tr>
+        <tr><td><code>.columns</code></td><td><code>{ id, label?, wip?, color? }[]</code></td><td>Replaces all columns and rebuilds the shell. Existing cards whose <code>column</code> is still present move (same DOM nodes) into the new columns; cards whose column is gone are removed from the board and from <code>.items</code>, and <code>kanban-board:items-changed</code> reports it. Setting an empty array clears the board.</td></tr>
         <tr><td><code>.items</code></td><td><code>{ id, column, ... }[]</code></td><td>Setter runs a keyed diff. <code>id</code> is the key; <code>column</code> selects the target drag-surface. Other fields go to the renderer.</td></tr>
         <tr><td><code>.renderItem</code></td><td><code>(item) =&gt; Element</code></td><td>Optional custom item renderer. Default builds a <code>&lt;work-item&gt;</code> and applies fields via <code>.data</code>.</td></tr>
       </tbody>
@@ -2313,12 +2299,12 @@
       </div>
       <div class="code-container" role="region" aria-labelledby="code-label" style="">
         <div class="line-numbers" aria-hidden="true"><span class="">1</span><span class="">2</span><span class="">3</span><span class="">4</span><span class="">5</span><span class="">6</span><span class="">7</span><span class="">8</span><span class="">9</span><span class="">10</span><span class="">11</span><span class="">12</span><span class="">13</span><span class="">14</span><span class="">15</span><span class="">16</span><span class="">17</span><span class="">18</span><span class="">19</span><span class="">20</span><span class="">21</span></div>
-        <pre><code class="language-javascript" tabindex="0"><span class="code-line"><span class="hljs-keyword">const</span> board = <span class="hljs-variable language_">document</span>.<span class="hljs-title function_">querySelector</span>(<span class="hljs-string">&#x27;kanban-board&#x27;</span>);</span><span class="code-line"> </span><span class="code-line"><span class="hljs-comment">// Wait for the upgrade signal before assigning.</span></span><span class="code-line"><span class="hljs-keyword">await</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Promise</span>(r =&amp;gt; board.<span class="hljs-title function_">addEventListener</span>(<span class="hljs-string">&#x27;kanban-board:upgraded&#x27;</span>, r, { <span class="hljs-attr">once</span>: <span class="hljs-literal">true</span> }));</span><span class="code-line"> </span><span class="code-line">board.<span class="hljs-property">columns</span> = [</span><span class="code-line">  { <span class="hljs-attr">id</span>: <span class="hljs-string">&#x27;todo&#x27;</span>,  <span class="hljs-attr">label</span>: <span class="hljs-string">&#x27;To Do&#x27;</span>,       <span class="hljs-attr">wip</span>: <span class="hljs-number">5</span> },</span><span class="code-line">  { <span class="hljs-attr">id</span>: <span class="hljs-string">&#x27;doing&#x27;</span>, <span class="hljs-attr">label</span>: <span class="hljs-string">&#x27;In Progress&#x27;</span>, <span class="hljs-attr">wip</span>: <span class="hljs-number">3</span>, <span class="hljs-attr">color</span>: <span class="hljs-string">&#x27;warning&#x27;</span> },</span><span class="code-line">  { <span class="hljs-attr">id</span>: <span class="hljs-string">&#x27;done&#x27;</span>,  <span class="hljs-attr">label</span>: <span class="hljs-string">&#x27;Done&#x27;</span>,        <span class="hljs-attr">color</span>: <span class="hljs-string">&#x27;success&#x27;</span> },</span><span class="code-line">];</span><span class="code-line"> </span><span class="code-line"><span class="hljs-comment">// Assigning .items diffs against current cards.</span></span><span class="code-line">board.<span class="hljs-property">items</span> = [</span><span class="code-line">  { <span class="hljs-attr">id</span>: <span class="hljs-string">&#x27;PROJ-1&#x27;</span>, <span class="hljs-attr">column</span>: <span class="hljs-string">&#x27;todo&#x27;</span>,  <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;Wire auth&#x27;</span>,     <span class="hljs-attr">type</span>: <span class="hljs-string">&#x27;task&#x27;</span>,    <span class="hljs-attr">priority</span>: <span class="hljs-string">&#x27;high&#x27;</span>   },</span><span class="code-line">  { <span class="hljs-attr">id</span>: <span class="hljs-string">&#x27;PROJ-2&#x27;</span>, <span class="hljs-attr">column</span>: <span class="hljs-string">&#x27;doing&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;Refactor cache&#x27;</span>, <span class="hljs-attr">type</span>: <span class="hljs-string">&#x27;feature&#x27;</span>, <span class="hljs-attr">priority</span>: <span class="hljs-string">&#x27;medium&#x27;</span> },</span><span class="code-line">];</span><span class="code-line"> </span><span class="code-line"><span class="hljs-comment">// Avoid feedback loops by ignoring drag-sourced changes:</span></span><span class="code-line">board.<span class="hljs-title function_">addEventListener</span>(<span class="hljs-string">&#x27;kanban-board:items-changed&#x27;</span>, (e) =&amp;gt; {</span><span class="code-line">  <span class="hljs-keyword">if</span> (e.<span class="hljs-property">detail</span>.<span class="hljs-property">source</span> === <span class="hljs-string">&#x27;drag&#x27;</span>) <span class="hljs-title function_">updateMyState</span>(e.<span class="hljs-property">detail</span>.<span class="hljs-property">items</span>);</span><span class="code-line">});</span></code></pre>
+        <pre><code class="language-javascript" tabindex="0"><span class="code-line"><span class="hljs-keyword">const</span> board = <span class="hljs-variable language_">document</span>.<span class="hljs-title function_">querySelector</span>(<span class="hljs-string">&#x27;kanban-board&#x27;</span>);</span><span class="code-line"> </span><span class="code-line"><span class="hljs-comment">// Wait for the upgrade signal before assigning.</span></span><span class="code-line"><span class="hljs-keyword">if</span> (!board.<span class="hljs-title function_">hasAttribute</span>(<span class="hljs-string">&#x27;data-upgraded&#x27;</span>)) <span class="hljs-keyword">await</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Promise</span>(r =&amp;gt; board.<span class="hljs-title function_">addEventListener</span>(<span class="hljs-string">&#x27;kanban-board:upgraded&#x27;</span>, r, { <span class="hljs-attr">once</span>: <span class="hljs-literal">true</span> }));</span><span class="code-line"> </span><span class="code-line">board.<span class="hljs-property">columns</span> = [</span><span class="code-line">  { <span class="hljs-attr">id</span>: <span class="hljs-string">&#x27;todo&#x27;</span>,  <span class="hljs-attr">label</span>: <span class="hljs-string">&#x27;To Do&#x27;</span>,       <span class="hljs-attr">wip</span>: <span class="hljs-number">5</span> },</span><span class="code-line">  { <span class="hljs-attr">id</span>: <span class="hljs-string">&#x27;doing&#x27;</span>, <span class="hljs-attr">label</span>: <span class="hljs-string">&#x27;In Progress&#x27;</span>, <span class="hljs-attr">wip</span>: <span class="hljs-number">3</span>, <span class="hljs-attr">color</span>: <span class="hljs-string">&#x27;warning&#x27;</span> },</span><span class="code-line">  { <span class="hljs-attr">id</span>: <span class="hljs-string">&#x27;done&#x27;</span>,  <span class="hljs-attr">label</span>: <span class="hljs-string">&#x27;Done&#x27;</span>,        <span class="hljs-attr">color</span>: <span class="hljs-string">&#x27;success&#x27;</span> },</span><span class="code-line">];</span><span class="code-line"> </span><span class="code-line"><span class="hljs-comment">// Assigning .items diffs against current cards.</span></span><span class="code-line">board.<span class="hljs-property">items</span> = [</span><span class="code-line">  { <span class="hljs-attr">id</span>: <span class="hljs-string">&#x27;PROJ-1&#x27;</span>, <span class="hljs-attr">column</span>: <span class="hljs-string">&#x27;todo&#x27;</span>,  <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;Wire auth&#x27;</span>,     <span class="hljs-attr">type</span>: <span class="hljs-string">&#x27;task&#x27;</span>,    <span class="hljs-attr">priority</span>: <span class="hljs-string">&#x27;high&#x27;</span>   },</span><span class="code-line">  { <span class="hljs-attr">id</span>: <span class="hljs-string">&#x27;PROJ-2&#x27;</span>, <span class="hljs-attr">column</span>: <span class="hljs-string">&#x27;doing&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;Refactor cache&#x27;</span>, <span class="hljs-attr">type</span>: <span class="hljs-string">&#x27;feature&#x27;</span>, <span class="hljs-attr">priority</span>: <span class="hljs-string">&#x27;medium&#x27;</span> },</span><span class="code-line">];</span><span class="code-line"> </span><span class="code-line"><span class="hljs-comment">// Avoid feedback loops by ignoring drag-sourced changes:</span></span><span class="code-line">board.<span class="hljs-title function_">addEventListener</span>(<span class="hljs-string">&#x27;kanban-board:items-changed&#x27;</span>, (e) =&amp;gt; {</span><span class="code-line">  <span class="hljs-keyword">if</span> (e.<span class="hljs-property">detail</span>.<span class="hljs-property">source</span> === <span class="hljs-string">&#x27;drag&#x27;</span>) <span class="hljs-title function_">updateMyState</span>(e.<span class="hljs-property">detail</span>.<span class="hljs-property">items</span>);</span><span class="code-line">});</span></code></pre>
       </div>
       </template><textarea style="display:none">const board = document.querySelector(&#39;kanban-board&#39;);
 
 // Wait for the upgrade signal before assigning.
-await new Promise(r =&amp;gt; board.addEventListener(&#39;kanban-board:upgraded&#39;, r, { once: true }));
+if (!board.hasAttribute(&#39;data-upgraded&#39;)) await new Promise(r =&amp;gt; board.addEventListener(&#39;kanban-board:upgraded&#39;, r, { once: true }));
 
 board.columns = [
   { id: &#39;todo&#39;,  label: &#39;To Do&#39;,       wip: 5 },
@@ -2346,7 +2332,8 @@ board.addEventListener(&#39;kanban-board:items-changed&#39;, (e) =&amp;gt; {
 
 <section>
     <h2>JSON Data Mode</h2>
-    <p>Set the <code>src</code> attribute to load board data from a JSON URL. Items with <code>storyId</code> fields are rendered as <code>&lt;user-story&gt;</code> elements with persona and action content in slots. All other items are rendered as <code>&lt;article&gt;</code> elements.</p>
+    <p>Set the <code>src</code> attribute to load board data from a JSON URL. The URL is fetched once; <code>kanban-board:ready</code> fires after the data has rendered. Changing <code>src</code> loads the new URL and replaces the board (the request for an older URL is aborted). <code>ready</code> fires once per board; every src load that renders also fires <code>kanban-board:items-changed</code> with <code>source: 'src'</code>, so listen for that to react to later loads. Moving the board in the DOM keeps the loaded cards and does not refetch.</p>
+    <p>Items with a <code>storyId</code>, <code>persona</code>, <code>action</code>, or <code>benefit</code> field are rendered as <code>&lt;user-story&gt;</code> cards: <code>persona</code>, <code>action</code>, and <code>benefit</code> become <code>&lt;span slot="…"&gt;</code> children, <code>title</code> an <code>&lt;h3 slot="title"&gt;</code>, and <code>storyId</code>, <code>priority</code>, <code>status</code>, <code>points</code>, and <code>detail</code> (default <code>minimal</code>) the matching attributes. All other items are rendered as <code>&lt;article class="kb-card"&gt;</code> showing <code>text</code> (or <code>label</code> / <code>title</code>).</p>
 
     <code-block language="json" data-ssr label="JSON schema"><template shadowrootmode="open"><style>
       :host {
@@ -2858,23 +2845,22 @@ board.addEventListener(&#39;kanban-board:items-changed&#39;, (e) =&amp;gt; {
 
 <section>
     <h2>Keyboard Navigation</h2>
-    <p>All keyboard support is provided by the underlying <code>&lt;drag-surface&gt;</code> component:</p>
+    <p>Card keyboard support comes from the underlying <code>&lt;drag-surface&gt;</code>. Each card is one tab stop:</p>
     <ul>
-      <li><kbd>Tab</kbd> to focus a column's drag surface</li>
-      <li><kbd>Space</kbd> or <kbd>Enter</kbd> to grab an item</li>
-      <li><kbd>Up</kbd> / <kbd>Down</kbd> to reorder within a column</li>
-      <li><kbd>Left</kbd> / <kbd>Right</kbd> to transfer between columns</li>
-      <li><kbd>Space</kbd> to drop the item</li>
-      <li><kbd>Escape</kbd> to cancel</li>
+      <li><kbd>Tab</kbd> moves between cards; <kbd>Up</kbd> / <kbd>Down</kbd> move focus within a column</li>
+      <li><kbd>Space</kbd> grabs the focused card (<kbd>Enter</kbd> does too, except on a minimal <code>&lt;user-story&gt;</code>, see below)</li>
+      <li>While grabbed: <kbd>Up</kbd> / <kbd>Down</kbd> reorder within the column, <kbd>Left</kbd> / <kbd>Right</kbd> move the card to the previous / next column</li>
+      <li><kbd>Space</kbd> or <kbd>Enter</kbd> drops the card; <kbd>Escape</kbd> cancels and puts it back</li>
     </ul>
+    <p>A minimal <code>&lt;user-story&gt;</code> card (as in the demo above) keeps its own action: <kbd>Enter</kbd> opens its detail dialog and <kbd>Space</kbd> grabs it. A click opens the dialog too.</p>
 </section>
 
 <section>
     <h2>Accessibility</h2>
     <ul>
-      <li>The columns container has <code>role="region"</code> with <code>aria-label="Kanban board"</code></li>
-      <li>Each drag-surface has an <code>aria-label</code> matching the column label</li>
-      <li>A visually hidden live region announces all transfers for screen readers</li>
+      <li>The columns container has <code>role="region"</code>, labelled by the <code>title</code> attribute (or "Kanban board" when there is none)</li>
+      <li>Each drag-surface has an <code>aria-label</code> of the column label plus "items" (e.g. "Backlog items")</li>
+      <li>A visually hidden live region announces transfers between columns using the card's text and the column labels (e.g. "Wire auth moved from To Do to In Progress")</li>
       <li>Count badges use <code>&lt;output&gt;</code> elements for live value updates</li>
       <li>Respects <code>prefers-reduced-motion: reduce</code></li>
     </ul>
@@ -3413,7 +3399,7 @@ board.addEventListener(&#39;kanban-board:items-changed&#39;, (e) =&amp;gt; {
     <span>Part of the <a href="https://vanilla-breeze.com">Vanilla Breeze</a> ecosystem</span>
   </site-legal>
   <nav aria-label="Footer links">
-    <a class="active-parent" href="/vb-project-planning/elements/">Elements</a>
+    <a href="/vb-project-planning/elements/">Elements</a>
     <a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">
       <icon-wc name="github" size="sm"></icon-wc> GitHub
     </a>
@@ -3445,10 +3431,10 @@ board.addEventListener(&#39;kanban-board:items-changed&#39;, (e) =&amp;gt; {
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw01un2o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw08x8py"></script>
   
 </body>
 </html>

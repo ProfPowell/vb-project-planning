@@ -52,54 +52,7 @@ crumbLabel: Web Components
 
   <section>
     <h2>Attributes</h2>
-    <table class="props-table">
-      <thead>
-        <tr>
-          <th>Attribute</th>
-          <th>Type</th>
-          <th>Default</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>role</code></td>
-          <td>string</td>
-          <td>&mdash;</td>
-          <td>Job title or role description</td>
-        </tr>
-        <tr>
-          <td><code>age</code></td>
-          <td>string</td>
-          <td>&mdash;</td>
-          <td>Age displayed as "[value] years old"</td>
-        </tr>
-        <tr>
-          <td><code>location</code></td>
-          <td>string</td>
-          <td>&mdash;</td>
-          <td>Geographic location shown with a pin icon</td>
-        </tr>
-        <tr>
-          <td><code>avatar</code></td>
-          <td>string (URL)</td>
-          <td>&mdash;</td>
-          <td>Custom avatar image URL. When omitted, initials are generated from the name.</td>
-        </tr>
-        <tr>
-          <td><code>compact</code></td>
-          <td>boolean</td>
-          <td>&mdash;</td>
-          <td>Reduces padding, font sizes, and avatar size for denser layouts</td>
-        </tr>
-        <tr>
-          <td><code>src</code></td>
-          <td>string (URL)</td>
-          <td>&mdash;</td>
-          <td>URL to JSON file containing persona data. Loads and populates all fields.</td>
-        </tr>
-      </tbody>
-    </table>
+    {{ attributeTable("user-persona", apiRegistry) }}
   </section>
 
   <section>
@@ -116,12 +69,12 @@ crumbLabel: Web Components
         <tr>
           <td><code>name</code></td>
           <td><code>&lt;h2&gt;</code> or text</td>
-          <td>Full name of the persona. Defaults to "Unnamed Persona" when omitted.</td>
+          <td>Full name of the persona. Falls back to the <code>name</code> attribute, then "Unnamed Persona".</td>
         </tr>
         <tr>
           <td><code>quote</code></td>
           <td><code>&lt;p&gt;</code> or text</td>
-          <td>Representative quote displayed in an italic block with a decorative quotation mark.</td>
+          <td>Representative quote displayed in an italic block with a decorative quotation mark. Falls back to the <code>quote</code> attribute.</td>
         </tr>
         <tr>
           <td><code>bio</code></td>
@@ -145,7 +98,8 @@ crumbLabel: Web Components
         </tr>
       </tbody>
     </table>
-    <p>Content values (<code>name</code>, <code>quote</code>) are provided as named slots. State attributes (<code>role</code>, <code>age</code>, <code>location</code>, <code>avatar</code>) remain on the element.</p>
+    <p>Content values (<code>name</code>, <code>quote</code>) are best provided as named slots; the <code>name</code> and <code>quote</code> attributes are a shorthand used only when the slot is absent (a slot always wins). <code>role</code>, <code>age</code>, <code>location</code> and <code>avatar</code> are attributes only &mdash; there are no slots for them.</p>
+    <code-block language="html" label="Attribute shorthand" data-escape><user-persona name="Fred" role="Engineer" quote="Ship small, ship often."></user-persona></code-block>
   </section>
 
   <section>
@@ -197,7 +151,7 @@ crumbLabel: Web Components
 
   <section>
     <h2>JSON Loading</h2>
-    <p>Load persona data from a JSON file using the <code>src</code> attribute. All fields are mapped to attributes or cached for rendering.</p>
+    <p>Load persona data from a JSON file using the <code>src</code> attribute. The file is fetched once (moving the element does not refetch; changing <code>src</code> aborts the previous request). <code>role</code>, <code>age</code>, <code>location</code> and <code>avatar</code> become attributes; <code>name</code>, <code>quote</code>, <code>bio</code>, <code>goals</code>, <code>frustrations</code> and <code>behaviors</code> become slotted children (strings as <code>&lt;p&gt;</code>, arrays as <code>&lt;ul&gt;</code>), replacing any existing child for that slot. <code>persona-ready</code> fires after this data renders.</p>
 
     <code-block language="html" show-lines label="Loading from JSON" data-escape><user-persona src="/api/personas/sarah.json"></user-persona></code-block>
 
@@ -358,32 +312,7 @@ crumbLabel: Web Components
 
   <section>
     <h2>Events</h2>
-    <table class="props-table">
-      <thead>
-        <tr>
-          <th>Event</th>
-          <th>Detail</th>
-          <th>When</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>persona-ready</code></td>
-          <td><code>{ name, role, age, location }</code></td>
-          <td>Fires after the component renders for the first time</td>
-        </tr>
-        <tr>
-          <td><code>user-persona:upgraded</code></td>
-          <td>&mdash;</td>
-          <td>Once after first connect. Wait for this before assigning <code>.data</code> from a framework.</td>
-        </tr>
-        <tr>
-          <td><code>user-persona:data-changed</code></td>
-          <td><code>{ data, source: 'property' }</code></td>
-          <td>After <code>.data</code> assignment.</td>
-        </tr>
-      </tbody>
-    </table>
+    {{ eventsTable("user-persona", apiRegistry) }}
   </section>
 
   <section>
@@ -400,7 +329,12 @@ crumbLabel: Web Components
         <tr>
           <td><code>.data</code></td>
           <td><code>{ name?, role?, age?, location?, avatar?, quote?, bio?, goals?, frustrations?, behaviors? }</code></td>
-          <td>Whole-record assignment. Sets state attributes <em>and</em> creates slotted children for any text fields not already present. Idempotent.</td>
+          <td>Whole-record assignment. Sets state attributes <em>and</em> creates or updates the slotted child for every text field present (strings as <code>&lt;p&gt;</code>, arrays as <code>&lt;ul&gt;</code>), so a second assignment replaces the first. Absent fields are left alone. Reading returns list sections as string arrays.</td>
+        </tr>
+        <tr>
+          <td><code>relatedStories()</code></td>
+          <td>method</td>
+          <td>The <code>&lt;user-story&gt;</code> elements whose <code>persona-id</code> matches this persona's <code>id</code>, in document order.</td>
         </tr>
       </tbody>
     </table>
@@ -420,7 +354,7 @@ persona.data = {
       <li>The outer card uses <code>role="article"</code> with an <code>aria-label</code> of "User persona: [name]"</li>
       <li>The avatar element has <code>role="img"</code> with <code>aria-label="Avatar for [name]"</code></li>
       <li>The decorative quotation mark uses <code>aria-hidden="true"</code> so screen readers skip it</li>
-      <li>Each content section has a visible heading for screen reader navigation</li>
+      <li>Each content section (Background, Goals, Frustrations, Behaviors, Stories) has a visible <code>&lt;h3&gt;</code> heading for screen reader navigation, nested under the persona's <code>&lt;h2&gt;</code> name</li>
       <li>Respects <code>prefers-reduced-motion: reduce</code> by disabling all transitions</li>
       <li>Responsive layout stacks to a single column at narrow viewports (&lt;600px)</li>
     </ul>

@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/api.schema.json",
   "element": "burndown-chart",
   "type": "web-component",
-  "description": "Sprint burndown plot. Wraps <chart-wc> with auto-computed ideal line and scope-change annotations.",
+  "description": "Sprint burndown plot. Wraps <chart-wc> with auto-computed ideal line and scope-change annotations. All attributes are observed: changing one on a live element re-renders.",
   "htmlvalidate": {
     "flow": true,
     "permittedContent": [
@@ -15,14 +15,14 @@
       "kind": "host-api",
       "purpose": "config",
       "type": "string",
-      "description": "Sprint start date (ISO 8601, required)"
+      "description": "Sprint start date (YYYY-MM-DD, local calendar day; required)"
     },
     {
       "name": "end",
       "kind": "host-api",
       "purpose": "config",
       "type": "string",
-      "description": "Sprint end date (ISO 8601, inclusive, required)"
+      "description": "Sprint end date (YYYY-MM-DD, inclusive; required)"
     },
     {
       "name": "total",
@@ -36,7 +36,8 @@
       "kind": "host-api",
       "purpose": "config",
       "type": "string",
-      "description": "Display unit, default \"points\""
+      "description": "Display unit for the y-axis and scope-change notes (rendered as text)",
+      "default": "\"points\""
     },
     {
       "name": "label",
@@ -54,7 +55,8 @@
         "include",
         "exclude"
       ],
-      "description": "Whether weekends count toward the ideal-line slope"
+      "description": "Whether weekends count toward the ideal-line slope",
+      "default": "\"include\""
     }
   ],
   "structure": [
@@ -68,7 +70,7 @@
     {
       "name": "burndown-chart:ready",
       "detail": "{ dayCount, total, scopeChanges }",
-      "description": "Fired after the chart renders"
+      "description": "Fired after each upgrade (first connect, reconnect, or a retried upgrade), in a microtask. Not re-fired when a live attribute change re-renders"
     }
   ]
 }

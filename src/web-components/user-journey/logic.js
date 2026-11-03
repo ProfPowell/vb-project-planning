@@ -27,12 +27,22 @@
  *       }
  *     ]
  *   }
+ *
+ * Title and summary are content: `<h2 slot="title">`, `<p slot="summary">`
+ * (or the `title` / `summary` JSON fields, which create those children).
+ *
+ * @fires journey-ready               - Once, after the first render (after the src data renders when src is set), detail: { title, persona, phaseCount }
+ * @fires user-journey:upgraded       - Once, after first connect
+ * @fires user-journey:data-changed   - After .data assignment, detail: { data, source: 'property' }
+ * @fires user-journey:phases-changed - After .phases assignment, detail: { phases, source: 'property' }
  */
 
 import { styles } from './styles.js';
 import { registerComponent } from '../../lib/bundle-registry.js';
 import { viewTransitionSwap } from '../../lib/vb-view-transition.js';
-import { esc, EMOTION_META, lucideSvg, UX_ICONS } from '../_ux-base.js';
+import {
+  esc, emotionMeta, lucideSvg, UX_ICONS, UXShadowElement, fillSlot, slottedChild, splitList, asList, fragmentHref,
+} from '../_ux-base.js';
 
 const ROWS = [
   { key: 'actions',       label: 'Actions'       },
@@ -42,18 +52,15 @@ const ROWS = [
   { key: 'opportunities', label: 'Opportunities' },
 ];
 
-class UserJourney extends HTMLElement {
+class UserJourney extends UXShadowElement {
+  static readyEvent = 'journey-ready';
+
   static get observedAttributes() {
     return ['src', 'persona', 'persona-id', 'story-ids', 'compact'];
   }
 
-  #slotCache = new Map();
-
-  constructor() {
-    super();
-    this.attachShadow({ mode: 'open' });
-    this.__phases = null;
-  }
+  /** @type {Array<Record<string, any>> | null} */
+  __phases = null;
 
   /** @returns {Array|null} */
   get phases() { return this.__phases; }
@@ -66,7 +73,7 @@ class UserJourney extends HTMLElement {
   set phases(data) {
     if (this.__phases === data) return;
     this.__phases = data;
-    if (this.isConnected) this._render();
+    if (this._isSetUp) this._render();
     this.dispatchEvent(new CustomEvent('user-journey:phases-changed', {
       detail: { phases: data, source: 'property' },
       bubbles: true, composed: true,
@@ -82,8 +89,8 @@ class UserJourney extends HTMLElement {
     return {
       persona: this.getAttribute('persona') || undefined,
       personaId: this.getAttribute('persona-id') || undefined,
-      title: this.querySelector('[slot="title"]')?.textContent?.trim() || undefined,
-      summary: this.querySelector('[slot="summary"]')?.textContent?.trim() || undefined,
+      title: slottedChild(this, 'title')?.textContent?.trim() || undefined,
+      summary: slottedChild(this, 'summary')?.textContent?.trim() || undefined,
       phases: this.__phases || undefined,
     };
   }
@@ -93,98 +100,56 @@ class UserJourney extends HTMLElement {
    * Emits user-journey:data-changed { data, source: 'property' }.
    */
   set data(value) {
-    if (!value || typeof value !== 'object') return;
-    if (value.persona)   this.setAttribute('persona',    String(value.persona));
-    if (value.personaId) this.setAttribute('persona-id', String(value.personaId));
-    if (value.title && !this.querySelector('[slot="title"]')) {
-      const el = document.createElement('h2');
-      el.slot = 'title';
-      el.textContent = value.title;
-      this.appendChild(el);
-    }
-    if (value.summary && !this.querySelector('[slot="summary"]')) {
-      const el = document.createElement('p');
-      el.slot = 'summary';
-      el.textContent = value.summary;
-      this.appendChild(el);
-    }
-    if (value.phases != null) this.__phases = value.phases;
-    if (this.isConnected) this._render();
-    this.dispatchEvent(new CustomEvent('user-journey:data-changed', {
-      detail: { data: this.data, source: 'property' },
-      bubbles: true, composed: true,
-    }));
+    this._setData(value);
   }
 
-  /* ── Slot caching ──────────────────────────── */
-
-  #cacheSlotValues() {
-    for (const child of this.children) {
-      const slot = child.getAttribute('slot');
-      if (slot) this.#slotCache.set(slot, child.textContent.trim());
-    }
+  /**
+   * Apply a journey record (from .data or src). Title / summary create
+   * slotted children only when none are authored.
+   * @param {Record<string, any>} data
+   */
+  _applyData(data) {
+    if (data.persona)   this.setAttribute('persona',    String(data.persona));
+    if (data.personaId) this.setAttribute('persona-id', String(data.personaId));
+    fillSlot(this, 'title', data.title, { tag: 'h2' });
+    fillSlot(this, 'summary', data.summary);
+    if (data.phases != null) this.__phases = data.phases;
   }
 
+  _readyDetail() {
+    const phases = this.__phases;
+    return {
+      title: this._slotText('title'),
+      persona: this._resolve('persona'),
+      phaseCount: Array.isArray(phases) ? phases.length : 0,
+    };
+  }
+
+  /**
+   * Attribute value, else the text of a same-named light-DOM child (e.g.
+   * `<span slot="persona">`, read as data; it is not projected).
+   * @param {string} attr
+   */
   _resolve(attr) {
-    return this.getAttribute(attr) || this.#slotCache.get(attr) || '';
+    return this.getAttribute(attr) || this._slotCache.get(attr) || '';
   }
 
-  /* ── Lifecycle ─────────────────────────────── */
-
-  connectedCallback() {
-    this.#cacheSlotValues();
-    this.setAttribute('data-upgraded', '');
-    if (this.hasAttribute('src')) {
-      this._loadSrc(this.getAttribute('src'));
-    } else {
-      this._render();
-    }
+  /** Journey title: the slotted title's text, or the default heading. */
+  #title() {
+    return this._slotText('title') || 'User Journey';
   }
 
-  disconnectedCallback() {
-    this.removeAttribute('data-upgraded');
-  }
+  /* ── JSON loading states ───────────────────── */
 
-  attributeChangedCallback(name) {
-    if (!this.isConnected) return;
-    if (name === 'src') {
-      this._loadSrc(this.getAttribute('src'));
-    } else {
-      this._render();
-    }
-  }
-
-  /* ── JSON loading ──────────────────────────── */
-
-  async _loadSrc(src) {
-    if (!src) return;
-    const root = /** @type {ShadowRoot} */ (this.shadowRoot);
-    root.innerHTML = `<style>${styles}</style>` +
+  _renderLoading() {
+    /** @type {ShadowRoot} */ (this.shadowRoot).innerHTML = `<style>${styles}</style>` +
       `<div class="state-msg">Loading\u2026</div>`;
-    try {
-      const res = await fetch(src);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (data.persona)   this.setAttribute('persona',    data.persona);
-      if (data.personaId) this.setAttribute('persona-id', data.personaId);
-      if (data.title && !this.querySelector('[slot="title"]')) {
-        const el = document.createElement('h2');
-        el.slot = 'title';
-        el.textContent = data.title;
-        this.appendChild(el);
-      }
-      if (data.summary && !this.querySelector('[slot="summary"]')) {
-        const el = document.createElement('p');
-        el.slot = 'summary';
-        el.textContent = data.summary;
-        this.appendChild(el);
-      }
-      this.__phases = data.phases || [];
-      this._render();
-    } catch (err) {
-      root.innerHTML = `<style>${styles}</style>` +
-        `<div class="state-msg state-msg--error">Could not load journey: ${esc(/** @type {Error} */ (err).message)}</div>`;
-    }
+  }
+
+  /** @param {Error} err */
+  _renderError(err) {
+    /** @type {ShadowRoot} */ (this.shadowRoot).innerHTML = `<style>${styles}</style>` +
+      `<div class="state-msg state-msg--error">Could not load journey: ${esc(err.message)}</div>`;
   }
 
   /* ── Render ────────────────────────────────── */
@@ -192,13 +157,10 @@ class UserJourney extends HTMLElement {
   _render() {
     const persona   = this._resolve('persona')    || '';
     const personaId = this._resolve('persona-id') || '';
-    const storyIds  = (this.getAttribute('story-ids') || '')
-      .split(',').map(s => s.trim()).filter(Boolean);
+    const storyIds  = splitList(this.getAttribute('story-ids'));
     const compact   = this.hasAttribute('compact');
-    const phases    = this.__phases;
-    const hasSummary = !!this.querySelector('[slot="summary"]') || this.#slotCache.has('summary');
-    const title     = this.querySelector('[slot="title"]')?.textContent?.trim()
-      || this.#slotCache.get('title') || '';
+    const phases    = Array.isArray(this.__phases) ? this.__phases : null;
+    const hasSummary = !!slottedChild(this, 'summary') || this._slotCache.has('summary');
 
     const html = `<style>${styles}</style>
       <article class="journey${compact ? ' journey--compact' : ''}">
@@ -208,13 +170,13 @@ class UserJourney extends HTMLElement {
             <div class="journey__chips">
               <span class="chip chip--type">Journey Map</span>
               ${storyIds.map(id =>
-                `<a class="chip chip--story" href="#${id}">${this._label(id)}</a>`
+                `<a class="chip chip--story" href="${fragmentHref(id)}">${esc(this._label(id))}</a>`
               ).join('')}
             </div>
             ${persona ? `
               <div class="journey__persona">
                 ${personaId
-                  ? `<a class="persona-ref" href="#${personaId}">${lucideSvg(UX_ICONS.user)} ${esc(persona)}</a>`
+                  ? `<a class="persona-ref" href="${fragmentHref(personaId)}">${lucideSvg(UX_ICONS.user)} ${esc(persona)}</a>`
                   : `<span class="persona-ref">${lucideSvg(UX_ICONS.user)} ${esc(persona)}</span>`}
               </div>` : ''}
           </div>
@@ -244,17 +206,6 @@ class UserJourney extends HTMLElement {
     } else {
       swap();
     }
-
-    /* Dispatch ready event */
-    this.dispatchEvent(new CustomEvent('journey-ready', {
-      bubbles: true,
-      composed: true,
-      detail: {
-        title,
-        persona,
-        phaseCount: phases ? phases.length : 0,
-      },
-    }));
   }
 
   /* ── SVG curve ─────────────────────────────── */
@@ -265,10 +216,7 @@ class UserJourney extends HTMLElement {
     const n  = phases.length;
 
     const toX = i  => PX + (n < 2 ? uw / 2 : (i / (n - 1)) * uw);
-    const toY = ph => {
-      const m = EMOTION_META[ph.emotion] || EMOTION_META.neutral;
-      return PY + (1 - m.score) * uh;
-    };
+    const toY = ph => PY + (1 - emotionMeta(ph?.emotion).score) * uh;
 
     const pts = phases.map((ph, i) => ({ x: toX(i), y: toY(ph), ph }));
 
@@ -296,10 +244,9 @@ class UserJourney extends HTMLElement {
           ${pts.map(({x}) => `<line x1="${x}" y1="0" x2="${x}" y2="${H}" class="vline"/>`).join('')}
           <path d="${d} L ${last.x},${H} L ${pts[0].x},${H} Z" fill="url(#${uid})"/>
           <path d="${d}" fill="none" class="curve-line"/>
-          ${pts.map(({x, y, ph}) => {
-            const m = EMOTION_META[ph.emotion] || EMOTION_META.neutral;
-            return `<circle cx="${x}" cy="${y}" r="5" class="dot" style="fill:${m.color}"/>`;
-          }).join('')}
+          ${pts.map(({x, y, ph}) =>
+            `<circle cx="${x}" cy="${y}" r="5" class="dot" style="fill:${emotionMeta(ph?.emotion).color}"/>`
+          ).join('')}
         </svg>
       </div>`;
   }
@@ -308,17 +255,18 @@ class UserJourney extends HTMLElement {
 
   _grid(phases) {
     const headCells = phases.map((ph, i) => {
-      const m       = EMOTION_META[ph.emotion] || EMOTION_META.neutral;
-      const stories = ph.storyIds || [];
+      const m       = emotionMeta(ph?.emotion);
+      const emotion = String(ph?.emotion || 'neutral');
+      const stories = asList(ph?.storyIds);
       return `
-        <th class="phase-head" data-emotion="${ph.emotion || 'neutral'}"
+        <th class="phase-head" data-emotion="${esc(emotion)}"
             style="--ec:${m.color}">
           <span class="ph-num">${i + 1}</span>
-          <span class="ph-name">${esc(ph.name || '')}</span>
-          <span class="ph-emoji" title="${ph.emotion || 'neutral'}"><span role="img" aria-label="${esc(ph.emotion || 'neutral')}">${m.emoji}</span></span>
+          <span class="ph-name">${esc(ph?.name || '')}</span>
+          <span class="ph-emoji" title="${esc(emotion)}"><span role="img" aria-label="${esc(emotion)}">${m.emoji}</span></span>
           ${stories.length
             ? `<div class="ph-stories">${stories.map(id =>
-                `<a class="chip chip--story" href="#${id}">${this._label(id)}</a>`
+                `<a class="chip chip--story" href="${fragmentHref(id)}">${esc(this._label(id))}</a>`
               ).join('')}</div>`
             : ''}
         </th>`;
@@ -326,7 +274,7 @@ class UserJourney extends HTMLElement {
 
     const bodyRows = ROWS.map(({ key, label }) => {
       const cells = phases.map(ph => {
-        const items = ph[key] || [];
+        const items = asList(ph?.[key]);
         if (!items.length) return `<td class="data-cell data-cell--empty">\u2014</td>`;
         return `<td class="data-cell data-cell--${key.toLowerCase()}">
           ${items.map(t => `<p>${esc(t)}</p>`).join('')}
@@ -342,7 +290,7 @@ class UserJourney extends HTMLElement {
     return `
       <div class="journey__grid-wrap">
         <table class="journey__grid"
-               aria-label="${esc(this.getAttribute('title') || 'User Journey')} \u2014 phase breakdown">
+               aria-label="${esc(this.#title())} \u2014 phase breakdown">
           <thead>
             <tr>
               <th class="corner">Stage</th>
@@ -356,8 +304,9 @@ class UserJourney extends HTMLElement {
 
   /* ── Helpers ───────────────────────────────── */
 
+  /** @param {string} id */
   _label(id) {
-    return id.replace(/^(activity|persona|journey|story|user)-/, '')
+    return String(id).replace(/^(activity|persona|journey|story|user)-/, '')
              .replace(/-/g, ' ')
              .replace(/\b\w/g, c => c.toUpperCase());
   }

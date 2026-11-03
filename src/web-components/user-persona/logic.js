@@ -5,15 +5,22 @@
  * sections for bio, goals, frustrations, and behaviors. Uses Shadow DOM
  * for encapsulation and VB design tokens for theming.
  *
- * @attr {string}  name     - Persona name (drives avatar initials and color)
+ * Name and quote come from the `name` / `quote` slots; the `name` / `quote`
+ * attributes are used when no slot child is present (a slot always wins).
+ *
+ * @attr {string}  name     - Persona name when there is no slot="name" child
  * @attr {string}  role     - Job title or role
  * @attr {string}  age      - Age display
  * @attr {string}  location - Location display
  * @attr {string}  avatar   - Optional avatar image URL
- * @attr {string}  quote    - Key quote displayed in highlight block
+ * @attr {string}  quote    - Key quote when there is no slot="quote" child
  * @attr {boolean} compact  - Reduced spacing variant
+ * @attr {string}  src      - URL to a JSON persona record (fetched once)
+ * @attr {boolean} data-list-stories - List <user-story persona-id> matching this id
  *
- * @fires persona-ready - After initial render, detail: { name, role }
+ * @fires persona-ready             - Once, after the first render (after the src data renders when src is set), detail: { name, role }
+ * @fires user-persona:upgraded     - Once, after first connect
+ * @fires user-persona:data-changed - After .data assignment, detail: { data, source: 'property' }
  *
  * @example
  * <user-persona name="Sarah Chen" role="Product Manager" age="34"
@@ -27,15 +34,11 @@
  */
 import { styles } from './styles.js';
 import { registerComponent } from '../../lib/bundle-registry.js';
-import { esc, initials, hashColor } from '../_ux-base.js';
+import { cssUrl } from '../../lib/escape.js';
+import { esc, initials, hashColor, UXShadowElement, fillSlot, readSlot, slottedChild } from '../_ux-base.js';
 import { portraitUrl } from '../../lib/portrait-url.js';
+import { stringHash as hash } from '../../lib/hash.js';
 
-/** Simple string hash → integer (same algorithm as portrait-url.js). */
-function hash(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
-  return h;
-}
 
 // ── Mock persona corpus (~1 KB) ───────────────────────────────────────
 const MOCK_NAMES = [
@@ -82,19 +85,18 @@ const MOCK_BEHAVIORS = [
   'Bookmarks frequently used reports', 'Uses dark mode exclusively',
 ];
 
-class UserPersona extends HTMLElement {
+/** Text sections that `.data` / `src` turn into slotted children. */
+const SECTION_SLOTS = ['bio', 'goals', 'frustrations', 'behaviors'];
+
+class UserPersona extends UXShadowElement {
+  static readyEvent = 'persona-ready';
+
   static get observedAttributes() {
-    return ['role', 'age', 'location', 'avatar', 'compact', 'src', 'data-list-stories', 'id'];
+    return ['name', 'role', 'age', 'location', 'avatar', 'quote', 'compact', 'src', 'data-list-stories', 'id'];
   }
 
-  #slotCache = new Map();
   /** @type {MutationObserver | null} */
   #storyObserver = null;
-
-  constructor() {
-    super();
-    this.attachShadow({ mode: 'open' });
-  }
 
   /**
    * Find every <user-story> in the document whose `persona-id` matches
@@ -108,24 +110,12 @@ class UserPersona extends HTMLElement {
     return Array.from(scope.querySelectorAll(`user-story[persona-id="${cssEscape(this.id)}"]:not([data-detail-clone])`));
   }
 
-  #cacheSlotValues() {
-    for (const child of [...this.children]) {
-      const slotName = child.getAttribute('slot');
-      if (slotName && !this.getAttribute(slotName)) {
-        this.#slotCache.set(slotName, child.textContent.trim());
-      }
-    }
-  }
-
-  _resolve(attr) {
-    return this.getAttribute(attr) || this.#slotCache.get(attr) || '';
-  }
-
   /* ── Data API ──────────────────────────────────── */
 
   /**
    * Read the persona as a plain data object. Mirrors what a consumer
-   * would assign to .data — useful for diffing or persistence.
+   * would assign to .data — useful for diffing or persistence. List
+   * sections (`<ul>`/`<ol>`) read back as string arrays, others as text.
    */
   get data() {
     return {
@@ -135,87 +125,65 @@ class UserPersona extends HTMLElement {
       location: this.location || undefined,
       avatar: this.avatar || undefined,
       quote: this.quote || undefined,
-      bio: this.#slotCache.get('bio') || undefined,
-      goals: this.#slotCache.get('goals') || undefined,
-      frustrations: this.#slotCache.get('frustrations') || undefined,
-      behaviors: this.#slotCache.get('behaviors') || undefined,
+      bio: readSlot(this, 'bio'),
+      goals: readSlot(this, 'goals'),
+      frustrations: readSlot(this, 'frustrations'),
+      behaviors: readSlot(this, 'behaviors'),
     };
   }
 
   /**
    * Set state attributes and slotted content from a plain object in one
-   * call. Idempotent for repeat calls.
+   * call. Fields present in the object replace the current value (slotted
+   * children are updated in place); absent fields are left alone.
+   * Emits user-persona:data-changed { data, source: 'property' }.
    */
   set data(value) {
-    if (!value || typeof value !== 'object') return;
-    this._applyData(value);
-    if (this.shadowRoot) this.#render();
-    this.dispatchEvent(new CustomEvent('user-persona:data-changed', {
-      detail: { data: this.data, source: 'property' },
-      bubbles: true, composed: true,
-    }));
+    this._setData(value);
   }
 
   /**
    * Apply a data record to attributes + slotted children. Used by both
-   * the .data setter and async _loadSrc.
+   * the .data setter and the src loader. String fields become `<p>`
+   * children, arrays become `<ul>` lists; the name is an `<h2>`.
    * @param {Record<string, unknown>} data
    */
   _applyData(data) {
     for (const key of ['role', 'age', 'location', 'avatar']) {
-      if (data[key]) this.setAttribute(key, String(data[key]));
+      if (data[key] != null && data[key] !== '') this.setAttribute(key, String(data[key]));
     }
-    if (data.name && !this.querySelector('[slot="name"]')) {
-      const el = document.createElement('h2');
-      el.slot = 'name';
-      el.textContent = String(data.name);
-      this.appendChild(el);
-    }
-    if (data.quote && !this.querySelector('[slot="quote"]')) {
-      const el = document.createElement('p');
-      el.slot = 'quote';
-      el.textContent = String(data.quote);
-      this.appendChild(el);
-    }
-    for (const key of ['bio', 'goals', 'frustrations', 'behaviors']) {
-      if (data[key]) this.#slotCache.set(key, String(data[key]));
+    fillSlot(this, 'name', data.name, { tag: 'h2', replace: true });
+    fillSlot(this, 'quote', data.quote, { tag: 'p', replace: true });
+    for (const key of SECTION_SLOTS) {
+      fillSlot(this, key, data[key], { tag: 'p', replace: true });
     }
   }
 
-  async _loadSrc(url) {
-    if (!url) return;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      this._applyData(data);
-      this.#render();
-    } catch (err) {
-      console.warn(`[user-persona] Failed to load src="${url}":`, err);
-    }
+  /* ── Lifecycle (see UXShadowElement) ──────────── */
+
+  _setup() {
+    if (this.hasAttribute('data-mock')) this.#applyMock();
   }
 
-  connectedCallback() {
-    this.#cacheSlotValues();
-    if (this.hasAttribute('data-mock')) {
-      this.#applyMock();
-    } else if (this.hasAttribute('src')) {
-      this._loadSrc(this.getAttribute('src'));
-    }
-    this.#render();
+  _connect() {
     this.#syncStoryObserver();
-    this.setAttribute('data-upgraded', '');
-    this.dispatchEvent(new CustomEvent('persona-ready', {
-      bubbles: true,
-      composed: true,
-      detail: { name: this.personaName, role: this.personaRole }
-    }));
+    // Stories may have been added or removed while this card was detached.
+    this.#renderStoriesSection();
   }
 
-  disconnectedCallback() {
-    this.removeAttribute('data-upgraded');
+  _disconnect() {
     this.#storyObserver?.disconnect();
     this.#storyObserver = null;
+  }
+
+  /** @param {string} name */
+  _attributeEffects(name) {
+    // Also runs after a .data / src record sets one of these.
+    if (name === 'data-list-stories' || name === 'id') this.#syncStoryObserver();
+  }
+
+  _readyDetail() {
+    return { name: this.personaName, role: this.personaRole };
   }
 
   /**
@@ -260,7 +228,7 @@ class UserPersona extends HTMLElement {
           <div class="section-icon stories" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
           </div>
-          <span class="section-title">Stories <span class="section-count">${stories.length}</span></span>
+          <h3 class="section-title">Stories <span class="section-count">${stories.length}</span></h3>
         </div>
         <div class="section-content">
           ${stories.length === 0
@@ -285,24 +253,11 @@ class UserPersona extends HTMLElement {
     `;
   }
 
-  attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue === newValue || !this.shadowRoot) return;
-    if (name === 'src' && this.isConnected) {
-      this._loadSrc(newValue);
-      return;
-    }
-    if (name === 'data-list-stories' || name === 'id') {
-      this.#syncStoryObserver();
-    }
-    this.#render();
-  }
-
   // ── Attribute getters ──────────────────────────────────────────────
 
-  /** Read name from slotted heading or cache */
+  /** Name from the slotted heading, else the `name` attribute. */
   get personaName() {
-    const slotted = this.querySelector('[slot="name"]');
-    return slotted?.textContent?.trim() || this.#slotCache.get('name') || 'Unnamed Persona';
+    return this._slotText('name') || this.getAttribute('name')?.trim() || 'Unnamed Persona';
   }
 
   get personaRole() {
@@ -321,10 +276,9 @@ class UserPersona extends HTMLElement {
     return this.getAttribute('avatar') || '';
   }
 
-  /** Read quote from slotted element or cache */
+  /** Quote from the slotted element, else the `quote` attribute. */
   get quote() {
-    const slotted = this.querySelector('[slot="quote"]');
-    return slotted?.textContent?.trim() || this.#slotCache.get('quote') || '';
+    return this._slotText('quote') || this.getAttribute('quote')?.trim() || '';
   }
 
   get compact() {
@@ -345,7 +299,7 @@ class UserPersona extends HTMLElement {
     };
 
     // Name and quote are slotted content, not attributes
-    if (!this.querySelector('[slot="name"]')) {
+    if (!slottedChild(this, 'name') && !this.getAttribute('name')) {
       const h2 = document.createElement('h2');
       h2.slot = 'name';
       h2.textContent = pick(MOCK_NAMES);
@@ -355,10 +309,10 @@ class UserPersona extends HTMLElement {
     if (!this.getAttribute('age'))      this.setAttribute('age', String(25 + ((hash(seed) % 30) + 30) % 30));
     if (!this.getAttribute('location')) this.setAttribute('location', pick(MOCK_LOCATIONS));
     if (!this.getAttribute('avatar')) {
-      const name = this.querySelector('[slot="name"]')?.textContent?.trim() || 'Persona';
+      const name = this.personaName;
       this.setAttribute('avatar', portraitUrl(name, 256));
     }
-    if (!this.querySelector('[slot="quote"]')) {
+    if (!slottedChild(this, 'quote') && !this.getAttribute('quote')) {
       const p = document.createElement('p');
       p.slot = 'quote';
       p.textContent = pick(MOCK_QUOTES);
@@ -367,7 +321,7 @@ class UserPersona extends HTMLElement {
 
     // Inject slotted sections as light DOM so native <slot> picks them up
     const injectList = (slotName, items) => {
-      if (this.querySelector(`[slot="${slotName}"]`)) return;
+      if (slottedChild(this, slotName)) return;
       const ul = document.createElement('ul');
       ul.setAttribute('slot', slotName);
       for (const item of items) {
@@ -384,7 +338,7 @@ class UserPersona extends HTMLElement {
 
   // ── Render ─────────────────────────────────────────────────────────
 
-  #render() {
+  _render() {
     const name = this.personaName;
     const role = this.personaRole;
     const age = this.age;
@@ -394,7 +348,7 @@ class UserPersona extends HTMLElement {
     const avatarBg = hashColor(name);
 
     const avatarStyle = avatarUrl
-      ? `background:url(${esc(avatarUrl)}) center/cover`
+      ? `background:${cssUrl(avatarUrl)} center/cover`
       : `background:${avatarBg}`;
 
     /** @type {ShadowRoot} */ (this.shadowRoot).innerHTML = `
@@ -430,7 +384,7 @@ class UserPersona extends HTMLElement {
           </div>
         </header>
 
-        ${quote || this.querySelector('[slot="quote"]') ? `
+        ${quote || slottedChild(this, 'quote') ? `
           <div class="persona-quote" part="quote">
             <span class="quote-mark" aria-hidden="true">&ldquo;</span>
             <div class="quote-text-wrap"><slot name="quote"><p class="quote-text">${esc(quote)}</p></slot></div>
@@ -443,7 +397,7 @@ class UserPersona extends HTMLElement {
               <div class="section-icon bio" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
               </div>
-              <span class="section-title">Background</span>
+              <h3 class="section-title">Background</h3>
             </div>
             <div class="section-content">
               <slot name="bio">No background information provided.</slot>
@@ -455,7 +409,7 @@ class UserPersona extends HTMLElement {
               <div class="section-icon goals" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
               </div>
-              <span class="section-title">Goals</span>
+              <h3 class="section-title">Goals</h3>
             </div>
             <div class="section-content">
               <slot name="goals">No goals specified.</slot>
@@ -467,7 +421,7 @@ class UserPersona extends HTMLElement {
               <div class="section-icon frustrations" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
               </div>
-              <span class="section-title">Frustrations</span>
+              <h3 class="section-title">Frustrations</h3>
             </div>
             <div class="section-content">
               <slot name="frustrations">No frustrations listed.</slot>
@@ -479,7 +433,7 @@ class UserPersona extends HTMLElement {
               <div class="section-icon behaviors" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
               </div>
-              <span class="section-title">Behaviors</span>
+              <h3 class="section-title">Behaviors</h3>
             </div>
             <div class="section-content">
               <slot name="behaviors">No behaviors documented.</slot>

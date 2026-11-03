@@ -45,6 +45,7 @@
 import { styles } from './styles.js';
 import { registerComponent } from '../../lib/bundle-registry.js';
 import { esc, initials, hashColor, lucideSvg, UX_ICONS } from '../_ux-base.js';
+import { SrcLoader } from '../../lib/src-loader.js';
 import { VBStore } from '../../lib/vb-store.js';
 import { copyText } from '../../utils/copy-init.js';
 
@@ -63,11 +64,19 @@ class MemoryAdapter {
     return pin;
   }
 
-  async update(id, changes) {
-    const pin = this.#pins.get(id);
-    if (!pin) throw new Error(`Pin ${id} not found`);
-    Object.assign(pin, changes);
-    return pin;
+  /**
+   * Merge `changes` into the stored pin. Upserts: a pin this adapter has
+   * never seen (loaded via `src` or `.pins`) is stored from `pin` (or just
+   * its id) plus the changes, so resolving / replying always works.
+   * @param {string} id
+   * @param {object} changes
+   * @param {object} [pin] the component's full copy of the pin
+   */
+  async update(id, changes, pin) {
+    const stored = this.#pins.get(id) ?? { ...(pin ?? {}), id };
+    Object.assign(stored, changes);
+    this.#pins.set(id, stored);
+    return stored;
   }
 
   async remove(id) {
@@ -103,10 +112,16 @@ class LocalStorageAdapter {
     return pin;
   }
 
-  async update(id, changes) {
+  /**
+   * Merge `changes` into the stored pin; upserts like MemoryAdapter.update.
+   * @param {string} id
+   * @param {object} changes
+   * @param {object} [pin]
+   */
+  async update(id, changes, pin) {
     const pins = await this.#read();
-    const idx = pins.findIndex(p => p.id === id);
-    if (idx === -1) throw new Error(`Pin ${id} not found`);
+    let idx = pins.findIndex(p => p.id === id);
+    if (idx === -1) idx = pins.push({ ...(pin ?? {}), id }) - 1;
     Object.assign(pins[idx], changes);
     await this.#write(pins);
     return pins[idx];
@@ -163,16 +178,66 @@ class RestAdapter {
 
 /* ── Component ─────────────────────────────────────── */
 
+/**
+ * Clamp a pin coordinate to a 0–100 percentage. Non-numeric input → 0.
+ * @param {unknown} v
+ * @returns {number}
+ */
+const pct = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0;
+};
+
 class ReviewSurface extends HTMLElement {
   static get observedAttributes() {
     return ['src', 'editable', 'adapter', 'endpoint', 'storage-key', 'author', 'compact', 'show-resolved'];
   }
 
-  #slotCache = new Map();
+  /** True after the first connect (adapter resolved, initial load started). */
+  #initialized = false;
+  /** True once the initial data (src / adapter / .pins) has settled. */
+  #loaded = false;
+  #readyFired = false;
+  /** Set when `.pins` is assigned; stops the first connect reloading from the adapter. */
+  #pinsAssigned = false;
+  /** Bumped by every load and every `.pins` / importPins() so stale adapter loads are dropped. */
+  #loadSeq = 0;
+  /** The src request; aborted by a newer src, src removal, `.pins`, importPins() or an adapter load. */
+  #loader = new SrcLoader();
+
+  /** @type {HTMLElement} */ #overlay;
+  /** @type {HTMLElement} */ #popoverHost;
+  /** @type {HTMLElement} */ #toolbarHost;
+  /** @type {HTMLElement} */ #status;
+  /** @type {HTMLElement} */ #live;
 
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
+    const root = this.attachShadow({ mode: 'open' });
+
+    /* The skeleton is built once. _render() only refills the overlay,
+       popover and toolbar hosts, so the live region persists and focus
+       can be restored to the equivalent control after a re-render. */
+    root.innerHTML = `<style>${styles}</style>
+      <div class="rs-status state-msg" hidden></div>
+      <div class="rs-container">
+        <slot></slot>
+        <div class="rs-overlay" role="group" aria-label="Review pins"></div>
+        <div class="rs-popover-host" style="display:contents"></div>
+      </div>
+      <div class="rs-toolbar-host" style="display:contents"></div>
+      <div class="rs-live" role="status" aria-live="polite" aria-atomic="true"></div>`;
+
+    const q = (/** @type {string} */ sel) => /** @type {HTMLElement} */ (root.querySelector(sel));
+    this.#status = q('.rs-status');
+    this.#overlay = q('.rs-overlay');
+    this.#popoverHost = q('.rs-popover-host');
+    this.#toolbarHost = q('.rs-toolbar-host');
+    this.#live = q('.rs-live');
+
+    /* Delegated once — nodes inside the hosts are replaced on render. */
+    root.addEventListener('click', (e) => this.#onClick(e));
+    root.addEventListener('keydown', (e) => this.#onKeydown(/** @type {KeyboardEvent} */ (e)));
 
     /** @type {import('./logic.js').Pin[]} */
     this.__pins = [];
@@ -191,16 +256,21 @@ class ReviewSurface extends HTMLElement {
 
   /**
    * Replace the pin list and re-render. Idempotent — assigning the
-   * same array reference is a no-op. Emits review-surface:pins-changed
-   * with `source: 'property'` so reactive consumers can filter their
-   * own assignments out of the event stream.
+   * same array reference is a no-op. May be assigned before the element
+   * is connected: the first connect then keeps these pins instead of
+   * loading from the adapter. Emits review-surface:pins-changed with
+   * `source: 'property'`.
    * @param {Object[]} data
    */
   set pins(data) {
     const next = Array.isArray(data) ? data : [];
     if (this.__pins === next) return;
-    this.__pins = next;
-    if (this.isConnected) this._render();
+    this.__pins = /** @type {any} */ (next);
+    this.#pinsAssigned = true;
+    this.#loader.cancel();
+    this.#loadSeq++;
+    this.#loaded = true;
+    if (this.#initialized) this._render();
     this.dispatchEvent(new CustomEvent('review-surface:pins-changed', {
       detail: { pins: next, source: 'property' },
       bubbles: true, composed: true,
@@ -210,33 +280,36 @@ class ReviewSurface extends HTMLElement {
   /** @returns {MemoryAdapter|LocalStorageAdapter|RestAdapter|null} */
   get adapter() { return this.__adapter; }
 
-  /** @param {Object} adapterInstance */
+  /**
+   * Set a persistence adapter. Before connect it is simply kept (the
+   * first connect loads from it unless `.pins` was assigned); once
+   * connected, pins are reloaded from it.
+   * @param {Object} adapterInstance
+   */
   set adapter(adapterInstance) {
-    this.__adapter = adapterInstance;
-    if (this.isConnected) this._loadFromAdapter();
-  }
-
-  /* ── Slot caching ───────────────────────────────── */
-
-  #cacheSlotValues() {
-    for (const child of this.children) {
-      const slot = child.getAttribute('slot');
-      if (slot) this.#slotCache.set(slot, child.textContent.trim());
-    }
-  }
-
-  _resolve(attr) {
-    return this.getAttribute(attr) || this.#slotCache.get(attr) || '';
+    this.__adapter = /** @type {any} */ (adapterInstance);
+    if (this.#initialized && this.isConnected) this._loadFromAdapter();
   }
 
   /* ── Lifecycle ─────────────────────────────────── */
 
   connectedCallback() {
-    this.#cacheSlotValues();
     this.setAttribute('data-upgraded', '');
-    this.#resolveAdapter();
 
-    if (this.hasAttribute('src')) {
+    /* Reconnect (e.g. the element was moved): keep pins and adapter. */
+    if (this.#initialized) {
+      this._render();
+      return;
+    }
+    this.#initialized = true;
+    if (!this.__adapter) this.#resolveAdapter();
+
+    this.dispatchEvent(new CustomEvent('review-surface:upgraded', { bubbles: true, composed: true }));
+
+    if (this.#pinsAssigned) {
+      this.#loaded = true;
+      this._render();
+    } else if (this.hasAttribute('src')) {
       this._loadSrc(this.getAttribute('src'));
     } else {
       this._loadFromAdapter();
@@ -246,12 +319,15 @@ class ReviewSurface extends HTMLElement {
   disconnectedCallback() {
     this.removeAttribute('data-upgraded');
     this.removeAttribute('data-annotating');
+    this._annotating = false;
   }
 
   attributeChangedCallback(name) {
-    if (!this.isConnected) return;
+    if (!this.#initialized || !this.isConnected) return;
     if (name === 'src') {
-      this._loadSrc(this.getAttribute('src'));
+      const src = this.getAttribute('src');
+      if (src) this._loadSrc(src);
+      else if (this.#loader.cancel()) this._loadFromAdapter();   // src removed mid-load
     } else if (name === 'adapter' || name === 'endpoint' || name === 'storage-key') {
       this.#resolveAdapter();
       this._loadFromAdapter();
@@ -289,31 +365,55 @@ class ReviewSurface extends HTMLElement {
 
   /* ── Data loading ──────────────────────────────── */
 
+  /**
+   * Fetch pins from `src` (an array, or `{ pins }`). A newer src aborts the
+   * older request; `.pins`, importPins(), an adapter load or removing src
+   * abort it too.
+   * @param {string | null} src
+   */
   async _loadSrc(src) {
-    if (!src || !this.shadowRoot) return;
-    this.shadowRoot.innerHTML = `<style>${styles}</style>` +
-      `<div class="state-msg">Loading\u2026</div>`;
+    if (!src) return;
+    this.#loadSeq++;
+    this.#showStatus('Loading…');
+    let result;
     try {
-      const res = await fetch(src);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      this.__pins = Array.isArray(data) ? data : data.pins || [];
-      this._render();
+      result = await this.#loader.fetchJson(src);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.shadowRoot.innerHTML = `<style>${styles}</style>` +
-        `<div class="state-msg state-msg--error">Could not load pins: ${esc(msg)}</div>`;
+      this.#showStatus(`Could not load pins: ${msg}`, true);
+      return;
     }
+    if (!result) return;
+    const { data } = result;
+    this.__pins = Array.isArray(data) ? data : data?.pins || [];
+    this.#loaded = true;
+    this._render();
   }
 
   async _loadFromAdapter() {
     if (!this.__adapter) return;
+    this.#loader.cancel();
+    const seq = ++this.#loadSeq;
+    let pins;
     try {
-      this.__pins = await this.__adapter.load();
+      pins = await this.__adapter.load();
     } catch {
-      this.__pins = [];
+      pins = [];
     }
+    if (seq !== this.#loadSeq) return;
+    this.__pins = Array.isArray(pins) ? pins : [];
+    this.#loaded = true;
     this._render();
+  }
+
+  /**
+   * @param {string} message
+   * @param {boolean} [error]
+   */
+  #showStatus(message, error = false) {
+    this.#status.textContent = message;
+    this.#status.classList.toggle('state-msg--error', error);
+    this.#status.hidden = false;
   }
 
   /* ── Public API ────────────────────────────────── */
@@ -326,8 +426,8 @@ class ReviewSurface extends HTMLElement {
   async addPin(pinData) {
     const pin = {
       id: crypto.randomUUID(),
-      x: Math.max(0, Math.min(100, pinData.x)),
-      y: Math.max(0, Math.min(100, pinData.y)),
+      x: pct(pinData.x),
+      y: pct(pinData.y),
       text: pinData.text || '',
       author: pinData.author || this.getAttribute('author') || 'Anonymous',
       createdAt: new Date().toISOString(),
@@ -389,7 +489,7 @@ class ReviewSurface extends HTMLElement {
     };
 
     if (this.__adapter) {
-      await this.__adapter.update(id, changes);
+      await this.__adapter.update(id, changes, pin);
     }
     Object.assign(pin, changes);
     this._render();
@@ -412,7 +512,7 @@ class ReviewSurface extends HTMLElement {
     const changes = { resolved: false, resolvedBy: null, resolvedAt: null };
 
     if (this.__adapter) {
-      await this.__adapter.update(id, changes);
+      await this.__adapter.update(id, changes, pin);
     }
     Object.assign(pin, changes);
     this._render();
@@ -438,6 +538,9 @@ class ReviewSurface extends HTMLElement {
    */
   importPins(data) {
     this.__pins = Array.isArray(data) ? structuredClone(data) : [];
+    this.#loader.cancel();
+    this.#loadSeq++;
+    this.#loaded = true;
     this._activePin = null;
     this._render();
   }
@@ -452,41 +555,101 @@ class ReviewSurface extends HTMLElement {
   }
 
   _render() {
-    if (!this.shadowRoot) return;
     const editable = this.hasAttribute('editable');
     const visible = this.#visiblePins();
     const activePin = this._activePin ? this.__pins.find(p => p.id === this._activePin) : null;
+    if (this._activePin && !activePin) this._activePin = null;
 
     this.setAttribute('pin-count', String(visible.length));
 
-    this.shadowRoot.innerHTML = `<style>${styles}</style>
-      <div class="rs-container">
-        <slot></slot>
-        <div class="rs-overlay" role="img" aria-label="Review annotation surface">
-          ${visible.map((pin, i) => this._renderPin(pin, i + 1)).join('')}
-        </div>
-        ${activePin ? this._renderPopover(activePin, editable) : ''}
-      </div>
-      ${editable ? this._renderToolbar(visible.length) : ''}
-      <div class="rs-live" aria-live="polite" aria-atomic="true"></div>`;
+    const focus = this.#captureFocus();
 
-    this._bindListeners(editable);
+    this.#status.hidden = true;
+    this.#overlay.innerHTML = visible.map((pin, i) => this._renderPin(pin, i + 1)).join('');
+    this.#popoverHost.innerHTML = activePin ? this._renderPopover(activePin, editable) : '';
+    this.#toolbarHost.innerHTML = editable ? this._renderToolbar(visible.length) : '';
 
-    this.dispatchEvent(new CustomEvent('review-surface:ready', {
+    this.#restoreFocus(focus);
+
+    if (this.#loaded && !this.#readyFired) {
+      this.#readyFired = true;
+      this.dispatchEvent(new CustomEvent('review-surface:ready', {
+        bubbles: true, composed: true,
+        detail: { pinCount: visible.length },
+      }));
+    }
+  }
+
+  /* ── Focus preservation ────────────────────────── */
+
+  /**
+   * Describe the focused shadow control so the equivalent node can be
+   * re-focused after its host is re-rendered.
+   * @returns {{ selector: string, value?: string, inPopover: boolean } | null}
+   */
+  #captureFocus() {
+    const el = /** @type {HTMLElement | null} */ (this.shadowRoot?.activeElement ?? null);
+    if (!el) return null;
+    const inPopover = !!el.closest('.rs-popover');
+    let selector = '';
+    if (el.classList.contains('rs-pin')) selector = `.rs-pin[data-pin-id="${CSS.escape(el.dataset.pinId ?? '')}"]`;
+    else if (el.dataset.action) selector = `[data-action="${CSS.escape(el.dataset.action)}"]`;
+    else if (el.classList.contains('rs-input__field')) selector = '.rs-input__field';
+    else if (el.classList.contains('rs-popover')) selector = '.rs-popover';
+    const value = el instanceof HTMLTextAreaElement ? el.value : undefined;
+    return { selector, value, inPopover };
+  }
+
+  /** @param {{ selector: string, value?: string, inPopover: boolean } | null} focus */
+  #restoreFocus(focus) {
+    if (!focus) return;
+    const root = /** @type {ShadowRoot} */ (this.shadowRoot);
+    let target = focus.selector ? /** @type {HTMLElement | null} */ (root.querySelector(focus.selector)) : null;
+    if (target instanceof HTMLTextAreaElement && focus.value !== undefined) target.value = focus.value;
+    /* The control is gone (e.g. Resolve swapped for Re-open): stay in the
+       popover if it is still open, else fall back to the active pin. */
+    if (!target && focus.inPopover) target = root.querySelector('.rs-popover');
+    if (!target) target = this.#pinButton(this._activePin) ?? root.querySelector('[data-action="toggle-mode"]');
+    target?.focus();
+  }
+
+  /** @param {string|null|undefined} id */
+  #pinButton(id) {
+    if (!id) return null;
+    return /** @type {HTMLElement | null} */ (this.shadowRoot?.querySelector(`.rs-pin[data-pin-id="${CSS.escape(id)}"]`) ?? null);
+  }
+
+  /**
+   * Open a pin's popover and move focus into it.
+   * @param {string} id
+   */
+  #openPin(id) {
+    this._activePin = id;
+    this._render();
+    /** @type {HTMLElement | null} */ (this.shadowRoot?.querySelector('.rs-popover') ?? null)?.focus();
+    this.dispatchEvent(new CustomEvent('review-surface:select', {
       bubbles: true, composed: true,
-      detail: { pinCount: visible.length },
+      detail: { pin: this.__pins.find(p => p.id === id) },
     }));
+  }
+
+  /** Close the popover and return focus to its pin. */
+  #closePin() {
+    const id = this._activePin;
+    this._activePin = null;
+    this._render();
+    this.#pinButton(id)?.focus();
   }
 
   /* ── Pin marker ────────────────────────────────── */
 
   _renderPin(pin, number) {
-    const preview = pin.text ? pin.text.slice(0, 50) : 'Empty pin';
-    return `<button class="rs-pin"
+    const preview = pin.text ? String(pin.text).slice(0, 50) : 'Empty pin';
+    return `<button type="button" class="rs-pin"
       data-pin-id="${esc(pin.id)}"
       ${pin.resolved ? 'data-resolved' : ''}
       ${this._activePin === pin.id ? 'data-active' : ''}
-      style="left:${pin.x}%;top:${pin.y}%"
+      style="left:${pct(pin.x)}%;top:${pct(pin.y)}%"
       aria-label="Pin ${number}: ${esc(preview)}"
       aria-expanded="${this._activePin === pin.id}"
       aria-haspopup="dialog">
@@ -498,37 +661,38 @@ class ReviewSurface extends HTMLElement {
 
   _renderPopover(pin, editable) {
     const number = this.#visiblePins().findIndex(p => p.id === pin.id) + 1;
+    const label = number > 0 ? `Pin ${number}` : 'Pin';
 
-    return `<div class="rs-popover" data-open
-      style="left:${Math.min(pin.x, 70)}%;top:${pin.y}%"
+    return `<div class="rs-popover" data-open tabindex="-1"
+      style="left:${Math.min(pct(pin.x), 70)}%;top:${pct(pin.y)}%"
       role="dialog"
       aria-labelledby="rs-popover-title-${esc(pin.id)}">
 
       <div class="rs-popover__header">
         <span class="rs-popover__title" id="rs-popover-title-${esc(pin.id)}">
-          Pin ${number}
+          ${label}
           ${pin.resolved ? `<span class="rs-resolved-badge">${lucideSvg(UX_ICONS.checkCircle)} Resolved</span>` : ''}
         </span>
         <div class="rs-popover__actions">
           ${editable && !pin.resolved ? `
-            <button class="rs-popover__btn rs-popover__btn--resolve" data-action="resolve" data-pin-id="${esc(pin.id)}"
+            <button type="button" class="rs-popover__btn rs-popover__btn--resolve" data-action="resolve" data-pin-id="${esc(pin.id)}"
               aria-label="Resolve pin" title="Resolve">${lucideSvg(UX_ICONS.checkCircle)}</button>` : ''}
           ${editable && pin.resolved ? `
-            <button class="rs-popover__btn" data-action="unresolve" data-pin-id="${esc(pin.id)}"
+            <button type="button" class="rs-popover__btn" data-action="unresolve" data-pin-id="${esc(pin.id)}"
               aria-label="Re-open pin" title="Re-open">${lucideSvg(UX_ICONS.messageCircle)}</button>` : ''}
           ${editable ? `
-            <button class="rs-popover__btn rs-popover__btn--delete" data-action="delete" data-pin-id="${esc(pin.id)}"
+            <button type="button" class="rs-popover__btn rs-popover__btn--delete" data-action="delete" data-pin-id="${esc(pin.id)}"
               aria-label="Delete pin" title="Delete">${lucideSvg(UX_ICONS.x)}</button>` : ''}
-          <button class="rs-popover__btn" data-action="close"
+          <button type="button" class="rs-popover__btn" data-action="close"
             aria-label="Close">${lucideSvg(UX_ICONS.x)}</button>
         </div>
       </div>
 
       <div class="rs-comment">
         <div class="rs-comment__meta">
-          <span class="rs-comment__avatar" style="background:${hashColor(pin.author || 'Anonymous')}">${initials(pin.author || 'Anonymous')}</span>
+          <span class="rs-comment__avatar" style="background:${hashColor(pin.author || 'Anonymous')}">${esc(initials(pin.author || 'Anonymous'))}</span>
           <span class="rs-comment__author">${esc(pin.author || 'Anonymous')}</span>
-          <span class="rs-comment__time">${this.#formatTime(pin.createdAt)}</span>
+          <span class="rs-comment__time">${esc(this.#formatTime(pin.createdAt))}</span>
         </div>
         <div class="rs-comment__text">${esc(pin.text)}</div>
       </div>
@@ -538,9 +702,9 @@ class ReviewSurface extends HTMLElement {
           ${pin.replies.map(reply => `
             <div class="rs-reply">
               <div class="rs-comment__meta">
-                <span class="rs-comment__avatar" style="background:${hashColor(reply.author || 'Anonymous')}">${initials(reply.author || 'Anonymous')}</span>
+                <span class="rs-comment__avatar" style="background:${hashColor(reply.author || 'Anonymous')}">${esc(initials(reply.author || 'Anonymous'))}</span>
                 <span class="rs-comment__author">${esc(reply.author || 'Anonymous')}</span>
-                <span class="rs-comment__time">${this.#formatTime(reply.createdAt)}</span>
+                <span class="rs-comment__time">${esc(this.#formatTime(reply.createdAt))}</span>
               </div>
               <div class="rs-comment__text">${esc(reply.text)}</div>
             </div>
@@ -549,9 +713,9 @@ class ReviewSurface extends HTMLElement {
 
       ${editable ? `
         <div class="rs-input">
-          <textarea class="rs-input__field" placeholder="Reply\u2026" rows="1"
-            aria-label="Reply to pin ${number}"></textarea>
-          <button class="rs-input__submit" data-action="reply" data-pin-id="${esc(pin.id)}"
+          <textarea class="rs-input__field" placeholder="Reply…" rows="1"
+            aria-label="Reply to ${label.toLowerCase()}"></textarea>
+          <button type="button" class="rs-input__submit" data-action="reply" data-pin-id="${esc(pin.id)}"
             aria-label="Send reply">${lucideSvg(UX_ICONS.send)}</button>
         </div>` : ''}
 
@@ -562,12 +726,12 @@ class ReviewSurface extends HTMLElement {
 
   _renderToolbar(count) {
     return `<div class="rs-toolbar" role="toolbar" aria-label="Review tools">
-      <button class="rs-toolbar__btn" data-action="toggle-mode"
+      <button type="button" class="rs-toolbar__btn" data-action="toggle-mode"
         aria-pressed="${this._annotating}"
         title="Toggle annotate mode">
         ${lucideSvg(UX_ICONS.mapPin)} Annotate
       </button>
-      <button class="rs-toolbar__btn" data-action="export"
+      <button type="button" class="rs-toolbar__btn" data-action="export"
         title="Export pins as JSON">
         ${lucideSvg(UX_ICONS.download)} Export
       </button>
@@ -575,122 +739,97 @@ class ReviewSurface extends HTMLElement {
     </div>`;
   }
 
-  /* ── Event binding ─────────────────────────────── */
+  /* ── Event handling (delegated on the shadow root) ── */
 
-  _bindListeners(editable) {
-    const root = this.shadowRoot;
-    if (!root) return;
+  /** @param {Event} e */
+  #onClick(e) {
+    const target = e.target;
+    if (!(target instanceof Element)) return;
 
-    /* Pin clicks — open popover */
-    root.querySelectorAll('.rs-pin').forEach((/** @type {Element} */ btn) => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const id = /** @type {HTMLElement} */ (btn).dataset.pinId ?? null;
-        this._activePin = this._activePin === id ? null : id;
-        this._render();
+    /* Pin clicks — toggle popover */
+    const pinBtn = /** @type {HTMLElement | null} */ (target.closest('.rs-pin'));
+    if (pinBtn) {
+      e.stopPropagation();
+      const id = pinBtn.dataset.pinId ?? null;
+      if (this._activePin === id) this.#closePin();
+      else if (id) this.#openPin(id);
+      return;
+    }
 
-        if (this._activePin) {
-          this.dispatchEvent(new CustomEvent('review-surface:select', {
-            bubbles: true, composed: true,
-            detail: { pin: this.__pins.find(p => p.id === id) },
-          }));
-        }
-      });
-    });
+    /* Popover / toolbar actions */
+    const actionBtn = /** @type {HTMLElement | null} */ (target.closest('[data-action]'));
+    if (actionBtn) {
+      e.stopPropagation();
+      const pinId = actionBtn.dataset.pinId;
+      switch (actionBtn.dataset.action) {
+        case 'close':
+          this.#closePin();
+          break;
+        case 'resolve':
+          if (pinId) this.resolvePin(pinId);
+          break;
+        case 'unresolve':
+          if (pinId) this.unresolvePin(pinId);
+          break;
+        case 'delete':
+          if (pinId) this.removePin(pinId);
+          break;
+        case 'toggle-mode':
+          this.#setAnnotating(!this._annotating);
+          break;
+        case 'export':
+          this.#exportToClipboard();
+          break;
+        case 'reply':
+          if (pinId) this.#submitReply(pinId);
+          break;
+      }
+      return;
+    }
 
     /* Overlay click — place new pin in annotate mode */
-    const overlay = root.querySelector('.rs-overlay');
-    if (overlay && editable) {
-      overlay.addEventListener('click', (/** @type {Event} */ e) => {
-        if (!this._annotating) return;
-        const me = /** @type {MouseEvent} */ (e);
-        const target = /** @type {Element | null} */ (me.target);
-        if (target?.closest('.rs-pin')) return;
-
-        const rect = overlay.getBoundingClientRect();
-        const x = ((me.clientX - rect.left) / rect.width) * 100;
-        const y = ((me.clientY - rect.top) / rect.height) * 100;
-
-        this.#promptNewPin(x, y);
-      });
+    if (target === this.#overlay && this._annotating && this.hasAttribute('editable')) {
+      const me = /** @type {MouseEvent} */ (e);
+      const rect = this.#overlay.getBoundingClientRect();
+      const x = ((me.clientX - rect.left) / rect.width) * 100;
+      const y = ((me.clientY - rect.top) / rect.height) * 100;
+      this.#promptNewPin(x, y);
     }
+  }
 
-    /* Popover actions */
-    root.querySelectorAll('[data-action]').forEach((/** @type {Element} */ btn) => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const action = /** @type {HTMLElement} */ (btn).dataset.action;
-        const pinId = /** @type {HTMLElement} */ (btn).dataset.pinId;
-
-        switch (action) {
-          case 'close':
-            this._activePin = null;
-            this._render();
-            break;
-          case 'resolve':
-            if (pinId) this.resolvePin(pinId);
-            break;
-          case 'unresolve':
-            if (pinId) this.unresolvePin(pinId);
-            break;
-          case 'delete':
-            if (pinId) this.removePin(pinId);
-            break;
-          case 'toggle-mode':
-            this._annotating = !this._annotating;
-            if (this._annotating) {
-              this.setAttribute('data-annotating', '');
-            } else {
-              this.removeAttribute('data-annotating');
-            }
-            this._render();
-            this.dispatchEvent(new CustomEvent('review-surface:mode', {
-              bubbles: true, composed: true,
-              detail: { mode: this._annotating ? 'annotate' : 'view' },
-            }));
-            break;
-          case 'export':
-            this.#exportToClipboard();
-            break;
-          case 'reply':
-            this.#submitReply(pinId);
-            break;
-        }
-      });
-    });
+  /** @param {KeyboardEvent} e */
+  #onKeydown(e) {
+    const target = e.target;
 
     /* Reply input — Enter to submit (Shift+Enter for newline) */
-    const replyField = root.querySelector('.rs-input__field');
-    if (replyField) {
-      replyField.addEventListener('keydown', (/** @type {Event} */ e) => {
-        const ke = /** @type {KeyboardEvent} */ (e);
-        if (ke.key === 'Enter' && !ke.shiftKey) {
-          ke.preventDefault();
-          const replyBtn = /** @type {HTMLElement | null} */ (root.querySelector('[data-action="reply"]'));
-          const pinId = replyBtn?.dataset.pinId;
-          if (pinId) this.#submitReply(pinId);
-        }
-      });
+    if (e.key === 'Enter' && !e.shiftKey && target instanceof Element && target.matches('.rs-input__field')) {
+      e.preventDefault();
+      const pinId = /** @type {HTMLElement | null} */ (this.shadowRoot?.querySelector('[data-action="reply"]') ?? null)?.dataset.pinId;
+      if (pinId) this.#submitReply(pinId);
+      return;
     }
 
-    /* Keyboard: Escape to close popover or exit annotate mode */
-    root.addEventListener('keydown', (/** @type {Event} */ e) => {
-      const ke = /** @type {KeyboardEvent} */ (e);
-      if (ke.key === 'Escape') {
-        if (this._activePin) {
-          this._activePin = null;
-          this._render();
-        } else if (this._annotating) {
-          this._annotating = false;
-          this.removeAttribute('data-annotating');
-          this._render();
-          this.dispatchEvent(new CustomEvent('review-surface:mode', {
-            bubbles: true, composed: true,
-            detail: { mode: 'view' },
-          }));
-        }
+    /* Escape — close the popover (focus back to its pin), else exit annotate mode */
+    if (e.key === 'Escape') {
+      if (this._activePin) {
+        e.stopPropagation();
+        this.#closePin();
+      } else if (this._annotating) {
+        e.stopPropagation();
+        this.#setAnnotating(false);
       }
-    });
+    }
+  }
+
+  /** @param {boolean} on */
+  #setAnnotating(on) {
+    this._annotating = on;
+    this.toggleAttribute('data-annotating', on);
+    this._render();
+    this.dispatchEvent(new CustomEvent('review-surface:mode', {
+      bubbles: true, composed: true,
+      detail: { mode: on ? 'annotate' : 'view' },
+    }));
   }
 
   /* ── Internal helpers ──────────────────────────── */
@@ -699,15 +838,10 @@ class ReviewSurface extends HTMLElement {
     const author = this.getAttribute('author') || 'Anonymous';
     const pin = await this.addPin({ x, y, text: '', author });
 
-    /* Open the new pin's popover immediately so user can type */
+    /* Open the new pin's popover and focus the reply field for text entry */
     this._activePin = pin.id;
     this._render();
-
-    /* Focus the reply field for immediate text entry */
-    requestAnimationFrame(() => {
-      const field = /** @type {HTMLTextAreaElement | null} */ (this.shadowRoot?.querySelector('.rs-input__field') ?? null);
-      field?.focus();
-    });
+    /** @type {HTMLElement | null} */ (this.shadowRoot?.querySelector('.rs-input__field') ?? null)?.focus();
   }
 
   async #submitReply(pinId) {
@@ -727,33 +861,25 @@ class ReviewSurface extends HTMLElement {
       createdAt: new Date().toISOString(),
     };
 
+    /* If pin has no text yet (just placed), promote first reply to pin text */
+    const changes = pin.text
+      ? { replies: [...(pin.replies ?? []), reply] }
+      : { text };
+
+    if (this.__adapter) {
+      await this.__adapter.update(pinId, changes, pin);
+    }
+    Object.assign(pin, changes);
     if (!pin.replies) pin.replies = [];
 
-    /* If pin has no text yet (just placed), promote first reply to pin text */
-    if (!pin.text) {
-      pin.text = text;
-      if (this.__adapter) {
-        await this.__adapter.update(pinId, { text });
-      }
-    } else {
-      pin.replies.push(reply);
-      if (this.__adapter) {
-        await this.__adapter.update(pinId, { replies: pin.replies });
-      }
-    }
-
+    field.value = '';
     this._render();
     this.#announce('Reply added');
-
-    /* Re-focus input */
-    requestAnimationFrame(() => {
-      const newField = /** @type {HTMLTextAreaElement | null} */ (this.shadowRoot?.querySelector('.rs-input__field') ?? null);
-      newField?.focus();
-    });
+    /** @type {HTMLElement | null} */ (this.shadowRoot?.querySelector('.rs-input__field') ?? null)?.focus();
 
     this.dispatchEvent(new CustomEvent('review-surface:update', {
       bubbles: true, composed: true,
-      detail: { pin, changes: { replies: pin.replies } },
+      detail: { pin, changes },
     }));
   }
 
@@ -777,6 +903,7 @@ class ReviewSurface extends HTMLElement {
     if (!isoString) return '';
     try {
       const date = new Date(isoString);
+      if (Number.isNaN(date.getTime())) return '';
       const now = new Date();
       const diffMs = now.getTime() - date.getTime();
       const diffMins = Math.floor(diffMs / 60000);
@@ -796,9 +923,13 @@ class ReviewSurface extends HTMLElement {
     }
   }
 
+  /**
+   * Write to the persistent live region (never re-rendered, so the
+   * message survives the render that follows every change).
+   * @param {string} message
+   */
   #announce(message) {
-    const live = this.shadowRoot?.querySelector('.rs-live');
-    if (live) live.textContent = message;
+    this.#live.textContent = message;
   }
 }
 

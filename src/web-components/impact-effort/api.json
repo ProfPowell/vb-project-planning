@@ -5,17 +5,19 @@
   "description": "2x2 prioritization matrix with drag-and-drop between quadrants (Quick Wins, Big Bets, Fill-Ins, Money Pit)",
   "htmlvalidate": { "flow": true, "permittedContent": ["@flow"] },
   "attributes": [
-    { "name": "src",     "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL to JSON data for items" },
+    { "name": "src",     "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL to a JSON array of items ({ id, quadrant, label }). Fetched once per value; a new value replaces the items and aborts an older in-flight request" },
     { "name": "title",   "kind": "host-api", "purpose": "config", "type": "string",  "description": "Optional heading above the matrix" },
-    { "name": "compact", "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Reduced spacing variant" }
+    { "name": "compact", "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Reduces grid height, padding, and label sizes for denser layouts" }
   ],
   "childAttributes": [
-    { "name": "data-quadrant", "on": "any child", "type": "enum", "values": ["quick-wins", "big-bets", "fill-ins", "money-pit"], "description": "Target quadrant for this item" },
-    { "name": "draggable",     "on": "any child", "type": "boolean", "description": "Required for drag capability" },
-    { "name": "data-id",       "on": "any child", "type": "string",  "description": "Stable identifier for the item" }
+    { "name": "data-quadrant", "on": "any child", "type": "enum", "values": ["quick-wins", "big-bets", "fill-ins", "money-pit"], "description": "Target quadrant for this item (default quick-wins); kept up to date as the item is dragged" },
+    { "name": "draggable",     "on": "any child", "type": "boolean", "description": "Required for drag capability (added if missing)" },
+    { "name": "data-id",       "on": "any child", "type": "string",  "description": "Stable identifier for the item, used as the .items key (generated if missing)" }
   ],
   "events": [
-    { "name": "impact-effort:move",  "detail": "{ itemId, from, to, item }",  "description": "Fired when an item is dragged between quadrants" },
-    { "name": "impact-effort:ready", "detail": "{ quadrantCounts }",          "description": "Fired after component initializes" }
+    { "name": "impact-effort:move",          "detail": "{ itemId, from, to, item }",       "description": "Fired when an item is dragged between quadrants; from and to are quadrant names" },
+    { "name": "impact-effort:ready",         "detail": "{ quadrantCounts }",               "description": "Fired once after the first render, with the number of items per quadrant. With src, fired once the loaded cards are in the DOM (after the View Transition's update). Once per element: not re-fired by a later src change (watch items-changed with source 'src') or when the matrix is moved in the DOM" },
+    { "name": "impact-effort:items-changed", "detail": "{ items, source: 'property' | 'src' }", "description": "Fired after each .items assignment (source 'property') and after each src load's cards are in the DOM (source 'src')" },
+    { "name": "impact-effort:upgraded",      "detail": "",                                 "description": "Fired (in a microtask) each time the matrix connects and upgrades" }
   ]
 }

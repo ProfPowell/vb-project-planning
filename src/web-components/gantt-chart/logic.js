@@ -7,6 +7,17 @@
  * Without JS: renders as a readable data table with progress bars.
  * With JS: visual timeline with bars, groups, milestones, and today line.
  *
+ * Data sources, in order of precedence: the `.tasks` property, the `src`
+ * JSON URL, then the child <table>. `.tasks` assigned before connect means
+ * the initial `src` is not fetched; assigning `.tasks` while a src request
+ * is in flight aborts it. A later change to `src` loads that URL (the most
+ * recent source wins). Dates are calendar days in local time
+ * (src/lib/dates.js), so `2026-04-01` shows as Apr 1 in every time zone.
+ *
+ * Progress (`.tasks` and `src` JSON): a value greater than 1 is a
+ * percentage (0–100); a value from 0 to 1 is a fraction. A table's
+ * <progress> is read as value / max. `.tasks` reads back as a fraction.
+ *
  * @attr {string} title - Chart heading
  * @attr {string} src - URL to JSON task data
  * @attr {string} view - Timeline granularity: auto|day|week|month|quarter
@@ -26,54 +37,109 @@
  * @attr {string} data-story-ids - Comma-separated linked user-story IDs
  * @attr {string} data-item-ids - Comma-separated linked work-item IDs
  *
- * @fires gantt-chart:ready - After initial render
- * @fires gantt-chart:task-click - Task bar clicked
+ * @fires gantt-chart:ready - Once per element: after the first connect render with tasks, or else the first src load
+ * @fires gantt-chart:task-click - Task bar or milestone activated (click, Enter, Space)
+ * @fires gantt-chart:tasks-changed - After `.tasks` assignment or a src load
  */
 
 import { registerComponent } from '../../lib/bundle-registry.js';
 import { VBElement } from '../../lib/vb-element.js';
+import { viewTransitionSwap } from '../../lib/vb-view-transition.js';
+import { SrcLoader } from '../../lib/src-loader.js';
+import {
+  parseISODate, toISODate, addDays, addMonths, daysBetween,
+  startOfDay, startOfMonth, startOfQuarter, formatDate,
+} from '../../lib/dates.js';
 
-/* ── Date helpers (adapted from chart-wc TimeScale) ── */
+/* ── Date helpers (calendar days) ── */
 
-const DAY  = 86_400_000;
-const WEEK = DAY * 7;
-const MONTH = DAY * 30;
-const QUARTER = DAY * 91;
-const YEAR = DAY * 365;
-
-function toTimestamp(value) {
-  if (typeof value === 'number') return value;
-  const d = new Date(value);
-  return d.getTime();
+/** @param {number} rangeDays */
+function pickFormatter(rangeDays) {
+  if (rangeDays <= 90) {
+    return (d) => formatDate(d, { month: 'short', day: 'numeric' });
+  }
+  if (rangeDays <= 365) {
+    return (d) => formatDate(d, { month: 'short', year: '2-digit' });
+  }
+  return (d) => formatDate(d, { year: 'numeric' });
 }
 
-function pickFormatter(rangeMs) {
-  if (rangeMs <= WEEK * 3) {
-    return (d) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  }
-  if (rangeMs <= MONTH * 3) {
-    return (d) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  }
-  if (rangeMs <= YEAR) {
-    return (d) => d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
-  }
-  return (d) => d.toLocaleDateString(undefined, { year: 'numeric' });
-}
-
-function resolveView(rangeMs) {
-  if (rangeMs <= WEEK * 3) return 'day';
-  if (rangeMs <= MONTH * 3) return 'week';
-  if (rangeMs <= YEAR) return 'month';
+/** @param {number} rangeDays */
+function resolveView(rangeDays) {
+  if (rangeDays <= 21) return 'day';
+  if (rangeDays <= 90) return 'week';
+  if (rangeDays <= 365) return 'month';
   return 'quarter';
 }
 
-function esc(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+const STEP_DAYS = { day: 1, week: 7, month: 30, quarter: 91 };
+
+/** Long-form date for labels, e.g. "Apr 1, 2026". @param {number} ts */
+function longDate(ts) {
+  return formatDate(new Date(ts), { year: 'numeric', month: 'short', day: 'numeric' });
 }
+
+const STATUS_LABELS = {
+  'not-started': 'Not started',
+  'in-progress': 'In progress',
+  done: 'Done',
+  blocked: 'Blocked',
+};
+
+/** @param {string} s */
+function statusLabel(s) {
+  return STATUS_LABELS[s] || (s.charAt(0).toUpperCase() + s.slice(1)).replace(/-/g, ' ');
+}
+
+/** Split "a, b" or pass arrays through. @param {unknown} v @returns {string[]} */
+function idList(v) {
+  if (Array.isArray(v)) return v.map(String);
+  if (v == null || v === '') return [];
+  return String(v).split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+/**
+ * One progress convention everywhere: > 1 is a percentage, 0–1 a fraction.
+ * Returns a fraction clamped to [0, 1].
+ * @param {unknown} v
+ */
+function normalizeProgress(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.min(1, n > 1 ? n / 100 : n);
+}
+
+/**
+ * Normalize author/property/JSON task records. Start/end become
+ * local-midnight timestamps; tasks without a valid start are dropped.
+ * @param {Array<any>} list
+ */
+function normalizeTasks(list) {
+  const out = [];
+  (list || []).forEach((t, i) => {
+    const start = parseISODate(t?.start);
+    if (!start) return;
+    const end = parseISODate(t.end) ?? start;
+    out.push({
+      id: t.id != null && t.id !== '' ? String(t.id) : `gc-task-${i}`,
+      name: t.name ?? `Task ${i + 1}`,
+      start: start.getTime(),
+      end: Math.max(end.getTime(), start.getTime()),
+      progress: normalizeProgress(t.progress),
+      group: t.group || null,
+      depends: idList(t.depends),
+      status: t.status || null,
+      assignee: t.assignee || null,
+      milestone: !!t.milestone,
+      color: t.color || null,
+      storyIds: idList(t.storyIds),
+      itemIds: idList(t.itemIds),
+    });
+  });
+  return out;
+}
+
+let instanceCounter = 0;
 
 /* ── Component ─────────────────────────────────────── */
 
@@ -82,233 +148,212 @@ class GanttChart extends VBElement {
     return ['src', 'title', 'view', 'show-today', 'show-progress', 'show-dependencies', 'compact'];
   }
 
+  #uid = `gc-${++instanceCounter}`;
   /** @type {HTMLDivElement|null} */
   #container = null;
   /** @type {HTMLDivElement|null} */
   #liveRegion = null;
   /** @type {HTMLElement|null} */
   #titleEl = null;
-  /** @type {Array<Object>} */
+  /** @type {Array<any>} */
   #tasks = [];
-  /** @type {number} */
-  #rangeStart = 0;
-  /** @type {number} */
-  #rangeEnd = 0;
-  /** @type {number} */
-  #rangeTotal = 0;
+  /**
+   * Where #tasks came from. 'table' re-parses the author's <table> on each
+   * connect; 'property' and 'src' keep #tasks and generate the SR table.
+   * @type {'table' | 'property' | 'src'}
+   */
+  #source = 'table';
+  /** One in-flight src request; `url` guards against refetching on reconnect. */
+  #loader = new SrcLoader();
+  #readyFired = false;
+  #internalAttr = false;
+  /** Local-midnight Date of the first day in range. */
+  #rangeStart = new Date(0);
+  /** Calendar days spanned by the range (≥ 1). */
+  #rangeDays = 1;
+
+  constructor() {
+    super();
+    /* A `.tasks` set before the element was defined lands as an own
+       property and would shadow the accessor: re-route it. */
+    if (Object.prototype.hasOwnProperty.call(this, 'tasks')) {
+      const value = /** @type {any} */ (this).tasks;
+      delete (/** @type {any} */ (this)).tasks;
+      this.tasks = value;
+    }
+  }
 
   setup() {
-    const table = this.querySelector(':scope > table');
-    if (!table) return false;
+    this.listen(this, 'click', this.#onClick);
+    this.listen(this, 'keydown', this.#onKeyDown);
 
-    // 1. Parse tasks from table
-    this.#tasks = this.#parseTasks(table);
-    if (this.#tasks.length === 0) return false;
+    if (this.#source === 'table') {
+      const table = this.querySelector(':scope > table');
+      this.#tasks = table ? this.#parseTasks(table) : [];
+    }
+    this.#render();
+    if (this.#tasks.length) this.#dispatchReady();
 
-    // 2. Calculate date range
-    this.#rangeStart = Math.min(...this.#tasks.map(t => t.start));
-    this.#rangeEnd = Math.max(...this.#tasks.map(t => t.end));
-    this.#rangeTotal = this.#rangeEnd - this.#rangeStart;
-    if (this.#rangeTotal <= 0) this.#rangeTotal = DAY; // minimum 1 day
-
-    // 3. Build enhanced DOM
-    this.#build(table);
-
-    // 4. Dispatch ready
-    this.dispatchEvent(new CustomEvent('gantt-chart:ready', {
-      bubbles: true,
-      detail: {
-        taskCount: this.#tasks.length,
-        dateRange: {
-          start: new Date(this.#rangeStart).toISOString(),
-          end: new Date(this.#rangeEnd).toISOString(),
-        },
-      },
-    }));
+    /* src loads here as well as in attributeChangedCallback, so
+       createElement + setAttribute('src') + append fetches (once).
+       `.tasks` takes precedence: once assigned, the initial src is skipped. */
+    const src = this.getAttribute('src');
+    if (src && this.#source !== 'property' && src !== this.#loader.url) this.#loadSrc(src);
     return true;
   }
 
   teardown() {
-    if (this.#titleEl) { this.#titleEl.remove(); this.#titleEl = null; }
-    if (this.#container) { this.#container.remove(); this.#container = null; }
-    if (this.#liveRegion) { this.#liveRegion.remove(); this.#liveRegion = null; }
-
-    // Restore the table visibility
-    const table = this.querySelector('table.gc-sr-only');
-    if (table) table.classList.remove('gc-sr-only');
-
-    this.#tasks = [];
+    this.#removeChrome();
+    const table = this.querySelector(':scope > table.gc-sr-only');
+    if (table && !table.hasAttribute('data-gc-generated')) table.classList.remove('gc-sr-only');
   }
-
-  /** @type {number} */
-  static #vtCounter = 0;
 
   attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue === newValue || !this.isConnected) return;
+    if (oldValue === newValue || this.#internalAttr) return;
+    if (!this.isConnected || !this.hasAttribute('data-upgraded')) return;   // setup() reads them
     if (name === 'src') {
-      this._loadSrc(newValue);
-    } else if (this.hasAttribute('data-upgraded')) {
-      this.#refresh();
+      if (newValue) this.#loadSrc(newValue);
+      else this.#loader.cancel();
+      return;
     }
-  }
-
-  /**
-   * Tear down and re-setup, wrapped in a View Transition so the swap
-   * crossfades instead of flashing. Same pattern as diagram-wc and
-   * site-map.
-   */
-  #refresh() {
-    const swap = () => {
-      this.teardown();
-      this.removeAttribute('data-upgraded');
-      this.setup();
-    };
-    if (this.hasAttribute('data-upgraded')
-        && 'startViewTransition' in document
-        && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      const name = `gc-vt-${++GanttChart.#vtCounter}`;
-      this.style.viewTransitionName = name;
-      const tx = document.startViewTransition(swap);
-      tx.finished.finally(() => { this.style.viewTransitionName = ''; });
-    } else {
-      swap();
-    }
+    viewTransitionSwap(this, () => this.#render(), 'gc-vt');
   }
 
   // ── Data API (HTML-first / JS-first dual contract) ──────────────
 
   /**
-   * The current task list. After upgrade this reflects the parsed
-   * <table> rows; after assignment, it reflects whatever was passed in.
-   * Each entry: { id, name, start, end, progress?, group?, depends?,
-   * status?, assignee?, milestone?, color?, storyIds?, itemIds? }.
+   * The current task list (normalized). start/end are local-midnight
+   * timestamps; progress is a 0–1 fraction.
    */
   get tasks() { return this.#tasks; }
 
   /**
-   * Replace the task set and re-render. Accepts plain task objects with
-   * start/end as ISO strings or timestamps; both are normalized.
-   *
-   * Note: v1 is record-shaped (full rebuild on assignment). Per-bar
-   * preservation across diffs is on the roadmap for when drag-resize
-   * state preservation becomes a felt need.
+   * Replace the task set and re-render. start/end accept YYYY-MM-DD
+   * strings, Dates or timestamps; progress accepts 0–1 or 0–100 (> 1).
+   * The visually hidden table is regenerated from the new tasks.
    */
   set tasks(value) {
-    const next = (value || []).map((t, i) => ({
-      id: t.id ?? `gc-task-${i}`,
-      name: t.name ?? `Task ${i + 1}`,
-      start: typeof t.start === 'number' ? t.start : toTimestamp(t.start),
-      end: typeof t.end === 'number' ? t.end : (t.end != null ? toTimestamp(t.end) : (typeof t.start === 'number' ? t.start : toTimestamp(t.start))),
-      progress: t.progress ?? 0,
-      group: t.group ?? null,
-      depends: Array.isArray(t.depends) ? t.depends : (t.depends ? String(t.depends).split(',').map(s => s.trim()) : []),
-      status: t.status ?? null,
-      assignee: t.assignee ?? null,
-      milestone: !!t.milestone,
-      color: t.color ?? null,
-      storyIds: t.storyIds ?? [],
-      itemIds: t.itemIds ?? [],
-    }));
-
-    // Tear down existing chrome and re-render from the new task list.
-    if (this.#container || this.#titleEl || this.#liveRegion) {
-      if (this.#titleEl) { this.#titleEl.remove(); this.#titleEl = null; }
-      if (this.#container) { this.#container.remove(); this.#container = null; }
-      if (this.#liveRegion) { this.#liveRegion.remove(); this.#liveRegion = null; }
-    }
-
-    this.#tasks = next;
-
-    if (next.length > 0) {
-      this.#rangeStart = Math.min(...next.map(t => t.start));
-      this.#rangeEnd = Math.max(...next.map(t => t.end));
-      this.#rangeTotal = this.#rangeEnd - this.#rangeStart;
-      if (this.#rangeTotal <= 0) this.#rangeTotal = DAY;
-
-      // Source <table> may not exist (JS-first scaffold). Find or create one
-      // for the build path; we hide it via gc-sr-only either way.
-      let table = this.querySelector(':scope > table');
-      if (!table) {
-        table = document.createElement('table');
-        table.classList.add('gc-sr-only');
-        this.appendChild(table);
-      }
-      this.#build(table);
-    }
-
+    this.#loader.cancel();   // .tasks wins over a pending src response
+    this.#tasks = normalizeTasks(value);
+    this.#source = 'property';
+    if (this.hasAttribute('data-upgraded')) this.#render();
     this.dispatchEvent(new CustomEvent('gantt-chart:tasks-changed', {
-      detail: { tasks: next, source: 'property' },
+      detail: { tasks: this.#tasks, source: 'property' },
       bubbles: true,
     }));
   }
 
   /* ── Table parsing ─────────────────────────────── */
 
+  /** @param {Element} table */
   #parseTasks(table) {
     const rows = table.querySelectorAll('tbody tr');
-    const tasks = [];
-
+    const raw = [];
     for (let i = 0; i < rows.length; i++) {
       const row = /** @type {HTMLTableRowElement} */ (rows[i]);
       const times = row.querySelectorAll('time[datetime]');
       if (times.length < 2 && !row.hasAttribute('data-milestone')) continue;
-
-      const startStr = times[0]?.getAttribute('datetime');
-      const endStr = times.length > 1 ? times[1].getAttribute('datetime') : startStr;
-      if (!startStr) continue;
-
+      const start = times[0]?.getAttribute('datetime');
+      if (!start) continue;
       const progressEl = row.querySelector('progress');
-      const progressValue = progressEl ? (progressEl.value / (progressEl.max || 100)) : 0;
-
-      const name = row.cells[0]?.textContent?.trim() || `Task ${i + 1}`;
-
-      tasks.push({
+      raw.push({
         id: row.dataset.taskId || `gc-task-${i}`,
-        name,
-        start: toTimestamp(startStr),
-        end: toTimestamp(endStr),
-        progress: progressValue,
-        group: row.dataset.group || null,
-        depends: row.dataset.depends ? row.dataset.depends.split(',').map(s => s.trim()) : [],
-        status: row.dataset.status || null,
-        assignee: row.dataset.assignee || null,
+        name: row.cells[0]?.textContent?.trim() || `Task ${i + 1}`,
+        start,
+        end: times.length > 1 ? times[1].getAttribute('datetime') : start,
+        // <progress> is explicit about its scale, so convert to a fraction here.
+        progress: progressEl ? progressEl.value / (progressEl.max || 1) : 0,
+        group: row.dataset.group,
+        depends: row.dataset.depends,
+        status: row.dataset.status,
+        assignee: row.dataset.assignee,
         milestone: row.hasAttribute('data-milestone'),
-        color: row.dataset.color || null,
-        storyIds: row.dataset.storyIds ? row.dataset.storyIds.split(',').map(s => s.trim()) : [],
-        itemIds: row.dataset.itemIds ? row.dataset.itemIds.split(',').map(s => s.trim()) : [],
+        color: row.dataset.color,
+        storyIds: row.dataset.storyIds,
+        itemIds: row.dataset.itemIds,
       });
     }
-
-    return tasks;
+    return normalizeTasks(raw);
   }
 
-  /* ── Build enhanced DOM ────────────────────────── */
+  /* ── Render ────────────────────────────────────── */
 
+  #removeChrome() {
+    this.#titleEl?.remove(); this.#titleEl = null;
+    this.#container?.remove(); this.#container = null;
+    this.#liveRegion?.remove(); this.#liveRegion = null;
+  }
+
+  /** The SR table: the author's for 'table', otherwise generated from #tasks. */
+  #syncTable() {
+    if (this.#source === 'table') {
+      return /** @type {HTMLTableElement|null} */ (this.querySelector(':scope > table'));
+    }
+    this.querySelectorAll(':scope > table').forEach((t) => t.remove());
+    if (!this.#tasks.length) return null;
+    const table = this.#buildTable();
+    this.appendChild(table);
+    return table;
+  }
+
+  #render() {
+    this.#removeChrome();
+    const table = this.#syncTable();
+    if (!this.#tasks.length) return;
+
+    const starts = this.#tasks.map((t) => t.start);
+    const ends = this.#tasks.map((t) => t.end);
+    this.#rangeStart = new Date(Math.min(...starts));
+    this.#rangeDays = Math.max(1, daysBetween(this.#rangeStart, new Date(Math.max(...ends))));
+
+    this.#build(table);
+  }
+
+  /** @param {number | Date} ts @returns {number} 0–100 */
+  #pct(ts) {
+    const d = typeof ts === 'number' ? new Date(ts) : ts;
+    return (daysBetween(this.#rangeStart, d) / this.#rangeDays) * 100;
+  }
+
+  /** `gantt-chart:ready`, at most once per element. */
+  #dispatchReady() {
+    if (this.#readyFired) return;
+    this.#readyFired = true;
+    this.dispatchEvent(new CustomEvent('gantt-chart:ready', {
+      bubbles: true,
+      detail: {
+        taskCount: this.#tasks.length,
+        dateRange: {
+          start: toISODate(this.#rangeStart),
+          end: toISODate(addDays(this.#rangeStart, this.#rangeDays)),
+        },
+      },
+    }));
+  }
+
+  /** @param {HTMLTableElement | null} table */
   #build(table) {
     const title = this.getAttribute('title');
     const showToday = this.hasAttribute('show-today');
     const showProgress = this.hasAttribute('show-progress');
     const showDeps = this.hasAttribute('show-dependencies');
+    const anchor = table && table.parentNode === this ? table : null;
 
-    // Title
     if (title) {
       this.#titleEl = document.createElement('h2');
       this.#titleEl.className = 'gc-title';
       this.#titleEl.textContent = title;
-      this.insertBefore(this.#titleEl, table);
+      this.insertBefore(this.#titleEl, anchor);
     }
 
-    // Container
     this.#container = document.createElement('div');
     this.#container.className = 'gc-container';
     this.#container.setAttribute('role', 'region');
     this.#container.setAttribute('aria-label', `Gantt chart${title ? ': ' + title : ''}`);
 
-    // Timeline header
-    const header = this.#buildTimelineHeader();
-    this.#container.appendChild(header);
+    const labels = this.#generateDateLabels();
+    this.#container.appendChild(this.#buildTimelineHeader(labels));
 
-    // Body: task list + bars
     const body = document.createElement('div');
     body.className = 'gc-body';
 
@@ -317,16 +362,10 @@ class GanttChart extends VBElement {
 
     const barsPanel = document.createElement('div');
     barsPanel.className = 'gc-bars';
+    barsPanel.appendChild(this.#buildGridLines(labels));
 
-    // Grid lines
-    const gridLines = this.#buildGridLines();
-    barsPanel.appendChild(gridLines);
-
-    // Group tasks
     const grouped = this.#groupTasks();
-
     for (const [groupName, groupTasks] of grouped) {
-      // Group header (if there are multiple groups)
       if (grouped.size > 1 && groupName) {
         const groupHeader = document.createElement('div');
         groupHeader.className = 'gc-group-header';
@@ -342,7 +381,6 @@ class GanttChart extends VBElement {
       }
 
       for (const task of groupTasks) {
-        // Task row (left)
         const taskRow = document.createElement('div');
         taskRow.className = 'gc-task-row';
         taskRow.setAttribute('data-task-id', task.id);
@@ -352,54 +390,44 @@ class GanttChart extends VBElement {
         taskName.textContent = task.name;
         taskRow.appendChild(taskName);
 
-        // SR-only date range
+        // Status as visible text, so it is not conveyed by bar colour alone.
+        if (task.status) {
+          const status = document.createElement('span');
+          status.className = 'gc-task-status';
+          status.setAttribute('data-status', task.status);
+          status.textContent = statusLabel(task.status);
+          taskRow.appendChild(status);
+        }
+
         const taskDates = document.createElement('span');
         taskDates.className = 'gc-task-dates';
-        taskDates.textContent = `${new Date(task.start).toLocaleDateString()} to ${new Date(task.end).toLocaleDateString()}`;
+        taskDates.textContent = task.milestone
+          ? longDate(task.start)
+          : `${longDate(task.start)} to ${longDate(task.end)}`;
         taskRow.appendChild(taskDates);
 
         taskList.appendChild(taskRow);
 
-        // Bar row (right)
         const barRow = document.createElement('div');
         barRow.className = 'gc-bar-row';
-
-        if (task.milestone) {
-          barRow.appendChild(this.#buildMilestone(task));
-        } else {
-          barRow.appendChild(this.#buildBar(task, showProgress));
-        }
-
+        barRow.setAttribute('data-task-id', task.id);
+        barRow.appendChild(task.milestone ? this.#buildMilestone(task) : this.#buildBar(task, showProgress));
         barsPanel.appendChild(barRow);
       }
     }
 
-    // Today line
     if (showToday) {
       const todayLine = this.#buildTodayLine();
       if (todayLine) barsPanel.appendChild(todayLine);
     }
 
-    // Dependency arrows
-    if (showDeps) {
-      // Defer to after DOM is in place for position calculation
-      requestAnimationFrame(() => {
-        const svg = this.#buildDependencyArrows(barsPanel);
-        if (svg) barsPanel.appendChild(svg);
-      });
-    }
-
     body.appendChild(taskList);
     body.appendChild(barsPanel);
     this.#container.appendChild(body);
+    this.insertBefore(this.#container, anchor);
 
-    // Insert container before table
-    this.insertBefore(this.#container, table);
+    if (table) table.classList.add('gc-sr-only');
 
-    // Hide original table (keep for screen readers)
-    table.classList.add('gc-sr-only');
-
-    // Live region
     this.#liveRegion = document.createElement('div');
     this.#liveRegion.className = 'gc-sr-only';
     this.#liveRegion.setAttribute('role', 'status');
@@ -407,49 +435,81 @@ class GanttChart extends VBElement {
     this.#liveRegion.setAttribute('aria-atomic', 'true');
     this.appendChild(this.#liveRegion);
 
-    // Event listeners
-    this.listen(this.#container, 'click', (e) => {
-      const bar = /** @type {HTMLElement | null} */ (/** @type {HTMLElement} */ (e.target).closest('.gc-bar, .gc-milestone'));
-      if (!bar) return;
-      const taskId = bar.dataset.taskId;
-      const task = this.#tasks.find(t => t.id === taskId);
-      if (!task) return;
+    if (showDeps) {
+      // Measure after layout: row heights depend on compact/group spacers.
+      requestAnimationFrame(() => {
+        if (!barsPanel.isConnected) return;
+        const svg = this.#buildDependencyArrows(barsPanel);
+        if (svg) barsPanel.appendChild(svg);
+      });
+    }
+  }
 
-      this.#announce(`Selected: ${task.name}`);
-      this.dispatchEvent(new CustomEvent('gantt-chart:task-click', {
-        bubbles: true,
-        detail: { task },
-      }));
-    });
+  /* ── Generated SR table (property / src data) ──── */
 
-    this.listen(this.#container, 'keydown', (e) => {
-      const ke = /** @type {KeyboardEvent} */ (e);
-      if (ke.key === 'Enter' || ke.key === ' ') {
-        const bar = /** @type {HTMLElement | null} */ (/** @type {HTMLElement} */ (ke.target).closest('.gc-bar, .gc-milestone'));
-        if (bar) {
-          ke.preventDefault();
-          bar.click();
-        }
+  #buildTable() {
+    const table = document.createElement('table');
+    table.setAttribute('data-gc-generated', '');
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    for (const label of ['Task', 'Start', 'End', 'Progress', 'Status']) {
+      const th = document.createElement('th');
+      th.scope = 'col';
+      th.textContent = label;
+      headerRow.appendChild(th);
+    }
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    for (const task of this.#tasks) {
+      const tr = document.createElement('tr');
+      tr.dataset.taskId = task.id;
+      const tdName = document.createElement('td');
+      tdName.textContent = task.name;
+      tr.appendChild(tdName);
+
+      for (const ts of [task.start, task.end]) {
+        const td = document.createElement('td');
+        const time = document.createElement('time');
+        time.setAttribute('datetime', toISODate(new Date(ts)));
+        time.textContent = longDate(ts);
+        td.appendChild(time);
+        tr.appendChild(td);
       }
-    });
+
+      const tdProgress = document.createElement('td');
+      const progress = document.createElement('progress');
+      const pct = Math.round(task.progress * 100);
+      progress.max = 100;
+      progress.value = pct;
+      progress.textContent = `${pct}%`;
+      tdProgress.appendChild(progress);
+      tr.appendChild(tdProgress);
+
+      const tdStatus = document.createElement('td');
+      tdStatus.textContent = task.status ? statusLabel(task.status) : '';
+      tr.appendChild(tdStatus);
+
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    return table;
   }
 
   /* ── Timeline header ───────────────────────────── */
 
-  #buildTimelineHeader() {
+  /** @param {Array<{position: number, text: string}>} labels */
+  #buildTimelineHeader(labels) {
     const header = document.createElement('div');
     header.className = 'gc-timeline-header';
 
-    // Spacer matching task list width
     const spacer = document.createElement('div');
     spacer.className = 'gc-timeline-spacer';
     header.appendChild(spacer);
 
-    // Date labels
     const dates = document.createElement('div');
     dates.className = 'gc-timeline-dates';
-
-    const labels = this.#generateDateLabels();
     for (const { position, text } of labels) {
       const label = document.createElement('span');
       label.className = 'gc-date-label';
@@ -466,81 +526,52 @@ class GanttChart extends VBElement {
 
   #generateDateLabels() {
     const viewAttr = this.getAttribute('view') || 'auto';
-    const view = viewAttr === 'auto' ? resolveView(this.#rangeTotal) : viewAttr;
-    const formatter = pickFormatter(this.#rangeTotal);
+    const view = STEP_DAYS[viewAttr] ? viewAttr : resolveView(this.#rangeDays);
+    const formatter = pickFormatter(this.#rangeDays);
+    const rangeStart = this.#rangeStart;
+    const rangeEnd = addDays(rangeStart, this.#rangeDays);
     const labels = [];
 
-    let stepMs;
-    switch (view) {
-      case 'day': stepMs = DAY; break;
-      case 'week': stepMs = WEEK; break;
-      case 'month': stepMs = MONTH; break;
-      case 'quarter': stepMs = QUARTER; break;
-      default: stepMs = MONTH;
-    }
-
-    // Align to calendar boundaries
-    let cursor = new Date(this.#rangeStart);
+    /** @type {(d: Date) => Date} */
+    let step;
+    let cursor;
     if (view === 'week') {
-      // Align to Monday
-      const dayOfWeek = cursor.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 1 : (dayOfWeek === 1 ? 0 : 8 - dayOfWeek);
-      cursor.setDate(cursor.getDate() + daysToMonday);
+      // First Monday on or after the range start.
+      const dow = rangeStart.getDay();
+      cursor = addDays(rangeStart, (8 - dow) % 7);
+      step = (d) => addDays(d, 7);
     } else if (view === 'month') {
-      cursor.setDate(1);
-      if (cursor.getTime() < this.#rangeStart) {
-        cursor.setMonth(cursor.getMonth() + 1);
-      }
+      cursor = startOfMonth(rangeStart);
+      if (cursor < rangeStart) cursor = addMonths(cursor, 1);
+      step = (d) => addMonths(d, 1);
     } else if (view === 'quarter') {
-      const month = cursor.getMonth();
-      const nextQuarterMonth = Math.ceil((month + 1) / 3) * 3;
-      cursor.setMonth(nextQuarterMonth);
-      cursor.setDate(1);
+      // Day 1 is set before the month moves, so a Mar 31 start aligns to Apr 1.
+      cursor = startOfQuarter(rangeStart);
+      if (cursor < rangeStart) cursor = addMonths(cursor, 3);
+      step = (d) => addMonths(d, 3);
+    } else {
+      cursor = startOfDay(rangeStart);
+      step = (d) => addDays(d, 1);
     }
 
-    const cursorTs = cursor.getTime();
-    // Add first label at start if it's before the first aligned cursor
-    if (cursorTs > this.#rangeStart + stepMs * 0.5) {
-      labels.push({
-        position: 0,
-        text: formatter(new Date(this.#rangeStart)),
-      });
+    // Label the range start if the first aligned tick is well past it.
+    if (daysBetween(rangeStart, cursor) > STEP_DAYS[view] * 0.5) {
+      labels.push({ position: 0, text: formatter(rangeStart) });
     }
 
-    let current = cursorTs;
-    while (current <= this.#rangeEnd) {
-      const pct = ((current - this.#rangeStart) / this.#rangeTotal) * 100;
-      if (pct >= 0 && pct <= 100) {
-        labels.push({
-          position: pct,
-          text: formatter(new Date(current)),
-        });
-      }
-
-      // Step forward
-      if (view === 'month') {
-        const d = new Date(current);
-        d.setMonth(d.getMonth() + 1);
-        current = d.getTime();
-      } else if (view === 'quarter') {
-        const d = new Date(current);
-        d.setMonth(d.getMonth() + 3);
-        current = d.getTime();
-      } else {
-        current += stepMs;
-      }
+    for (let d = cursor; d <= rangeEnd; d = step(d)) {
+      const pct = this.#pct(d);
+      if (pct >= 0 && pct <= 100) labels.push({ position: pct, text: formatter(d) });
     }
-
     return labels;
   }
 
   /* ── Grid lines ────────────────────────────────── */
 
-  #buildGridLines() {
+  /** @param {Array<{position: number}>} labels */
+  #buildGridLines(labels) {
     const container = document.createElement('div');
     container.className = 'gc-grid-lines';
-
-    const labels = this.#generateDateLabels();
     for (const { position } of labels) {
       if (position <= 0) continue;
       const line = document.createElement('div');
@@ -548,40 +579,48 @@ class GanttChart extends VBElement {
       line.style.left = `${position}%`;
       container.appendChild(line);
     }
-
     return container;
   }
 
   /* ── Group tasks ───────────────────────────────── */
 
   #groupTasks() {
-    /** @type {Map<string|null, Object[]>} */
+    /** @type {Map<string, any[]>} */
     const groups = new Map();
-
     for (const task of this.#tasks) {
       const key = task.group || '';
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)?.push(task);
     }
-
     return groups;
+  }
+
+  /* ── Accessible name ───────────────────────────── */
+
+  /** @param {any} task */
+  #taskLabel(task) {
+    const parts = [task.milestone
+      ? `Milestone: ${task.name}, ${longDate(task.start)}`
+      : `${task.name}: ${longDate(task.start)} to ${longDate(task.end)}`];
+    if (task.status) parts.push(`status: ${statusLabel(task.status).toLowerCase()}`);
+    if (!task.milestone && task.progress > 0) parts.push(`${Math.round(task.progress * 100)}% complete`);
+    if (task.assignee) parts.push(`assigned to ${task.assignee}`);
+    return parts.join(', ');
   }
 
   /* ── Build bar ─────────────────────────────────── */
 
+  /** @param {any} task @param {boolean} showProgress */
   #buildBar(task, showProgress) {
-    const leftPct = ((task.start - this.#rangeStart) / this.#rangeTotal) * 100;
-    const widthPct = ((task.end - task.start) / this.#rangeTotal) * 100;
+    const leftPct = this.#pct(task.start);
+    const widthPct = this.#pct(task.end) - leftPct;
 
     const bar = document.createElement('div');
     bar.className = 'gc-bar';
     bar.setAttribute('data-task-id', task.id);
-    bar.setAttribute('role', 'img');
+    bar.setAttribute('role', 'button');
     bar.setAttribute('tabindex', '0');
-    bar.setAttribute('aria-label',
-      `${esc(task.name)}: ${new Date(task.start).toLocaleDateString()} to ${new Date(task.end).toLocaleDateString()}` +
-      (task.progress > 0 ? `, ${Math.round(task.progress * 100)}% complete` : '')
-    );
+    bar.setAttribute('aria-label', this.#taskLabel(task));
 
     bar.style.left = `${leftPct}%`;
     bar.style.width = `${Math.max(widthPct, 0.5)}%`;
@@ -589,7 +628,6 @@ class GanttChart extends VBElement {
     if (task.status) bar.setAttribute('data-status', task.status);
     if (task.color) bar.style.setProperty('--gc-bar-color', task.color);
 
-    // Progress fill
     if (showProgress && task.progress > 0) {
       const fill = document.createElement('div');
       fill.className = 'gc-bar-fill';
@@ -597,10 +635,10 @@ class GanttChart extends VBElement {
       bar.appendChild(fill);
     }
 
-    // Label (show name if bar is wide enough)
     if (widthPct > 8) {
       const label = document.createElement('span');
       label.className = 'gc-bar-label';
+      label.setAttribute('aria-hidden', 'true');
       label.textContent = task.name;
       bar.appendChild(label);
     }
@@ -610,16 +648,15 @@ class GanttChart extends VBElement {
 
   /* ── Build milestone ───────────────────────────── */
 
+  /** @param {any} task */
   #buildMilestone(task) {
-    const leftPct = ((task.start - this.#rangeStart) / this.#rangeTotal) * 100;
-
     const diamond = document.createElement('div');
     diamond.className = 'gc-milestone';
     diamond.setAttribute('data-task-id', task.id);
-    diamond.setAttribute('role', 'img');
+    diamond.setAttribute('role', 'button');
     diamond.setAttribute('tabindex', '0');
-    diamond.setAttribute('aria-label', `Milestone: ${esc(task.name)}, ${new Date(task.start).toLocaleDateString()}`);
-    diamond.style.left = `${leftPct}%`;
+    diamond.setAttribute('aria-label', this.#taskLabel(task));
+    diamond.style.left = `${this.#pct(task.start)}%`;
 
     if (task.status) diamond.setAttribute('data-status', task.status);
     if (task.color) diamond.style.setProperty('--gc-bar-color', task.color);
@@ -630,14 +667,14 @@ class GanttChart extends VBElement {
   /* ── Today line ────────────────────────────────── */
 
   #buildTodayLine() {
-    const now = Date.now();
-    if (now < this.#rangeStart || now > this.#rangeEnd) return null;
-
-    const pct = ((now - this.#rangeStart) / this.#rangeTotal) * 100;
+    const now = new Date();
+    const dayFraction = (now.getTime() - startOfDay(now).getTime()) / 86_400_000;
+    const days = daysBetween(this.#rangeStart, now) + dayFraction;
+    if (days < 0 || days > this.#rangeDays) return null;
 
     const line = document.createElement('div');
     line.className = 'gc-today-line';
-    line.style.left = `${pct}%`;
+    line.style.left = `${(days / this.#rangeDays) * 100}%`;
 
     const label = document.createElement('span');
     label.className = 'gc-today-label';
@@ -649,28 +686,38 @@ class GanttChart extends VBElement {
 
   /* ── Dependency arrows ─────────────────────────── */
 
+  /** @param {HTMLElement} barsPanel */
   #buildDependencyArrows(barsPanel) {
-    const depsExist = this.#tasks.some(t => t.depends.length > 0);
-    if (!depsExist) return null;
+    if (!this.#tasks.some((t) => t.depends.length > 0)) return null;
+
+    /* Row centres are measured, not computed from a fixed row height, so
+       compact mode and group spacers line up. */
+    /** @type {Map<string, number>} */
+    const centreY = new Map();
+    for (const row of /** @type {NodeListOf<HTMLElement>} */ (barsPanel.querySelectorAll(':scope > .gc-bar-row'))) {
+      centreY.set(row.dataset.taskId || '', row.offsetTop + row.offsetHeight / 2);
+    }
+    const height = Math.max(1, Math.round(barsPanel.scrollHeight));
 
     const ns = 'http://www.w3.org/2000/svg';
-    const rowHeight = 36; // default --gc-row-height
-    const rowCount = barsPanel.querySelectorAll('.gc-bar-row').length;
     const svg = document.createElementNS(ns, 'svg');
     svg.setAttribute('class', 'gc-deps');
+    svg.setAttribute('aria-hidden', 'true');
     // x is a percentage (0–100, matching the bars' CSS `left: N%`) and y is in
     // pixels. A non-uniform viewBox maps both, so the path `d` can use plain
     // numbers — SVG path data does not accept `%` units. non-scaling-stroke
-    // (below) keeps the line/arrowhead uniform despite the x-axis stretch.
-    svg.setAttribute('viewBox', `0 0 100 ${rowCount * rowHeight}`);
+    // keeps the line/arrowhead uniform despite the x-axis stretch.
+    svg.setAttribute('viewBox', `0 0 100 ${height}`);
     svg.setAttribute('preserveAspectRatio', 'none');
     svg.style.width = '100%';
-    svg.style.height = '100%';
+    svg.style.height = `${height}px`;
 
-    // Arrowhead marker
+    // Per-instance marker id: url(#id) resolves document-wide, so a shared
+    // id would point every chart at the first chart's marker.
+    const markerId = `${this.#uid}-arrowhead`;
     const defs = document.createElementNS(ns, 'defs');
     const marker = document.createElementNS(ns, 'marker');
-    marker.setAttribute('id', 'gc-arrowhead');
+    marker.setAttribute('id', markerId);
     marker.setAttribute('markerWidth', '8');
     marker.setAttribute('markerHeight', '6');
     marker.setAttribute('refX', '8');
@@ -685,24 +732,22 @@ class GanttChart extends VBElement {
 
     for (const task of this.#tasks) {
       for (const depId of task.depends) {
-        const source = this.#tasks.find(t => t.id === depId);
+        const source = this.#tasks.find((t) => t.id === depId);
         if (!source) continue;
+        const sourceY = centreY.get(source.id);
+        const targetY = centreY.get(task.id);
+        if (sourceY === undefined || targetY === undefined) continue;
 
-        const sourceRight = ((source.end - this.#rangeStart) / this.#rangeTotal) * 100;
-        const targetLeft = ((task.start - this.#rangeStart) / this.#rangeTotal) * 100;
-
-        // Find row indices for vertical positioning
-        const sourceIdx = this.#getVisualRowIndex(source.id, barsPanel);
-        const targetIdx = this.#getVisualRowIndex(task.id, barsPanel);
-        if (sourceIdx === -1 || targetIdx === -1) continue;
-
-        const sourceY = sourceIdx * rowHeight + rowHeight / 2;
-        const targetY = targetIdx * rowHeight + rowHeight / 2;
+        const sourceRight = this.#pct(source.end);
+        const targetLeft = this.#pct(task.start);
+        const midX = sourceRight + (targetLeft - sourceRight) / 2;
 
         const path = document.createElementNS(ns, 'path');
-        const midX = sourceRight + (targetLeft - sourceRight) / 2;
         path.setAttribute('d', `M ${sourceRight} ${sourceY} C ${midX} ${sourceY}, ${midX} ${targetY}, ${targetLeft} ${targetY}`);
         path.setAttribute('class', 'gc-dep-line');
+        path.setAttribute('data-from', source.id);
+        path.setAttribute('data-to', task.id);
+        path.setAttribute('marker-end', `url(#${markerId})`);
         path.setAttribute('vector-effect', 'non-scaling-stroke');
         svg.appendChild(path);
       }
@@ -711,94 +756,74 @@ class GanttChart extends VBElement {
     return svg;
   }
 
-  #getVisualRowIndex(taskId, barsPanel) {
-    const rows = barsPanel.querySelectorAll('.gc-bar-row');
-    for (let i = 0; i < rows.length; i++) {
-      const bar = rows[i].querySelector('[data-task-id]');
-      if (bar && bar.dataset.taskId === taskId) return i;
-    }
-    return -1;
+  /* ── Interaction (delegated once in setup) ─────── */
+
+  /** @param {Event} e */
+  #barFromEvent(e) {
+    const t = /** @type {Element} */ (e.target);
+    const bar = /** @type {HTMLElement | null} */ (t?.closest?.('.gc-bar, .gc-milestone'));
+    return bar && this.#container?.contains(bar) ? bar : null;
   }
+
+  #onClick = (e) => {
+    const bar = this.#barFromEvent(e);
+    if (!bar) return;
+    const task = this.#tasks.find((t) => t.id === bar.dataset.taskId);
+    if (!task) return;
+    this.#announce(`Selected: ${task.name}`);
+    this.dispatchEvent(new CustomEvent('gantt-chart:task-click', {
+      bubbles: true,
+      detail: { task },
+    }));
+  };
+
+  #onKeyDown = (e) => {
+    const ke = /** @type {KeyboardEvent} */ (e);
+    if (ke.key !== 'Enter' && ke.key !== ' ') return;
+    const bar = this.#barFromEvent(ke);
+    if (!bar) return;
+    ke.preventDefault();
+    bar.click();
+  };
 
   /* ── JSON loading ──────────────────────────────── */
 
-  async _loadSrc(url) {
-    if (!url) return;
+  /**
+   * Fetch src JSON and replace the tasks. A newer src, a `.tasks`
+   * assignment or removing src aborts this request (SrcLoader).
+   * @param {string} url
+   */
+  async #loadSrc(url) {
+    let result;
     try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-
-      // Clear existing children
-      while (this.firstChild) this.firstChild.remove();
-
-      // Build a table from JSON
-      const table = document.createElement('table');
-      const thead = document.createElement('thead');
-      const headerRow = document.createElement('tr');
-      for (const label of ['Task', 'Start', 'End', 'Progress']) {
-        const th = document.createElement('th');
-        th.textContent = label;
-        headerRow.appendChild(th);
-      }
-      thead.appendChild(headerRow);
-      table.appendChild(thead);
-
-      const tbody = document.createElement('tbody');
-      for (const task of (data.tasks || [])) {
-        const tr = document.createElement('tr');
-        if (task.id) tr.dataset.taskId = task.id;
-        if (task.group) tr.dataset.group = task.group;
-        if (task.depends) tr.dataset.depends = Array.isArray(task.depends) ? task.depends.join(',') : task.depends;
-        if (task.status) tr.dataset.status = task.status;
-        if (task.assignee) tr.dataset.assignee = task.assignee;
-        if (task.milestone) tr.setAttribute('data-milestone', '');
-        if (task.color) tr.dataset.color = task.color;
-        if (task.storyIds) tr.dataset.storyIds = Array.isArray(task.storyIds) ? task.storyIds.join(',') : task.storyIds;
-        if (task.itemIds) tr.dataset.itemIds = Array.isArray(task.itemIds) ? task.itemIds.join(',') : task.itemIds;
-
-        const tdName = document.createElement('td');
-        tdName.textContent = task.name || '';
-        tr.appendChild(tdName);
-
-        const tdStart = document.createElement('td');
-        const timeStart = document.createElement('time');
-        timeStart.setAttribute('datetime', task.start);
-        timeStart.textContent = new Date(task.start).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-        tdStart.appendChild(timeStart);
-        tr.appendChild(tdStart);
-
-        const tdEnd = document.createElement('td');
-        const timeEnd = document.createElement('time');
-        timeEnd.setAttribute('datetime', task.end || task.start);
-        timeEnd.textContent = new Date(task.end || task.start).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-        tdEnd.appendChild(timeEnd);
-        tr.appendChild(tdEnd);
-
-        const tdProgress = document.createElement('td');
-        const progress = document.createElement('progress');
-        progress.value = task.progress || 0;
-        progress.max = 100;
-        progress.textContent = `${task.progress || 0}%`;
-        tdProgress.appendChild(progress);
-        tr.appendChild(tdProgress);
-
-        tbody.appendChild(tr);
-      }
-      table.appendChild(tbody);
-      this.appendChild(table);
-
-      // Apply title from JSON
-      if (data.title) this.setAttribute('title', data.title);
-
-      this.#refresh();
+      result = await this.#loader.fetchJson(url);
     } catch (err) {
       console.warn(`[gantt-chart] Failed to load src="${url}":`, err);
+      return;
     }
+    if (!result) return;   // superseded, cancelled or aborted
+    const { data } = result;
+    this.#tasks = normalizeTasks(data?.tasks || []);
+    this.#source = 'src';
+    if (data?.title && data.title !== this.getAttribute('title')) {
+      this.#internalAttr = true;
+      this.setAttribute('title', data.title);
+      this.#internalAttr = false;
+    }
+    // Rendered synchronously so listeners of the events below see the new DOM.
+    if (this.hasAttribute('data-upgraded')) {
+      this.#render();
+      this.#dispatchReady();
+    }
+    this.dispatchEvent(new CustomEvent('gantt-chart:tasks-changed', {
+      detail: { tasks: this.#tasks, source: 'src' },
+      bubbles: true,
+    }));
   }
 
   /* ── Live region ───────────────────────────────── */
 
+  /** @param {string} msg */
   #announce(msg) {
     if (!this.#liveRegion) return;
     this.#liveRegion.textContent = '';

@@ -11,46 +11,32 @@
   },
   "attributes": [
     {
-      "name": "title",
-      "kind": "host-api",
-      "purpose": "config",
-      "type": "string",
-      "description": "Journey map title"
-    },
-    {
       "name": "persona",
       "kind": "host-api",
       "purpose": "config",
       "type": "string",
-      "description": "Persona name"
+      "description": "Persona name shown in the header"
     },
     {
       "name": "persona-id",
       "kind": "host-api",
       "purpose": "config",
       "type": "string",
-      "description": "Links to a user-persona element by id"
-    },
-    {
-      "name": "summary",
-      "kind": "host-api",
-      "purpose": "config",
-      "type": "string",
-      "description": "One-line journey description"
+      "description": "Links the persona name to a user-persona element by id"
     },
     {
       "name": "story-ids",
       "kind": "host-api",
       "purpose": "config",
       "type": "string",
-      "description": "Comma-separated related story IDs"
+      "description": "Comma-separated related story IDs, rendered as fragment links"
     },
     {
       "name": "src",
       "kind": "host-api",
       "purpose": "config",
       "type": "string",
-      "description": "URL to JSON file containing phase data"
+      "description": "URL of a JSON journey record (title, persona, personaId, summary, phases). Fetched once per value; a newer value aborts the older request."
     },
     {
       "name": "compact",
@@ -63,22 +49,37 @@
   "slots": [
     {
       "name": "title",
-      "description": "Journey title (slot fallback for attribute)"
-    },
-    {
-      "name": "persona",
-      "description": "Persona name (slot fallback for attribute)"
+      "description": "Journey heading (e.g. <h2>). Defaults to \"User Journey\"; also labels the phase table."
     },
     {
       "name": "summary",
-      "description": "One-line description (slot fallback for attribute)"
+      "description": "One-line description (e.g. <p>)"
+    },
+    {
+      "name": "persona",
+      "description": "Not projected: the text of a slot=\"persona\" child is read as the persona name when the persona attribute is absent"
     }
   ],
   "events": [
     {
       "name": "journey-ready",
       "detail": "{ title, persona, phaseCount }",
-      "description": "Fired after render completes"
+      "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by later renders or moves."
+    },
+    {
+      "name": "user-journey:upgraded",
+      "detail": "",
+      "description": "Once, in a microtask after first connect. Wait for this before assigning .data or .phases from a framework."
+    },
+    {
+      "name": "user-journey:data-changed",
+      "detail": "{ data, source: 'property' }",
+      "description": "After .data is assigned"
+    },
+    {
+      "name": "user-journey:phases-changed",
+      "detail": "{ phases, source: 'property' }",
+      "description": "After .phases is assigned a different array"
     }
   ]
 }

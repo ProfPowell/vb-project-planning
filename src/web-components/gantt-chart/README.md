@@ -58,26 +58,32 @@ Part of the **UX Planning Pack**.
 | `data-assignee` | string | Assignee name |
 | `data-milestone` | boolean | Render as diamond marker |
 | `data-color` | string | Custom bar color |
+| `data-story-ids` | string | Comma-separated linked user-story IDs |
+| `data-item-ids` | string | Comma-separated linked work-item IDs |
+
+Dates are `YYYY-MM-DD` calendar days in local time. Progress in `.tasks` / JSON: > 1 is a percentage, 0–1 a fraction; `<progress>` is `value / max`.
 
 ## Events
 
 | Event | Detail | Description |
 |-------|--------|-------------|
-| `gantt-chart:ready` | `{ taskCount, dateRange }` | After render |
-| `gantt-chart:task-click` | `{ task }` | Bar clicked |
+| `gantt-chart:upgraded` | — | Once per connect (also for an empty chart) |
+| `gantt-chart:ready` | `{ taskCount, dateRange: { start, end } }` | After a render with tasks on connect, and after a `src` load (YYYY-MM-DD) |
+| `gantt-chart:task-click` | `{ task }` | Bar/milestone clicked or activated with Enter/Space |
+| `gantt-chart:tasks-changed` | `{ tasks, source: 'property' \| 'src' }` | After `.tasks` assignment or a `src` load |
 
 ## Failure Modes
 
 - **No JavaScript:** Table renders normally with progress bars and time elements.
 - **No CSS:** Table renders as default HTML table.
-- **Keyboard Only:** Tab navigates bars; Enter triggers click event.
+- **Keyboard Only:** Tab navigates bars; Enter or Space fires `task-click`.
 - **Screen Reader:** Original table is preserved (visually hidden) for full table semantics.
 
 ## Accessibility
 
-- Original table stays in DOM (sr-only) for screen reader access
-- Bars have `role="img"` with descriptive `aria-label`
-- Bars are focusable with `tabindex="0"`
+- Original table stays in DOM (sr-only) for screen reader access; for `.tasks`/`src` data a table is generated from the tasks
+- Bars and milestones are focusable `role="button"` with an `aria-label` giving name, dates, status, progress and assignee
+- Status is shown as text in the task list, not by colour alone
 - `aria-live="polite"` region announces task selection
 - `prefers-reduced-motion: reduce` disables transitions
 - Print shows the original table, hides the visual chart

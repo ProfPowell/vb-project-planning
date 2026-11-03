@@ -48,36 +48,7 @@ crumbLabel: Web Components
 
   <section>
     <h2>Attributes</h2>
-    <table class="props-table">
-      <thead>
-        <tr>
-          <th>Attribute</th>
-          <th>Type</th>
-          <th>Default</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>src</code></td>
-          <td>string (URL)</td>
-          <td>&mdash;</td>
-          <td>Path to a JSON file containing activity and story data</td>
-        </tr>
-        <tr>
-          <td><code>compact</code></td>
-          <td>boolean</td>
-          <td>&mdash;</td>
-          <td>Reduces column widths, padding, and header font sizes for denser layouts</td>
-        </tr>
-        <tr>
-          <td><code>title</code></td>
-          <td>string</td>
-          <td>&mdash;</td>
-          <td>Optional heading displayed above the story map</td>
-        </tr>
-      </tbody>
-    </table>
+    {{ attributeTable("story-map", apiRegistry) }}
   </section>
 
   <section>
@@ -174,7 +145,8 @@ map.addEventListener('story-map:reorder', (e) => {
 
   <section>
     <h2>JSON Loading</h2>
-    <p>Load the entire story map from a JSON file using the <code>src</code> attribute. The component creates activity columns with <code>&lt;user-story&gt;</code> cards automatically.</p>
+    <p>Load the entire story map from a JSON file using the <code>src</code> attribute. The component creates activity columns with <code>&lt;user-story&gt;</code> cards automatically: <code>persona</code>, <code>action</code>, and <code>benefit</code> become <code>&lt;span slot="…"&gt;</code> children, <code>title</code> an <code>&lt;h3 slot="title"&gt;</code>, and <code>id</code> / <code>storyId</code>, <code>priority</code>, <code>status</code>, <code>points</code>, and <code>detail</code> (default <code>compact</code>) the matching attributes.</p>
+    <p>The URL is fetched once and <code>story-map:ready</code> fires after the stories have rendered. Changing <code>src</code> loads the new URL and replaces the map (the request for an older URL is aborted). <code>ready</code> fires once per map; every src load also fires <code>story-map:activities-changed</code> with <code>source: 'src'</code> after it renders. Moving the map in the DOM keeps its stories and does not refetch.</p>
 
     <code-block language="html" show-lines label="Loading from JSON" data-escape><story-map src="/data/story-map.json"></story-map></code-block>
 
@@ -242,42 +214,7 @@ map.addEventListener('story-map:reorder', (e) => {
 
   <section>
     <h2>Events</h2>
-    <table class="props-table">
-      <thead>
-        <tr>
-          <th>Event</th>
-          <th>Detail</th>
-          <th>When</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>story-map:reorder</code></td>
-          <td><code>{ itemId, activity, oldIndex, newIndex }</code></td>
-          <td>Fires when an item is reordered within the same activity column</td>
-        </tr>
-        <tr>
-          <td><code>story-map:transfer</code></td>
-          <td><code>{ itemId, fromActivity, toActivity, newIndex }</code></td>
-          <td>Fires when an item is dragged from one activity column to another</td>
-        </tr>
-        <tr>
-          <td><code>story-map:ready</code></td>
-          <td><code>{ activityCount, storyCount }</code></td>
-          <td>Fires after the component initializes with the total number of activity columns and stories</td>
-        </tr>
-        <tr>
-          <td><code>story-map:upgraded</code></td>
-          <td>&mdash;</td>
-          <td>Once after first connect. Wait for this before assigning <code>.activities</code> from a framework.</td>
-        </tr>
-        <tr>
-          <td><code>story-map:activities-changed</code></td>
-          <td><code>{ activities, source: 'property' }</code></td>
-          <td>After <code>.activities</code> assignment.</td>
-        </tr>
-      </tbody>
-    </table>
+    {{ eventsTable("story-map", apiRegistry) }}
   </section>
 
   <section>
@@ -295,28 +232,32 @@ map.addEventListener('story-map:reorder', (e) => {
           <td><code>.activities</code></td>
           <td><code>Activity[]</code></td>
           <td>
-            Replace the column structure with an array of activities,
-            each with a <code>{ name, items: [{ itemId, title, ... }] }</code>
-            shape. Whole-map rebuild on assignment; round-trips through
-            the getter.
+            Replace the column structure with an array of activities:
+            <code>{ id, label?, journeyPhase?, stories: [{ id, title?, persona?, action?, benefit?, priority?, status?, points? }] }</code>.
+            Stories render as <code>&lt;user-story&gt;</code> cards (or via an optional
+            <code>.renderStory(story) =&gt; Element</code>). The columns are rebuilt on
+            assignment. The getter returns the same shape in current DOM order
+            (drags included): assigned stories come back as the records you passed,
+            authored <code>&lt;user-story&gt;</code> cards as their <code>.data</code>, so
+            <code>map.activities = map.activities</code> round-trips.
           </td>
         </tr>
       </tbody>
     </table>
     <code-block language="javascript" label="Reactive consumer" data-escape>const map = document.querySelector('story-map');
-await new Promise(r =&gt; map.addEventListener('story-map:upgraded', r, { once: true }));
+if (!map.hasAttribute('data-upgraded')) await new Promise(r =&gt; map.addEventListener('story-map:upgraded', r, { once: true }));
 map.activities = [
-  { name: 'Discover',  items: [{ itemId: 'PROJ-1', title: 'Browse landing' }] },
-  { name: 'Onboard',   items: [{ itemId: 'PROJ-2', title: 'Sign up' }] },
+  { id: 'discover', label: 'Discover', stories: [{ id: 'PROJ-1', title: 'Browse landing' }] },
+  { id: 'onboard',  label: 'Onboard',  stories: [{ id: 'PROJ-2', persona: 'Visitor', action: 'sign up with email' }] },
 ];</code-block>
   </section>
 
   <section>
     <h2>Accessibility</h2>
     <ul>
-      <li>The scroll container uses <code>role="region"</code> with <code>aria-label="Story map"</code> and is keyboard-focusable via <code>tabindex="0"</code></li>
+      <li>The scroll container uses <code>role="region"</code>, labelled by the <code>title</code> attribute (or "Story map" when there is none), and is keyboard-focusable via <code>tabindex="0"</code></li>
       <li>Each <code>&lt;drag-surface&gt;</code> has an <code>aria-label</code> describing the activity column (e.g., "Discovery stories")</li>
-      <li>A hidden live region with <code>aria-live="polite"</code> announces item transfers between columns</li>
+      <li>A hidden live region with <code>aria-live="polite"</code> announces transfers between columns using the story's text and the activity labels (e.g. "interview 10 target users moved from Discovery to Design")</li>
       <li>Keyboard navigation is provided by the underlying <code>&lt;drag-surface&gt;</code> components</li>
       <li>Column headers are sticky so the activity label remains visible while scrolling down through long columns</li>
       <li>Respects <code>prefers-reduced-motion: reduce</code> by disabling scroll behavior transitions</li>

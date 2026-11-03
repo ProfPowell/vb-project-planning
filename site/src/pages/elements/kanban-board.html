@@ -53,16 +53,7 @@ crumbLabel: Web Components
 
 <section>
     <h2>Attributes</h2>
-    <table>
-      <thead>
-        <tr><th>Attribute</th><th>Type</th><th>Description</th></tr>
-      </thead>
-      <tbody>
-        <tr><td><code>src</code></td><td>string</td><td>URL to JSON data for columns and items</td></tr>
-        <tr><td><code>title</code></td><td>string</td><td>Optional heading displayed above the board</td></tr>
-        <tr><td><code>compact</code></td><td>boolean</td><td>Reduced spacing variant for dashboard-style layouts</td></tr>
-      </tbody>
-    </table>
+    {{ attributeTable("kanban-board", apiRegistry) }}
 </section>
 
 <section>
@@ -149,19 +140,7 @@ crumbLabel: Web Components
 
 <section>
     <h2>Events</h2>
-    <table>
-      <thead>
-        <tr><th>Event</th><th>Detail</th><th>Description</th></tr>
-      </thead>
-      <tbody>
-        <tr><td><code>kanban-board:transfer</code></td><td><code>{ itemId, fromColumn, toColumn, newIndex, item }</code></td><td>Item moved between columns</td></tr>
-        <tr><td><code>kanban-board:reorder</code></td><td><code>{ itemId, column, oldIndex, newIndex }</code></td><td>Item reordered within a column</td></tr>
-        <tr><td><code>kanban-board:ready</code></td><td><code>{ columnCount, itemCount }</code></td><td>Fired after component initializes</td></tr>
-        <tr><td><code>kanban-board:wip-exceeded</code></td><td><code>{ column, limit, count }</code></td><td>Fired when a column exceeds its WIP limit</td></tr>
-        <tr><td><code>kanban-board:upgraded</code></td><td>&mdash;</td><td>Fired once after first connect; safe signal for assigning <code>.items</code> from a framework.</td></tr>
-        <tr><td><code>kanban-board:items-changed</code></td><td><code>{ items, source: 'api' \| 'drag' }</code></td><td>Fired after the items array changes for any reason. Filter on <code>source</code> to avoid feedback loops.</td></tr>
-      </tbody>
-    </table>
+    {{ eventsTable("kanban-board", apiRegistry) }}
 </section>
 
 <section>
@@ -173,7 +152,7 @@ crumbLabel: Web Components
         <tr><th>Property</th><th>Type</th><th>Description</th></tr>
       </thead>
       <tbody>
-        <tr><td><code>.columns</code></td><td><code>{ id, label?, wip?, color? }[]</code></td><td>Replaces all columns and rebuilds the shell. Setting an empty array clears the board.</td></tr>
+        <tr><td><code>.columns</code></td><td><code>{ id, label?, wip?, color? }[]</code></td><td>Replaces all columns and rebuilds the shell. Existing cards whose <code>column</code> is still present move (same DOM nodes) into the new columns; cards whose column is gone are removed from the board and from <code>.items</code>, and <code>kanban-board:items-changed</code> reports it. Setting an empty array clears the board.</td></tr>
         <tr><td><code>.items</code></td><td><code>{ id, column, ... }[]</code></td><td>Setter runs a keyed diff. <code>id</code> is the key; <code>column</code> selects the target drag-surface. Other fields go to the renderer.</td></tr>
         <tr><td><code>.renderItem</code></td><td><code>(item) =&gt; Element</code></td><td>Optional custom item renderer. Default builds a <code>&lt;work-item&gt;</code> and applies fields via <code>.data</code>.</td></tr>
       </tbody>
@@ -182,7 +161,7 @@ crumbLabel: Web Components
     <code-block language="javascript" show-lines label="Reactive framework integration" data-escape>const board = document.querySelector('kanban-board');
 
 // Wait for the upgrade signal before assigning.
-await new Promise(r =&gt; board.addEventListener('kanban-board:upgraded', r, { once: true }));
+if (!board.hasAttribute('data-upgraded')) await new Promise(r =&gt; board.addEventListener('kanban-board:upgraded', r, { once: true }));
 
 board.columns = [
   { id: 'todo',  label: 'To Do',       wip: 5 },
@@ -210,7 +189,8 @@ board.addEventListener('kanban-board:items-changed', (e) =&gt; {
 
 <section>
     <h2>JSON Data Mode</h2>
-    <p>Set the <code>src</code> attribute to load board data from a JSON URL. Items with <code>storyId</code> fields are rendered as <code>&lt;user-story&gt;</code> elements with persona and action content in slots. All other items are rendered as <code>&lt;article&gt;</code> elements.</p>
+    <p>Set the <code>src</code> attribute to load board data from a JSON URL. The URL is fetched once; <code>kanban-board:ready</code> fires after the data has rendered. Changing <code>src</code> loads the new URL and replaces the board (the request for an older URL is aborted). <code>ready</code> fires once per board; every src load that renders also fires <code>kanban-board:items-changed</code> with <code>source: 'src'</code>, so listen for that to react to later loads. Moving the board in the DOM keeps the loaded cards and does not refetch.</p>
+    <p>Items with a <code>storyId</code>, <code>persona</code>, <code>action</code>, or <code>benefit</code> field are rendered as <code>&lt;user-story&gt;</code> cards: <code>persona</code>, <code>action</code>, and <code>benefit</code> become <code>&lt;span slot="…"&gt;</code> children, <code>title</code> an <code>&lt;h3 slot="title"&gt;</code>, and <code>storyId</code>, <code>priority</code>, <code>status</code>, <code>points</code>, and <code>detail</code> (default <code>minimal</code>) the matching attributes. All other items are rendered as <code>&lt;article class="kb-card"&gt;</code> showing <code>text</code> (or <code>label</code> / <code>title</code>).</p>
 
     <code-block language="json" label="JSON schema">{
   "columns": [
@@ -237,23 +217,22 @@ board.addEventListener('kanban-board:items-changed', (e) =&gt; {
 
 <section>
     <h2>Keyboard Navigation</h2>
-    <p>All keyboard support is provided by the underlying <code>&lt;drag-surface&gt;</code> component:</p>
+    <p>Card keyboard support comes from the underlying <code>&lt;drag-surface&gt;</code>. Each card is one tab stop:</p>
     <ul>
-      <li><kbd>Tab</kbd> to focus a column's drag surface</li>
-      <li><kbd>Space</kbd> or <kbd>Enter</kbd> to grab an item</li>
-      <li><kbd>Up</kbd> / <kbd>Down</kbd> to reorder within a column</li>
-      <li><kbd>Left</kbd> / <kbd>Right</kbd> to transfer between columns</li>
-      <li><kbd>Space</kbd> to drop the item</li>
-      <li><kbd>Escape</kbd> to cancel</li>
+      <li><kbd>Tab</kbd> moves between cards; <kbd>Up</kbd> / <kbd>Down</kbd> move focus within a column</li>
+      <li><kbd>Space</kbd> grabs the focused card (<kbd>Enter</kbd> does too, except on a minimal <code>&lt;user-story&gt;</code>, see below)</li>
+      <li>While grabbed: <kbd>Up</kbd> / <kbd>Down</kbd> reorder within the column, <kbd>Left</kbd> / <kbd>Right</kbd> move the card to the previous / next column</li>
+      <li><kbd>Space</kbd> or <kbd>Enter</kbd> drops the card; <kbd>Escape</kbd> cancels and puts it back</li>
     </ul>
+    <p>A minimal <code>&lt;user-story&gt;</code> card (as in the demo above) keeps its own action: <kbd>Enter</kbd> opens its detail dialog and <kbd>Space</kbd> grabs it. A click opens the dialog too.</p>
 </section>
 
 <section>
     <h2>Accessibility</h2>
     <ul>
-      <li>The columns container has <code>role="region"</code> with <code>aria-label="Kanban board"</code></li>
-      <li>Each drag-surface has an <code>aria-label</code> matching the column label</li>
-      <li>A visually hidden live region announces all transfers for screen readers</li>
+      <li>The columns container has <code>role="region"</code>, labelled by the <code>title</code> attribute (or "Kanban board" when there is none)</li>
+      <li>Each drag-surface has an <code>aria-label</code> of the column label plus "items" (e.g. "Backlog items")</li>
+      <li>A visually hidden live region announces transfers between columns using the card's text and the column labels (e.g. "Wire auth moved from To Do to In Progress")</li>
       <li>Count badges use <code>&lt;output&gt;</code> elements for live value updates</li>
       <li>Respects <code>prefers-reduced-motion: reduce</code></li>
     </ul>

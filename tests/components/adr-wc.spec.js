@@ -12,6 +12,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { openUpgradePage, recordedEvents, moveElement } from './helpers/upgrade-page.js';
 
 const demoPage = 'demos/adr-wc-basic/';
 
@@ -69,7 +70,7 @@ test.describe('adr-wc', () => {
     expect(state[2].links).toEqual([]);
   });
 
-  test('changing status / detail attributes re-renders and re-fires adr-wc:ready', async ({ page }) => {
+  test('changing status / detail attributes re-renders without re-firing adr-wc:ready', async ({ page }) => {
     await page.goto(demoPage);
     await page.waitForSelector('adr-wc[data-upgraded]');
 
@@ -99,6 +100,7 @@ test.describe('adr-wc', () => {
         afterStatus,
         minimalRendered: !!minimalCard,
         minimalTabbable: minimalCard?.getAttribute('tabindex'),
+        minimalFocusable: minimalCard?.matches(':is(a, button, [tabindex])'),
         minimalHasSections,
         fallbackStatus,
         backToFull,
@@ -108,20 +110,17 @@ test.describe('adr-wc', () => {
 
     expect(result.afterStatus).toBe('Accepted');
     expect(result.minimalRendered).toBe(true);
-    expect(result.minimalTabbable).toBe('0');
+    // The minimal card has no action, so it is not a tab stop.
+    expect(result.minimalTabbable).toBeNull();
+    expect(result.minimalFocusable).toBe(false);
     expect(result.minimalHasSections).toBe(false);
     expect(result.fallbackStatus).toBe('Proposed');
     expect(result.backToFull).toBe(true);
     expect(result.statusProp).toBe('bogus');
 
-    // Only the full/compact render path dispatches ready — the minimal
-    // branch returns early — so of the four attribute changes only the
-    // two that produced a full render fire (status=accepted, then the
-    // return to full detail while status=bogus).
-    expect(result.ready).toEqual([
-      { adrId: 'ADR-003', title: 'Adopt event sourcing for audit trail', status: 'accepted' },
-      { adrId: 'ADR-003', title: 'Adopt event sourcing for audit trail', status: 'bogus' },
-    ]);
+    // adr-wc:ready fires once per element, after its first render;
+    // attribute changes re-render but never re-fire it.
+    expect(result.ready).toEqual([]);
   });
 
   test('compact detail marks empty slot sections with data-empty', async ({ page }) => {
@@ -233,5 +232,63 @@ test.describe('adr-wc', () => {
     });
     expect(result.getter.supersededBy).toBeUndefined();
     expect(result.getter.supersedes).toEqual(['ADR-001', 'ADR-002']);
+  });
+});
+
+test.describe('adr-wc — src, lifecycle and regressions', () => {
+  // West of UTC, new Date('2026-04-01') is March 31 local time.
+  test.use({ timezoneId: 'America/Los_Angeles', locale: 'en-US' });
+
+  const EVENTS = ['adr-wc:ready', 'adr-wc:upgraded'];
+  const record = {
+    adrId: 'ADR-042', status: 'accepted', title: 'Adopt calendar dates', date: '2026-04-01',
+    context: 'Dates drifted.', decision: 'Parse as local midnight.', consequences: ['Stable dates'],
+  };
+
+  test('src fetches exactly once, fires ready once, and shows the date as April 1', async ({ page }) => {
+    const { requests } = await openUpgradePage(page, {
+      events: EVENTS,
+      fixtures: { 'adr.json': record },
+      body: '<adr-wc id="a1" src="adr.json"></adr-wc>',
+    });
+    await page.waitForFunction(() => window.__events.some(e => e.type === 'adr-wc:ready'));
+    await page.waitForTimeout(100);
+
+    expect(requests['adr.json']).toBe(1);
+    expect(await recordedEvents(page, 'adr-wc:ready')).toEqual([{
+      type: 'adr-wc:ready', id: 'a1',
+      detail: { adrId: 'ADR-042', title: 'Adopt calendar dates', status: 'accepted' },
+    }]);
+    const time = await page.evaluate(() => {
+      const t = document.getElementById('a1').querySelector('time[slot="date"]');
+      return { text: t.textContent, datetime: t.getAttribute('datetime') };
+    });
+    expect(time).toEqual({ text: 'April 1, 2026', datetime: '2026-04-01' });
+  });
+
+  test('moving the element does not refetch, re-render, or re-fire ready', async ({ page }) => {
+    const { requests } = await openUpgradePage(page, {
+      events: EVENTS,
+      fixtures: { 'adr.json': record },
+      body: '<adr-wc id="a1" src="adr.json"></adr-wc>',
+    });
+    await page.waitForFunction(() => window.__events.some(e => e.type === 'adr-wc:ready'));
+
+    const moved = await moveElement(page, '#a1');
+    expect(moved).toEqual({ connected: true, sameNode: true, sameHtml: true, upgraded: true });
+    expect(requests['adr.json']).toBe(1);
+    expect(await recordedEvents(page, 'adr-wc:ready')).toHaveLength(1);
+  });
+
+  test('.data date is a calendar day in every time zone', async ({ page }) => {
+    await page.goto(demoPage);
+    await page.waitForSelector('adr-wc[data-upgraded]');
+    const text = await page.evaluate(() => {
+      const el = document.createElement('adr-wc');
+      document.body.appendChild(el);
+      el.data = { adrId: 'ADR-043', date: '2026-01-01' };
+      return el.querySelector('time[slot="date"]').textContent;
+    });
+    expect(text).toBe('January 1, 2026');
   });
 });

@@ -5,8 +5,8 @@
   "description": "Columnar drag-and-drop board with user-defined columns, count badges, and optional WIP limits",
   "htmlvalidate": { "flow": true, "permittedContent": ["section"] },
   "attributes": [
-    { "name": "src",     "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL to JSON data for columns and items" },
-    { "name": "title",   "kind": "host-api", "purpose": "config", "type": "string",  "description": "Optional heading above the board" },
+    { "name": "src",     "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL to JSON data for columns and items. Fetched once per value; a new value replaces the board and aborts an older in-flight request" },
+    { "name": "title",   "kind": "host-api", "purpose": "config", "type": "string",  "description": "Optional heading above the board; also names the board region" },
     { "name": "compact", "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Reduced spacing variant" }
   ],
   "childAttributes": [
@@ -16,9 +16,11 @@
     { "name": "data-column-color", "on": "section", "type": "string",  "description": "Color token for column tint (success, warning, error, info)" }
   ],
   "events": [
-    { "name": "kanban-board:transfer",     "detail": "{ itemId, fromColumn, toColumn, newIndex, item }",  "description": "Item moved between columns" },
-    { "name": "kanban-board:reorder",      "detail": "{ itemId, column, oldIndex, newIndex }",            "description": "Item reordered within a column" },
-    { "name": "kanban-board:ready",        "detail": "{ columnCount, itemCount }",                        "description": "Fired after component initializes" },
-    { "name": "kanban-board:wip-exceeded", "detail": "{ column, limit, count }",                          "description": "Fired when a column exceeds its WIP limit" }
+    { "name": "kanban-board:transfer",      "detail": "{ itemId, fromColumn, toColumn, newIndex, item }", "description": "Item moved between columns" },
+    { "name": "kanban-board:reorder",       "detail": "{ itemId, column, oldIndex, newIndex }",           "description": "Item reordered within a column" },
+    { "name": "kanban-board:ready",         "detail": "{ columnCount, itemCount }",                       "description": "Fired once after the first render. With src, fired once the JSON has loaded and rendered. Once per element: not re-fired by a later src change (watch items-changed with source 'src') or when the board is moved in the DOM" },
+    { "name": "kanban-board:wip-exceeded",  "detail": "{ column, limit, count }",                         "description": "Fired when a drop takes a column over its WIP limit" },
+    { "name": "kanban-board:items-changed", "detail": "{ items, source: 'api' | 'drag' | 'src' }",        "description": "Fired after the items array changes: an .items assignment, or a .columns assignment that drops cards (source 'api'), a drag (source 'drag'), or each src load once its data has rendered (source 'src'). Filter on source to avoid feedback loops" },
+    { "name": "kanban-board:upgraded",      "detail": "",                                                 "description": "Fired (in a microtask) each time the board connects and upgrades; a safe signal for assigning .columns / .items from a framework" }
   ]
 }

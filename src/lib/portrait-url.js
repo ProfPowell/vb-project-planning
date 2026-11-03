@@ -15,21 +15,10 @@
  * // → 'https://cdn.jsdelivr.net/gh/faker-js/assets-person-portrait/male/256/82.jpg'
  */
 
+import { stringHash } from './hash.js';
+
 const CDN = 'https://cdn.jsdelivr.net/gh/faker-js/assets-person-portrait';
 const SIZES = [32, 64, 128, 256, 512];
-
-/**
- * Simple string hash (same algorithm as _ux-base.js hashColor).
- * @param {string} str
- * @returns {number}
- */
-function hash(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) {
-    h = str.charCodeAt(i) + ((h << 5) - h);
-  }
-  return h;
-}
 
 /**
  * Snap a pixel value to the nearest available portrait size.
@@ -61,27 +50,12 @@ function snapSize(px) {
  * @returns {string} CDN URL for the portrait JPEG
  */
 export function portraitUrl(seed, size = 128) {
-  const h = hash(String(seed));
+  const h = stringHash(String(seed));
   const index = ((h % 100) + 100) % 100;
   const sex = ((h >>> 16) & 1) === 0 ? 'female' : 'male';
   const snapped = snapSize(size);
   return `${CDN}/${sex}/${snapped}/${index}.jpg`;
 }
 
-/**
- * Get a portrait URL by explicit numeric index (0–199).
- * 0–99 = female, 100–199 = male.
- *
- * @param {number} index - Portrait index (0–199)
- * @param {number} [size=128] - Desired image size in px
- * @returns {string} CDN URL
- */
-export function portraitByIndex(index, size = 128) {
-  const i = ((index % 200) + 200) % 200;
-  const sex = i < 100 ? 'female' : 'male';
-  const fileIndex = i < 100 ? i : i - 100;
-  const snapped = snapSize(size);
-  return `${CDN}/${sex}/${snapped}/${fileIndex}.jpg`;
-}
 
 export { SIZES as PORTRAIT_SIZES, CDN as PORTRAIT_CDN };

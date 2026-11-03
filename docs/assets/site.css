@@ -10,7 +10,7 @@
    (plus the @scope'd doc-page chrome in docs.css) — no unlayered footer
    rules here; they'd override VB's layered recipes. */
 
-/* Mobile header: mobile-menu's JS hides sibling <nav>/<site-tools> below its
+/* Mobile header: <mobile-menu>'s JS hides sibling <nav>/<site-tools> below its
    breakpoint, but our primary nav is wrapped in <nav-bar>, which its selector
    misses — so the desktop nav stayed visible and wrapped on phones. Hide it on
    the same signal the JS uses (it sets [data-mobile] when below the breakpoint),

@@ -63,6 +63,44 @@ function walk(dir) {
 walk(to);
 console.log(`Published ${from} -> ${to}${BASE ? ` (base ${BASE})` : ' (no base prefix)'}`);
 
+// Prune the Lucide icon set to the icons the published site can reference.
+// copy-assets.js vendors VB's full set (~1,900 SVGs, ~7.5 MB) so dev builds
+// never miss one, but the site uses a couple of hundred. icon-wc builds names
+// at runtime from data in VB's own scripts (`${item.icon}`), so a template
+// scan isn't enough: keep every Lucide name that appears as a quoted string or
+// name=/data-icon= value anywhere in the published HTML, JS, CSS, or JSON.
+// That over-keeps a little but cannot drop an icon defined in shipped code.
+// The small themed sets (bold, mage, phosphor, tabler, custom) are kept whole;
+// icon-wc falls back to Lucide for names they lack.
+function pruneLucide() {
+  const iconsDir = join(to, 'cdn/icons');
+  const setDir = join(iconsDir, 'lucide');
+  const manifest = join(iconsDir, 'lucide.json');
+  if (!existsSync(setDir) || !existsSync(manifest)) return;
+  const all = new Set(JSON.parse(readFileSync(manifest, 'utf8')));
+  const referenced = new Set();
+  const scan = (dir) => {
+    for (const name of readdirSync(dir)) {
+      const p = join(dir, name);
+      if (p === iconsDir) continue;
+      if (statSync(p).isDirectory()) { scan(p); continue; }
+      if (!/\.(html|js|css|json)$/.test(name)) continue;
+      const text = readFileSync(p, 'utf8');
+      for (const m of text.matchAll(/["'`]([a-z0-9]+(?:-[a-z0-9]+)*)["'`]/g)) if (all.has(m[1])) referenced.add(m[1]);
+      for (const m of text.matchAll(/(?:name|data-icon)=\\?"([a-z0-9-]+)/g)) if (all.has(m[1])) referenced.add(m[1]);
+    }
+  };
+  scan(to);
+  let removed = 0;
+  for (const file of readdirSync(setDir)) {
+    if (!file.endsWith('.svg')) continue;
+    if (!referenced.has(file.slice(0, -4))) { rmSync(join(setDir, file)); removed++; }
+  }
+  writeFileSync(manifest, JSON.stringify([...referenced].sort()));
+  console.log(`Lucide icons: kept ${referenced.size}, pruned ${removed}`);
+}
+pruneLucide();
+
 // Build the Pagefind search index over the published output (powers <site-search>).
 // Runs AFTER the URL rewrites so indexed page URLs match what the browser requests.
 try {

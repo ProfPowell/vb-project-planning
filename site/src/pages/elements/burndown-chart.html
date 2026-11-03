@@ -22,7 +22,7 @@ crumbLabel: Web Components
   <h2>Data source</h2>
   <p>Provide a <code>&lt;template&gt;</code> child whose <code>&lt;tr&gt;</code> rows have these cells in order:</p>
   <ol>
-    <li><strong>date</strong> — ISO 8601 (<code>YYYY-MM-DD</code>)</li>
+    <li><strong>date</strong> — ISO 8601 (<code>YYYY-MM-DD</code>), a calendar day in local time</li>
     <li><strong>remaining</strong> — number of points/items left at end of day</li>
     <li><em>(optional)</em> <strong>±delta</strong> — scope change applied that day (e.g. <code>+5</code> or <code>-2</code>)</li>
   </ol>
@@ -38,12 +38,19 @@ crumbLabel: Web Components
 </burndown-chart>
   </code-block>
 
-  <p>Days with a non-zero 3rd cell are surfaced as a <strong>Scope changes</strong> aside under the chart so the cause of trend reversals is visible at a glance.</p>
+  <p>Days with a non-zero 3rd cell are surfaced as a <strong>Scope changes</strong> aside under the chart so the cause of trend reversals is visible at a glance. Cell text and the <code>unit</code> attribute are rendered as plain text, never parsed as HTML.</p>
+  <p>The day axis has one entry per calendar day from <code>start</code> to <code>end</code> inclusive, stepped by calendar day, so sprints that span a daylight-saving change neither repeat nor drop a day.</p>
 </section>
 
 <section>
   <h2>Attributes</h2>
   {{ attributeTable("burndown-chart", apiRegistry) }}
+  <p>All six attributes are observed. Changing one on a live element re-renders the chart in place; if the new configuration is invalid (for example <code>end</code> before <code>start</code>) the chart is removed and a console warning is logged. An element that refused to upgrade because an attribute was missing upgrades as soon as it is set.</p>
+</section>
+
+<section>
+  <h2>Events</h2>
+  {{ eventsTable("burndown-chart", apiRegistry) }}
 </section>
 
 <section>

@@ -3,7 +3,7 @@
  *
  * Combines the prior _nfr-utils.js (default ilities, default cost
  * weights, validation invariants) with _radar-geometry.js (axis
- * angles, vector/envelope points, SVG builder), with the addition
+ * angles, vector points, SVG builder), with the addition
  * of click-to-edit dialog state helpers.
  *
  * Domain-neutral schema property names are unchanged: vector,
@@ -37,7 +37,7 @@ export const LEVEL_LABELS = Object.freeze({
 });
 
 /** Default cost weights when picking an ility as Critical. Sum = 40. */
-export const DEFAULT_COST_WEIGHTS = Object.freeze({
+const DEFAULT_COST_WEIGHTS = Object.freeze({
   accessibility: 3,
   performance: 5,
   security: 5,
@@ -65,20 +65,6 @@ const ILITY_LABELS = Object.freeze({
   privacy: 'Privacy',
 });
 
-const ILITY_ABBR = Object.freeze({
-  accessibility: 'a11y',
-  internationalization: 'i18n',
-  maintainability: 'maint',
-  observability: 'obs',
-  compatibility: 'compat',
-  portability: 'porta',
-  performance: 'perf',
-  reliability: 'rely',
-  scalability: 'scale',
-  security: 'sec',
-  privacy: 'priv',
-});
-
 const LEVEL_RATIO = Object.freeze({
   critical:       1,
   important:      0.6,
@@ -93,10 +79,6 @@ export function ilityLabel(ility) {
   return String(ility)
     .replace(/[-_]/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase());
-}
-
-export function ilityAbbr(ility) {
-  return ILITY_ABBR[ility] || ility;
 }
 
 // ── Cost weights ──────────────────────────────────────────────────
@@ -213,20 +195,6 @@ export function axisAngles(n) {
   return out;
 }
 
-/**
- * Fraction of `radius` the capacity envelope reaches per axis.
- * Returns null when capacity is unbounded.
- */
-export function envelopeRatio({ costWeights = {}, capacityPoints, ilities }) {
-  if (!Number.isFinite(capacityPoints)) return null;
-  const total = ilities.reduce((s, k) => {
-    const w = Number(costWeights[k]);
-    return s + (Number.isFinite(w) && w > 0 ? w : 0);
-  }, 0);
-  if (total <= 0) return 0;
-  return Math.min(1, Math.max(0, capacityPoints / total));
-}
-
 /** Per-ility {x, y, ility, level} points for the chosen vector. */
 export function vectorPoints({ ilities, vector = {}, radius }) {
   const angles = axisAngles(ilities.length);
@@ -240,18 +208,6 @@ export function vectorPoints({ ilities, vector = {}, radius }) {
       y: round(Math.sin(angles[i]) * radius * ratio),
     };
   });
-}
-
-/** Per-ility {x, y, ility} points for the capacity envelope. */
-export function envelopePoints({ ilities, costWeights, capacityPoints, radius }) {
-  const ratio = envelopeRatio({ costWeights, capacityPoints, ilities });
-  if (ratio == null) return null;
-  const angles = axisAngles(ilities.length);
-  return ilities.map((k, i) => ({
-    ility: k,
-    x: round(Math.cos(angles[i]) * radius * ratio),
-    y: round(Math.sin(angles[i]) * radius * ratio),
-  }));
 }
 
 /** Outer axis endpoints — used for the spoke + label positions. */

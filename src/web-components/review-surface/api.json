@@ -5,7 +5,7 @@
   "description": "Pin-based annotation overlay for design review — wraps any content and adds interactive comment pins with pluggable persistence",
   "htmlvalidate": { "flow": true, "permittedContent": ["@flow"] },
   "attributes": [
-    { "name": "src",           "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL to JSON file containing pin data" },
+    { "name": "src",           "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL to JSON file containing pin data (an array, or { pins }). A newer value aborts an older in-flight request; removing it, or assigning .pins / importPins(), aborts a pending request (removing it mid-load falls back to the adapter)" },
     { "name": "editable",      "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Enables annotate mode toolbar and pin creation" },
     { "name": "adapter",       "kind": "host-api", "purpose": "config", "type": "string",  "description": "Persistence backend: memory | local | rest" },
     { "name": "endpoint",      "kind": "host-api", "purpose": "config", "type": "string",  "description": "REST endpoint URL (when adapter=rest)" },
@@ -19,12 +19,14 @@
     { "name": "(default)", "description": "The content to annotate (any HTML)" }
   ],
   "events": [
-    { "name": "review-surface:ready",   "detail": "{ pinCount }",      "description": "Fired after initial render" },
-    { "name": "review-surface:add",     "detail": "{ pin }",           "description": "Fired when a pin is created" },
-    { "name": "review-surface:update",  "detail": "{ pin, changes }",  "description": "Fired when a pin is modified" },
-    { "name": "review-surface:remove",  "detail": "{ pin }",           "description": "Fired when a pin is deleted" },
-    { "name": "review-surface:resolve", "detail": "{ pin }",           "description": "Fired when a pin is marked resolved" },
-    { "name": "review-surface:select",  "detail": "{ pin }",           "description": "Fired when a pin popover is opened" },
-    { "name": "review-surface:mode",    "detail": "{ mode }",          "description": "Fired when view/annotate mode toggles" }
+    { "name": "review-surface:upgraded",     "detail": "—",                            "description": "Fired once, on first connect, after the adapter is resolved and before the initial pin load. Not re-fired when the element is moved." },
+    { "name": "review-surface:ready",        "detail": "{ pinCount }",                 "description": "Fired once, after the initial pins (from src, the adapter, or a pre-connect .pins assignment) have loaded and rendered. Not re-fired on later renders." },
+    { "name": "review-surface:add",          "detail": "{ pin }",                      "description": "Fired when a pin is created (annotate-mode click or addPin())" },
+    { "name": "review-surface:update",       "detail": "{ pin, changes }",             "description": "Fired when a pin is modified (reply added, text set, re-opened)" },
+    { "name": "review-surface:remove",       "detail": "{ pin }",                      "description": "Fired when a pin is deleted" },
+    { "name": "review-surface:resolve",      "detail": "{ pin }",                      "description": "Fired when a pin is marked resolved" },
+    { "name": "review-surface:select",       "detail": "{ pin }",                      "description": "Fired when a pin popover is opened" },
+    { "name": "review-surface:mode",         "detail": "{ mode: 'view' | 'annotate' }", "description": "Fired when view/annotate mode toggles" },
+    { "name": "review-surface:pins-changed", "detail": "{ pins, source: 'property' }", "description": "Fired after a .pins assignment (not for adapter loads or addPin())" }
   ]
 }

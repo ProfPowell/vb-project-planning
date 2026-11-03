@@ -92,13 +92,15 @@ With JavaScript:
 
 | Event | Detail | Description |
 |-------|--------|-------------|
-| `review-surface:ready` | `{ pinCount }` | After render |
+| `review-surface:upgraded` | — | Once, on first connect |
+| `review-surface:ready` | `{ pinCount }` | Once, after the initial pins render |
 | `review-surface:add` | `{ pin }` | Pin created |
 | `review-surface:update` | `{ pin, changes }` | Pin modified |
 | `review-surface:remove` | `{ pin }` | Pin deleted |
 | `review-surface:resolve` | `{ pin }` | Pin resolved |
 | `review-surface:select` | `{ pin }` | Popover opened |
 | `review-surface:mode` | `{ mode }` | Mode toggled |
+| `review-surface:pins-changed` | `{ pins, source }` | After `.pins` assignment |
 
 ## Adapters
 
@@ -121,22 +123,24 @@ Set via property:
 ```js
 document.querySelector('review-surface').adapter = myCustomAdapter;
 ```
-Must implement: `load()`, `save(pin)`, `update(id, changes)`, `remove(id)`.
+Must implement: `load()`, `save(pin)`, `update(id, changes, pin)`, `remove(id)`.
+`update` receives the component's full pin as a third argument so it can
+upsert pins it did not create (loaded via `src` or `.pins`).
 
 ## Failure Modes
 
 - **No JavaScript:** Child content renders normally; pins are not shown.
 - **No CSS:** Shadow DOM styles are self-contained; layout degrades gracefully.
-- **Keyboard Only:** Tab navigates pins; Enter opens popover; Escape closes.
+- **Keyboard Only:** Tab navigates pins; Enter opens popover (focus moves into it); Escape closes and returns focus to the pin.
 - **Screen Reader:** Pin markers announced as "Pin N: [text preview]";
   live region announces create/delete/resolve actions.
 
 ## Accessibility
 
-- Pin markers are `<button>` with `aria-label`, `aria-expanded`, `aria-haspopup="dialog"`
+- Pin markers are `<button>` with `aria-label`, `aria-expanded`, `aria-haspopup="dialog"`, inside a `role="group"` overlay labelled "Review pins"
 - Popover uses `role="dialog"` with `aria-labelledby`
 - Toolbar uses `role="toolbar"` with `aria-label`
-- `aria-live="polite"` region announces pin actions
+- One persistent `aria-live="polite"` region announces pin actions
 - All transitions respect `prefers-reduced-motion: reduce`
 
 ## CSS Tokens

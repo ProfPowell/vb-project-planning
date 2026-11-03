@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" data-page="docs" data-fluid="" data-sticky="" data-icon-path="/vb-project-planning/cdn/icons">
 <head>
   <meta charset="utf-8">
@@ -85,10 +85,10 @@
 
   <title>product-roadmap — VB Project Planning</title>
   <meta name="description" content="Interactive themes × quarters product roadmap. Auto-discovers lane sections + initiative articles; editable mode wires drag-to-reschedule, drag-to-resize, and drop-on-lane.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw01un2o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw08x8py">
   
 </head>
 <body style="overflow-x: clip;">
@@ -99,7 +99,7 @@
     <nav class="horizontal pills">
       <ul>
         <li><a href="/vb-project-planning/" data-nav-link="">Home</a></li>
-        <li><a class="active-parent" href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
+        <li><a href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
         <li><a href="/vb-project-planning/demos/" data-nav-link="">Demos</a></li>
         <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
         <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
@@ -141,7 +141,7 @@
           <strong class="mobile-section-title">Pages</strong>
           <ul>
             <li><a href="/vb-project-planning/">Home</a></li>
-            <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+            <li><a href="/vb-project-planning/elements/">Elements</a></li>
             <li><a href="/vb-project-planning/demos/">Demos</a></li>
             <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
             <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
@@ -170,7 +170,7 @@
         <label for="nav-drawer-toggle" class="nav-drawer-close" aria-label="Close navigation">
           <icon-wc name="x"></icon-wc>
         </label>
-        <p class="sidebar-title"><a class="active-parent" href="/vb-project-planning/elements/">All elements</a></p>
+        <p class="sidebar-title"><a href="/vb-project-planning/elements/">All elements</a></p>
 
 <ul>
   <li><a href="/vb-project-planning/elements/adr-wc/">adr-wc</a></li>
@@ -181,7 +181,7 @@
   <li><a href="/vb-project-planning/elements/impact-effort/">impact-effort</a></li>
   <li><a href="/vb-project-planning/elements/iron-triangle/">iron-triangle</a></li>
   <li><a href="/vb-project-planning/elements/kanban-board/">kanban-board</a></li>
-  <li><a class="active" href="/vb-project-planning/elements/product-roadmap/">product-roadmap</a></li>
+  <li><a href="/vb-project-planning/elements/product-roadmap/">product-roadmap</a></li>
   <li><a href="/vb-project-planning/elements/quadrant-grid/">quadrant-grid</a></li>
   <li><a href="/vb-project-planning/elements/quality-target/">quality-target</a></li>
   <li><a href="/vb-project-planning/elements/requirement-card/">requirement-card</a></li>
@@ -210,7 +210,7 @@
           <nav class="breadcrumb" aria-label="Breadcrumb" data-pagefind-ignore="">
             <ol>
               <li><a href="/vb-project-planning/">Home</a></li>
-              <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+              <li><a href="/vb-project-planning/elements/">Elements</a></li>
               <li><span aria-current="page">product-roadmap</span></li>
             </ol>
           </nav>
@@ -733,26 +733,27 @@
 &lt;/product-roadmap&gt;</textarea></code-block>
 
   <p>Dates accept <strong>ISO 8601</strong> (<code>2026-07-01</code>) or <strong>quarter shorthand</strong> (<code>2026-Q3</code>). For <code>data-end</code>, quarter shorthand resolves to the last day of the quarter.</p>
+  <p>Every end date is <strong>inclusive</strong> — the host's <code>end</code> and each initiative's <code>data-end</code>. <code>data-start="2026-Q3" data-end="2026-Q3"</code> covers July 1 – September 30, and an initiative whose <code>data-start</code> equals its <code>data-end</code> is drawn as a one-day bar. Dates are calendar days in the viewer's local time zone.</p>
 </section>
 
 <section>
   <h2>Attributes</h2>
   <table class="props-table"><thead><tr><th>Attribute</th><th>Values</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>start</code></td><td>string</td><td>—</td><td>First date in the range (ISO 8601 or "YYYY-Qn"; required)</td></tr>
 <tr><td><code>end</code></td><td>string</td><td>—</td><td>Last date in the range (ISO 8601 or "YYYY-Qn"; required, inclusive)</td></tr>
-<tr><td><code>view</code></td><td><code>"quarter"</code>, <code>"month"</code></td><td>—</td><td>Time-axis granularity (default: quarter)</td></tr>
-<tr><td><code>editable</code></td><td>boolean</td><td>—</td><td>Wire drag-to-reschedule, drag-to-resize, and lane drop</td></tr>
+<tr><td><code>view</code></td><td><code>"quarter"</code>, <code>"month"</code></td><td><code>"quarter"</code></td><td>Time-axis granularity (default: quarter)</td></tr>
+<tr><td><code>editable</code></td><td>boolean</td><td>—</td><td>Enable editing: drag a bar (or press ←/→) to reschedule, drag its right edge (or Shift+←/→) to resize, drag onto another lane (or Alt+↑/↓) to move it</td></tr>
 <tr><td><code>today-marker</code></td><td>boolean</td><td>—</td><td>Render a vertical line at today's date if it falls within the range</td></tr></tbody></table>
 
   <h3>Child attributes</h3>
   <table class="props-table"><thead><tr><th>Attribute</th><th>On</th><th>Values</th><th>Description</th></tr></thead><tbody><tr><td><code>data-lane</code></td><td><code>section</code></td><td>string</td><td>Lane name (used as the row label)</td></tr>
-<tr><td><code>data-start</code></td><td><code>article</code></td><td>string</td><td>Initiative start date (ISO 8601 or YYYY-Qn)</td></tr>
-<tr><td><code>data-end</code></td><td><code>article</code></td><td>string</td><td>Initiative end date (ISO 8601 or YYYY-Qn)</td></tr>
-<tr><td><code>data-status</code></td><td><code>article</code></td><td><code>"planned"</code>, <code>"in-progress"</code>, <code>"at-risk"</code>, <code>"shipped"</code>, <code>"blocked"</code></td><td>Status enum; drives bar color</td></tr></tbody></table>
+<tr><td><code>data-start</code></td><td><code>article</code></td><td>string</td><td>Initiative start date (ISO 8601 or YYYY-Qn → first day of the quarter)</td></tr>
+<tr><td><code>data-end</code></td><td><code>article</code></td><td>string</td><td>Initiative end date, inclusive (ISO 8601 or YYYY-Qn → last day of the quarter). Equal to data-start for a one-day initiative</td></tr>
+<tr><td><code>data-status</code></td><td><code>article</code></td><td><code>"planned"</code>, <code>"in-progress"</code>, <code>"at-risk"</code>, <code>"shipped"</code>, <code>"blocked"</code></td><td>Status enum; drives the bar colour and a visible status label (custom values are shown as text with the default colour)</td></tr></tbody></table>
 </section>
 
 <section>
-  <h2>Status colors</h2>
-  <p>Set <code>data-status</code> on each initiative to drive the bar color. Recognized values:</p>
+  <h2>Status</h2>
+  <p>Set <code>data-status</code> on each initiative. The status is shown as a text label inside the bar and included in the bar's accessible name; the colour is an additional cue, never the only one. Recognized values and their colours:</p>
   <ul>
     <li><code>planned</code> — info blue</li>
     <li><code>in-progress</code> — accent</li>
@@ -760,20 +761,39 @@
     <li><code>shipped</code> — success green</li>
     <li><code>blocked</code> — danger red</li>
   </ul>
-  <p>Custom statuses fall back to the default accent. Override <code>--color-accent</code> or per-status tokens to retheme.</p>
+  <p>Custom statuses are shown as text with the default accent colour. Override <code>--color-accent</code> or per-status tokens to retheme.</p>
 </section>
 
 <section>
   <h2>Editable mode</h2>
-  <p>Add the <code>editable</code> attribute to enable interactive editing:</p>
+  <p>Add the <code>editable</code> attribute to enable interactive editing. A press that moves less than 4&#160;px is a click; only a real drag changes dates.</p>
   <ul>
-    <li><strong>Drag bar body</strong> → snaps to the nearest quarter (or month, if <code>view="month"</code>); fires <code>product-roadmap:reschedule</code>; updates <code>data-start</code>/<code>data-end</code> on both the rendered bar AND the source <code>&lt;article&gt;</code>.</li>
-    <li><strong>Drag right edge</strong> → resizes the end date; fires <code>product-roadmap:resize</code>.</li>
-    <li><strong>Drag onto another lane</strong> → moves the source <code>&lt;article&gt;</code>; fires <code>product-roadmap:move</code>.</li>
-    <li><strong>Click bar</strong> → fires <code>product-roadmap:select</code> with full detail.</li>
+    <li><strong>Drag bar body</strong> (or <kbd>←</kbd>/<kbd>→</kbd> on a focused bar) → both ends snap to the nearest quarter boundary (or month, if <code>view="month"</code>); fires <code>product-roadmap:reschedule</code>; writes ISO <code>data-start</code>/<code>data-end</code> (inclusive end, e.g. <code>2027-03-31</code>) to the source <code>&lt;article&gt;</code>.</li>
+    <li><strong>Drag right edge</strong> (or <kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd>) → the end snaps to the last day of the nearest period, never shorter than one period; fires <code>product-roadmap:resize</code>.</li>
+    <li><strong>Drag onto another lane</strong> (or <kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd>) → moves the source <code>&lt;article&gt;</code> into that <code>&lt;section data-lane&gt;</code>; fires <code>product-roadmap:move</code>. If the same drag also changed the dates, <code>reschedule</code> fires first.</li>
+    <li><strong>Click bar</strong> (or <kbd>Enter</kbd>/<kbd>Space</kbd>) → fires <code>product-roadmap:select</code> with full detail. Works in read-only mode too.</li>
   </ul>
+  <p>A drag that snaps back to the original dates and lane fires nothing.</p>
 
   <browser-window url="product-roadmap-editable" src="/vb-project-planning/demos/product-roadmap-editable/"></browser-window>
+</section>
+
+<section>
+  <h2>Events</h2>
+  <table class="props-table"><thead><tr><th>Event</th><th>Detail</th><th>Description</th></tr></thead><tbody><tr><td><code>product-roadmap:select</code></td><td><code>{ initiative, lane, start, end, status }</code></td><td>Fired when a bar is clicked or activated with Enter/Space. start/end are inclusive YYYY-MM-DD</td></tr>
+<tr><td><code>product-roadmap:reschedule</code></td><td><code>{ initiative, lane, start, end }</code></td><td>Fired when a drag along the time axis (or ←/→ in editable mode) changes the dates. Both ends snap to the nearest period boundary; end is inclusive (e.g. 2027-03-31). Not fired when a drag snaps back to the same dates</td></tr>
+<tr><td><code>product-roadmap:resize</code></td><td><code>{ initiative, lane, start, end }</code></td><td>Fired when dragging the right edge (or Shift+←/→) changes the end date; the end snaps to the last day of the nearest period, never shorter than one period</td></tr>
+<tr><td><code>product-roadmap:move</code></td><td><code>{ initiative, fromLane, toLane, start, end }</code></td><td>Fired when a bar is dropped on a different lane (pointer drag or Alt+↑/↓). The source &lt;article&gt; is moved into the target &lt;section data-lane&gt;. If the drag also changed the dates, reschedule fires first</td></tr></tbody></table>
+</section>
+
+<section>
+  <h2>Accessibility</h2>
+  <ul>
+    <li>Each bar is a focusable <code>role="button"</code> whose accessible name gives the title, dates, lane and status (e.g. “iOS rewrite — July 1, 2026 to March 31, 2027 in Mobile, status: at risk”). <kbd>Enter</kbd> or <kbd>Space</kbd> selects it.</li>
+    <li>Status is shown as visible text, not by colour alone.</li>
+    <li>In editable mode every pointer edit has a keyboard equivalent (see above); the bars reference a visually hidden description of the keys, and changes are announced through a polite live region. Focus stays on the edited bar.</li>
+    <li>The resize handle is a pointer-only target and is hidden from assistive technology; <kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd> is its keyboard equivalent.</li>
+  </ul>
 </section>
 
 <section>
@@ -786,7 +806,7 @@
   <ol>
     <li><strong>HTML.</strong> Without JS, the component CSS hides source lanes (otherwise <code>&lt;article&gt;</code> headings would flash before upgrade). Authors who need a visible no-JS fallback should render a sibling table or list.</li>
     <li><strong>CSS.</strong> The <code>:not(:defined)</code> selector keeps the host visible pre-upgrade.</li>
-    <li><strong>JS.</strong> Auto-discovers lanes + initiatives, builds the time-axis header, positions bars by date fraction, optionally wires drag-to-reschedule and lane drops.</li>
+    <li><strong>JS.</strong> Auto-discovers lanes + initiatives, builds the time-axis header, positions bars by date fraction, optionally wires pointer and keyboard editing.</li>
   </ol>
 </section>
 
@@ -795,7 +815,7 @@
   <ul>
     <li>Overlapping initiatives in the same lane render stacked (later DOM order on top). Sequence non-overlapping work in a single lane, or split overlapping work into multiple lanes.</li>
     <li>Initiatives whose dates fall entirely outside the visible range are skipped. Initiatives crossing the boundary are clipped.</li>
-    <li>No keyboard shortcuts for drag-to-reschedule yet (use the explicit <code>data-start</code>/<code>data-end</code> attributes for screen-reader-driven editing).</li>
+    <li>Edits write ISO dates back to the source <code>&lt;article&gt;</code>; quarter shorthand is not preserved after an edit.</li>
   </ul>
 </section>
 
@@ -827,7 +847,7 @@
     <span>Part of the <a href="https://vanilla-breeze.com">Vanilla Breeze</a> ecosystem</span>
   </site-legal>
   <nav aria-label="Footer links">
-    <a class="active-parent" href="/vb-project-planning/elements/">Elements</a>
+    <a href="/vb-project-planning/elements/">Elements</a>
     <a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">
       <icon-wc name="github" size="sm"></icon-wc> GitHub
     </a>
@@ -859,10 +879,10 @@
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw01un2o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw08x8py"></script>
   
 </body>
 </html>

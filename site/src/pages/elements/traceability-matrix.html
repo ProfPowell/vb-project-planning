@@ -14,7 +14,7 @@ crumbLabel: Web Components
   <h2>Overview</h2>
   <p>The <code>&lt;traceability-matrix&gt;</code> component renders the canonical Requirements Traceability Matrix (RTM) shape — rows × columns at-a-glance — by auto-discovering source elements on the page. Use it to verify coverage between personas and stories, stories and work items, requirements and tests, or any other cross-cutting relationship in a planning artifact graph.</p>
 
-  <p>It composes <code>&lt;data-table&gt;</code> so the rendered grid is sortable and styleable, and adds two things data-table can't: <strong>auto-discovery</strong> (you give it CSS selectors, not hand-built rows) and <strong>chain highlight</strong> (clicking a cell marks the row and column source elements page-wide so authors can see the connection in surrounding components).</p>
+  <p>It composes <code>&lt;data-table&gt;</code> so the rendered grid is sortable and styleable, and adds two things data-table can't: <strong>auto-discovery</strong> (you give it CSS selectors, not hand-built rows) and <strong>chain highlight</strong> (activating a cell marks the row and column source elements page-wide so authors can see the connection in surrounding components).</p>
 
   <browser-window url="traceability-matrix" src="/demos/traceability-matrix-basic/"></browser-window>
 </section>
@@ -23,7 +23,7 @@ crumbLabel: Web Components
   <h2>How it works</h2>
   <ol>
     <li><strong>Author CSS selectors</strong> for the row and column source elements (e.g. <code>rows='[data-row-kind="story"]'</code>, <code>cols='[data-row-kind="persona"]'</code>).</li>
-    <li><strong>Name the link attribute</strong> with <code>link-attr</code>. The component reads each row element's value(s) and matches against the column elements' <code>id</code>.</li>
+    <li><strong>Name the link attribute</strong> with <code>link-attr</code>. The component reads each row element's value(s) and matches them against each column element's <code>id</code>, <code>story-id</code> (<code>&lt;user-story&gt;</code>) or <code>item-id</code> (<code>&lt;work-item&gt;</code>). Set <code>match-attr</code> to match one specific attribute instead (e.g. <code>match-attr="data-req"</code>).</li>
     <li><strong>Comma-separated values</strong> are supported out of the box — <code>data-persona-id="p-sarah,p-jordan"</code> renders two checkmarks.</li>
     <li><strong>Orphan flagging</strong> — set <code>flag-orphans</code> to mark empty rows and columns with <code>data-orphan</code> so CSS can call them out (the default style adds a ⚠ glyph).</li>
   </ol>
@@ -35,6 +35,11 @@ crumbLabel: Web Components
 
   <h3>Child attributes</h3>
   {{ childAttributeTable("traceability-matrix", apiRegistry) }}
+</section>
+
+<section>
+  <h2>Events</h2>
+  {{ eventsTable("traceability-matrix", apiRegistry) }}
 </section>
 
 <section>
@@ -61,7 +66,7 @@ crumbLabel: Web Components
 
 <section>
   <h2>Story × Work-item example</h2>
-  <p>Native VB elements work too — point at <code>&lt;user-story&gt;</code> / <code>&lt;work-item&gt;</code> directly:</p>
+  <p>Pack elements work too — point at <code>&lt;user-story&gt;</code> / <code>&lt;work-item&gt;</code> directly. A work item's <code>story-ids</code> are matched against each story's <code>story-id</code>, so the stories don't need a matching <code>id</code>:</p>
   <code-block language="html" data-escape>
 <traceability-matrix
   rows="work-item"
@@ -70,20 +75,25 @@ crumbLabel: Web Components
   label="Work item ↔ story"
   row-label="Work item">
 </traceability-matrix>
+
+<user-story story-id="US-1">…</user-story>
+<user-story story-id="US-2">…</user-story>
+<work-item item-id="WI-7" story-ids="US-1,US-2">…</work-item>
+<work-item item-id="WI-8" story-ids="US-2">…</work-item>
   </code-block>
   <p>The matrix uses <code>data-matrix-label</code> on each source if present, else its <code>id</code>, else its trimmed text content.</p>
 </section>
 
 <section>
   <h2>Chain highlight</h2>
-  <p>Clicking any cell in the matrix toggles <code>data-state-highlighted</code> on:</p>
+  <p>Each matrix cell and row header holds a <code>&lt;button&gt;</code>. Clicking it, or pressing <kbd>Enter</kbd> / <kbd>Space</kbd> while it has focus, toggles <code>data-state-highlighted</code> on:</p>
   <ul>
     <li>the cell itself,</li>
     <li>the matrix row,</li>
     <li>the row source element page-wide,</li>
     <li>the column source element page-wide.</li>
   </ul>
-  <p>The default stylesheet adds an outline to highlighted source elements so authors can scan the page and see the connection. Listen for <code>traceability-matrix:highlight</code> to wire additional behaviour (auto-scroll, side panel, etc.).</p>
+  <p>Only one chain is highlighted at a time; rows and columns without an <code>id</code> highlight too. The highlight is cleared from the page when the matrix is removed. The default stylesheet adds an outline to highlighted source elements so authors can scan the page and see the connection. Listen for <code>traceability-matrix:highlight</code> to wire additional behaviour (auto-scroll, side panel, etc.).</p>
 
   <code-block language="js">
 document.querySelector('traceability-matrix')
@@ -95,11 +105,20 @@ document.querySelector('traceability-matrix')
 </section>
 
 <section>
+  <h2>Accessibility</h2>
+  <ul>
+    <li>Body cells keep <code>aria-label="linked"</code> / <code>"not linked"</code> and contain a button named &ldquo;<em>row</em> × <em>column</em>: linked&rdquo; (or &ldquo;not linked&rdquo;), so the relationship is spoken without relying on the ✓ glyph.</li>
+    <li>Buttons use <code>aria-pressed</code> to report the active highlight; row-header buttons are named &ldquo;Highlight <em>row</em>&rdquo;.</li>
+    <li>Every cell button is a Tab stop, so very large matrices mean many Tab presses.</li>
+  </ul>
+</section>
+
+<section>
   <h2>Progressive Enhancement</h2>
   <ol>
     <li><strong>HTML.</strong> Without JS, the matrix host is empty — auto-discovery is inherently runtime. For no-JS RTMs, render a <code>&lt;data-table&gt;</code> directly with hand-built intersection rows. The matrix component is purely additive.</li>
     <li><strong>CSS.</strong> The :not(:defined) selector keeps the host visible pre-upgrade.</li>
-    <li><strong>JS.</strong> Auto-discovers rows/cols, builds the table, wires chain-highlight clicks, fires <code>traceability-matrix:ready</code>.</li>
+    <li><strong>JS.</strong> Auto-discovers rows/cols, builds the table, wires chain-highlight buttons, fires <code>traceability-matrix:ready</code>.</li>
   </ol>
 </section>
 

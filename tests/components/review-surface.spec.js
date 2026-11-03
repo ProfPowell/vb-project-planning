@@ -54,7 +54,7 @@ test.describe('review-surface', () => {
     expect(state.pinsProp).toEqual([]);
     expect(state.adapterType).toBe('LocalStorageAdapter');
     expect(state.slottedFigure).toBe('FIGURE');
-    expect(state.overlay).toEqual({ role: 'img', aria: 'Review annotation surface', pins: 0 });
+    expect(state.overlay).toEqual({ role: 'group', aria: 'Review pins', pins: 0 });
     expect(state.toolbar).toEqual({ role: 'toolbar', aria: 'Review tools', pressed: 'false', count: '0 pins' });
     expect(state.live).toBe('polite');
     expect(state.annotating).toBe(false);

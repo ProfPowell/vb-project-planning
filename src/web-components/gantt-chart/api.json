@@ -5,16 +5,32 @@
   "description": "HTML-first Gantt chart using native table, progress, and time elements with progressive enhancement to an interactive timeline",
   "htmlvalidate": { "flow": true, "permittedContent": ["@flow"] },
   "attributes": [
-    { "name": "title",             "kind": "host-api", "purpose": "config", "type": "string",  "description": "Chart heading" },
-    { "name": "src",               "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL to JSON task data" },
-    { "name": "view",              "kind": "host-api", "purpose": "config", "type": "string",  "description": "Timeline granularity: auto | day | week | month | quarter" },
+    { "name": "title",             "kind": "host-api", "purpose": "config", "type": "string",  "description": "Chart heading (a src JSON \"title\" sets it)" },
+    { "name": "src",               "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL of JSON task data ({ title?, tasks: [...] }). Fetched once on connect or when the attribute changes; the fetched tasks replace the child table. A newer value aborts an older in-flight request. Skipped on connect when .tasks was already assigned, and an in-flight request is aborted when .tasks is assigned (.tasks takes precedence)" },
+    { "name": "view",              "kind": "host-api", "purpose": "config", "type": "enum", "values": ["auto", "day", "week", "month", "quarter"], "default": "\"auto\"", "description": "Timeline granularity. auto picks day (≤ 3 weeks), week (≤ 90 days), month (≤ 1 year) or quarter" },
     { "name": "show-today",        "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Show vertical today marker line" },
     { "name": "show-progress",     "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Show progress fill inside bars" },
-    { "name": "show-dependencies", "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Draw dependency arrows between tasks" },
-    { "name": "compact",           "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Reduced spacing variant" }
+    { "name": "show-dependencies", "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Draw dependency arrows between tasks (row positions are measured, so compact and grouped charts line up)" },
+    { "name": "compact",           "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Reduced row height and spacing" }
+  ],
+  "structure": [
+    { "element": "<table>", "required": false, "description": "Task source: one <tbody> <tr> per task; first cell is the name, two <time datetime=\"YYYY-MM-DD\"> give start and end, an optional <progress> gives progress. Kept in the DOM, visually hidden, for screen readers and print" }
+  ],
+  "childAttributes": [
+    { "name": "data-task-id",   "on": "tr", "type": "string",  "description": "Unique task identifier (used by data-depends)" },
+    { "name": "data-group",     "on": "tr", "type": "string",  "description": "Swim lane group; with two or more groups each gets a header row" },
+    { "name": "data-depends",   "on": "tr", "type": "string",  "description": "Comma-separated task IDs this task depends on (drawn with show-dependencies)" },
+    { "name": "data-status",    "on": "tr", "type": "enum", "values": ["not-started", "in-progress", "done", "blocked"], "description": "Task status: shown as text in the task list and in the bar's accessible name; also tints the bar" },
+    { "name": "data-assignee",  "on": "tr", "type": "string",  "description": "Assignee name (included in the bar's accessible name)" },
+    { "name": "data-milestone", "on": "tr", "type": "boolean", "description": "Render a diamond marker at the start date instead of a duration bar" },
+    { "name": "data-color",     "on": "tr", "type": "string",  "description": "Custom bar colour (any CSS colour)" },
+    { "name": "data-story-ids", "on": "tr", "type": "string",  "description": "Comma-separated linked user-story IDs (exposed as task.storyIds)" },
+    { "name": "data-item-ids",  "on": "tr", "type": "string",  "description": "Comma-separated linked work-item IDs (exposed as task.itemIds)" }
   ],
   "events": [
-    { "name": "gantt-chart:ready",      "detail": "{ taskCount, dateRange }",  "description": "Fired after initial render" },
-    { "name": "gantt-chart:task-click",  "detail": "{ task }",                  "description": "Fired when a task bar is clicked" }
+    { "name": "gantt-chart:upgraded",      "detail": "", "description": "Once per connect, in a microtask after setup; a safe signal for the first .tasks assignment (fires for an empty chart too)" },
+    { "name": "gantt-chart:ready",         "detail": "{ taskCount, dateRange: { start, end } }", "description": "Once per element: after the first connect render that has tasks (table or .tasks), or else after the first src load. Not re-fired on reconnect or by later src loads (those fire tasks-changed with source 'src'). dateRange values are YYYY-MM-DD" },
+    { "name": "gantt-chart:task-click",    "detail": "{ task }", "description": "When a bar or milestone is clicked or activated with Enter/Space" },
+    { "name": "gantt-chart:tasks-changed", "detail": "{ tasks, source: 'property' | 'src' }", "description": "After .tasks is assigned (source 'property') or src data loads (source 'src'), with the normalized tasks" }
   ]
 }

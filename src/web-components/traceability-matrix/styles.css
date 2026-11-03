@@ -73,8 +73,21 @@ traceability-matrix {
     cursor: default;
   }
 
-  td[data-linked] {
+  /* Each body cell and row header holds a button so chain highlight is
+     keyboard operable (Enter / Space). Reset it to look like cell text. */
+  .tm-cell-btn {
+    all: unset;
+    box-sizing: border-box;
+    display: block;
+    inline-size: 100%;
+    min-block-size: 1.5em;
+    text-align: inherit;
     cursor: pointer;
+  }
+
+  .tm-cell-btn:focus-visible {
+    outline: 2px solid var(--color-accent, oklch(45% 0.18 260));
+    outline-offset: 2px;
   }
 }
 
