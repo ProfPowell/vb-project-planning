@@ -6,6 +6,58 @@ the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-02
+
+### Fixed
+- `quality-target`: the hidden overrun prompt no longer holds a stale
+  "over budget by -N points" string while under budget; it is empty until the
+  selection is actually over, and reads "1 point" in the singular.
+- `quality-target`: validity now reaches `ElementInternals`, so a parent
+  `<form>`'s `checkValidity()` / submit is blocked while a Critical pick lacks
+  its rationale or an over-budget selection lacks its overrun rationale (only
+  the element's own `checkValidity()` reported it before).
+- `quality-target`: `disabled` / `locked` now close the keyboard and
+  programmatic paths too. Axes leave the tab order with `aria-disabled`,
+  `openEditor()` is a no-op, the overrun textarea is disabled, and dialogs keep
+  their disabled controls across re-renders.
+- `quality-target`: generated ids are unique per instance, so several targets on
+  one page keep their labels attached to the right controls. The overrun label
+  and limits now follow later `data-min/max-overrun-rationale` changes.
+- `iron-triangle`: `disabled` / `locked` now close the keyboard and
+  programmatic editing paths too. Vertex targets leave the tab order with
+  `aria-disabled`, `openEditor()` is a no-op, and dialogs built later are
+  disabled as well (before, only mouse input and existing dialogs were off).
+  Under `locked` the centre Quality target now keeps working by mouse and
+  keyboard, so a read-only shape still leads to its quality decision;
+  `disabled` turns it off along with everything else.
+- `iron-triangle`: the centre target's accessible name said "Activate to open
+  the NFR compass"; it now says "the quality decision".
+- `requirement-card`: inside an `<a>` / `<button>` wrapper, the wrapper's
+  keyboard activation now emits `requirement-card:click` (it never reached the
+  card before). A card made focusable with `tabindex` gets `role="button"`
+  unless the author set a role.
+
+### Changed
+- `iron-triangle`: the manual-capacity switch is now a quiet VB `ghost` button.
+  When pressed it reads "Manual capacity: N pts" with an underline, and its
+  accessible name starts with that visible text.
+
+### Removed
+- `quality-target`: the `data-show-envelope` attribute. It was documented but
+  never did anything; the component has no envelope polygon.
+
+### Documentation
+- Reconciled the `quality-target`, `capacity-plan`, and `requirement-card`
+  element pages with the shipped code. quality-target's "Capacity envelope"
+  section is replaced by "Capacity budget" and adds form association, states,
+  and tokens. capacity-plan no longer claims a `data-capacity-points`
+  fallback and documents its states and event detail. requirement-card adds
+  slots, properties, states, CSS parts, and tokens.
+- Replaced leftover `<nfr-compass>` references with `<quality-target>`.
+- The docs site now overlays each component's `api.json` onto
+  `site/data/apiRegistry.js` at prebuild (`site/scripts/sync-api-registry.js`),
+  so attribute and event tables stop drifting from the manifests.
+
 ## [0.2.0] - 2026-11-02
 
 ### Added
@@ -80,6 +132,7 @@ Initial release, decomposed out of `vanilla-breeze` core.
 - `gantt-chart` dependency arrows now render (an invalid `%` unit in the SVG
   path data was silently dropping them).
 
-[Unreleased]: https://github.com/ProfPowell/vb-project-planning/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/ProfPowell/vb-project-planning/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/ProfPowell/vb-project-planning/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/ProfPowell/vb-project-planning/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ProfPowell/vb-project-planning/releases/tag/v0.1.0
