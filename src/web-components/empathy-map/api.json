@@ -5,27 +5,27 @@
   "description": "Four-quadrant empathy map visualization (Says, Thinks, Does, Feels) with optional flip-to-edit interaction",
   "htmlvalidate": { "flow": true, "permittedContent": ["@flow"] },
   "attributes": [
-    { "name": "title",      "kind": "host-api", "purpose": "config", "type": "string",  "description": "Map heading" },
     { "name": "persona",    "kind": "host-api", "purpose": "config", "type": "string",  "description": "Persona name displayed in header" },
-    { "name": "persona-id", "kind": "host-api", "purpose": "config", "type": "string",  "description": "Links to a user-persona element by id" },
-    { "name": "summary",    "kind": "host-api", "purpose": "config", "type": "string",  "description": "One-line description" },
-    { "name": "src",        "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL to JSON file containing quadrant data" },
+    { "name": "persona-id", "kind": "host-api", "purpose": "config", "type": "string",  "description": "Links the persona name to a user-persona element by id" },
+    { "name": "src",        "kind": "host-api", "purpose": "config", "type": "string",  "description": "URL of a JSON record (title, persona, personaId, summary, quadrants, goals, painPoints). Fetched once per value; a newer value aborts the older request." },
     { "name": "editable",   "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Enables flip-to-edit on quadrants" },
     { "name": "compact",    "kind": "host-api", "purpose": "config", "type": "boolean", "description": "Reduced spacing variant" }
   ],
   "slots": [
-    { "name": "title",       "description": "Map heading (slot fallback for attribute)" },
-    { "name": "persona",     "description": "Persona name (slot fallback for attribute)" },
-    { "name": "summary",     "description": "One-line description (slot fallback for attribute)" },
-    { "name": "says",        "description": "Content for the Says quadrant" },
-    { "name": "thinks",      "description": "Content for the Thinks quadrant" },
-    { "name": "does",        "description": "Content for the Does quadrant" },
-    { "name": "feels",       "description": "Content for the Feels quadrant" },
+    { "name": "title",       "description": "Map heading (e.g. <h2>). Defaults to \"Empathy Map\"." },
+    { "name": "summary",     "description": "One-line description (e.g. <p>)" },
+    { "name": "persona",     "description": "Not projected: the text of a slot=\"persona\" child is read as the persona name when the persona attribute is absent" },
+    { "name": "says",        "description": "Content for the Says quadrant (until the quadrant is edited)" },
+    { "name": "thinks",      "description": "Content for the Thinks quadrant (until the quadrant is edited)" },
+    { "name": "does",        "description": "Content for the Does quadrant (until the quadrant is edited)" },
+    { "name": "feels",       "description": "Content for the Feels quadrant (until the quadrant is edited)" },
     { "name": "goals",       "description": "Optional goals summary below the grid" },
     { "name": "pain-points", "description": "Optional pain points summary below the grid" }
   ],
   "events": [
-    { "name": "empathy-map:ready",  "detail": "{ title, persona }",    "description": "Fired after initial render" },
-    { "name": "empathy-map:update", "detail": "{ quadrant, items }", "description": "Fired when quadrant content changes via edit" }
+    { "name": "empathy-map:ready",  "detail": "{ title, persona }",    "description": "Once per element, after the first render. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by later renders or moves." },
+    { "name": "empathy-map:update", "detail": "{ quadrant, items }", "description": "When an open quadrant editor is closed (Done, Escape, or closeQuadrant()). Not fired when no editor is open." },
+    { "name": "empathy-map:upgraded", "detail": "", "description": "Once, in a microtask after first connect. Wait for this before assigning .data from a framework." },
+    { "name": "empathy-map:data-changed", "detail": "{ data, source: 'property' }", "description": "After .data is assigned" }
   ]
 }

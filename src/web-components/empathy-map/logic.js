@@ -24,34 +24,44 @@
  *     "goals": ["goal1"],
  *     "painPoints": ["pain1"]
  *   }
+ *
+ * Title and summary are content: `<h2 slot="title">`, `<p slot="summary">`
+ * (or the `title` / `summary` JSON fields, which create those children).
+ * Once a quadrant has been edited, it renders from the edited items; its
+ * slotted light-DOM content is no longer projected.
+ *
+ * @fires empathy-map:ready        - Once, after the first render (after the src data renders when src is set), detail: { title, persona }
+ * @fires empathy-map:update       - After an edit is committed (Done / Escape / closeQuadrant()), detail: { quadrant, items }
+ * @fires empathy-map:upgraded     - Once, after first connect
+ * @fires empathy-map:data-changed - After .data assignment, detail: { data, source: 'property' }
  */
 
 import { styles } from './styles.js';
 import { registerComponent } from '../../lib/bundle-registry.js';
 import { viewTransitionSwap } from '../../lib/vb-view-transition.js';
-import { esc, QUADRANT_META, EMOTION_META, lucideSvg, UX_ICONS } from '../_ux-base.js';
+import {
+  esc, QUADRANT_META, emotionMeta, isEmotion, lucideSvg, UX_ICONS, UXShadowElement, fillSlot, slottedChild,
+} from '../_ux-base.js';
 
 const QUADRANT_KEYS = ['says', 'thinks', 'does', 'feels'];
 
-class EmpathyMap extends HTMLElement {
+class EmpathyMap extends UXShadowElement {
+  static readyEvent = 'empathy-map:ready';
+
   static get observedAttributes() {
     return ['persona', 'persona-id', 'src', 'editable', 'compact'];
   }
 
-  #slotCache = new Map();
-
-  constructor() {
-    super();
-    this.attachShadow({ mode: 'open' });
-    /** @type {Object<string, string[]>|null} */
-    this.__quadrants = null;
-    /** @type {string[]|null} */
-    this.__goals = null;
-    /** @type {string[]|null} */
-    this.__painPoints = null;
-    /** @type {Set<string>} */
-    this._editingQuadrants = new Set();
-  }
+  /** @type {Object<string, string[]>|null} */
+  __quadrants = null;
+  /** @type {string[]|null} */
+  __goals = null;
+  /** @type {string[]|null} */
+  __painPoints = null;
+  /** @type {Set<string>} quadrants whose editor is open */
+  _editingQuadrants = new Set();
+  /** @type {Set<string>} quadrants edited at least once (render from data, not the slot) */
+  _editedQuadrants = new Set();
 
   /* ── Properties ─────────────────────────────────── */
 
@@ -61,7 +71,7 @@ class EmpathyMap extends HTMLElement {
   /** @param {Object<string, string[]>|null} data */
   set quadrants(data) {
     this.__quadrants = data;
-    if (this.isConnected) this._render();
+    if (this._isSetUp) this._render();
   }
 
   /** @returns {string[]|null} */
@@ -70,7 +80,7 @@ class EmpathyMap extends HTMLElement {
   /** @param {string[]|null} data */
   set goals(data) {
     this.__goals = data;
-    if (this.isConnected) this._render();
+    if (this._isSetUp) this._render();
   }
 
   /** @returns {string[]|null} */
@@ -79,45 +89,20 @@ class EmpathyMap extends HTMLElement {
   /** @param {string[]|null} data */
   set painPoints(data) {
     this.__painPoints = data;
-    if (this.isConnected) this._render();
+    if (this._isSetUp) this._render();
   }
 
-  /* ── Slot caching ───────────────────────────────── */
-
-  #cacheSlotValues() {
-    for (const child of this.children) {
-      const slot = child.getAttribute('slot');
-      if (slot) this.#slotCache.set(slot, child.textContent.trim());
-    }
-  }
-
+  /**
+   * Attribute value, else the text of a same-named light-DOM child (e.g.
+   * `<span slot="persona">`, read as data; it is not projected).
+   * @param {string} attr
+   */
   _resolve(attr) {
-    return this.getAttribute(attr) || this.#slotCache.get(attr) || '';
+    return this.getAttribute(attr) || this._slotCache.get(attr) || '';
   }
 
-  /* ── Lifecycle ─────────────────────────────────── */
-
-  connectedCallback() {
-    this.#cacheSlotValues();
-    this.setAttribute('data-upgraded', '');
-    if (this.hasAttribute('src')) {
-      this._loadSrc(this.getAttribute('src'));
-    } else {
-      this._render();
-    }
-  }
-
-  disconnectedCallback() {
-    this.removeAttribute('data-upgraded');
-  }
-
-  attributeChangedCallback(name) {
-    if (!this.isConnected) return;
-    if (name === 'src') {
-      this._loadSrc(this.getAttribute('src'));
-    } else {
-      this._render();
-    }
+  _readyDetail() {
+    return { title: this._slotText('title') || 'Empathy Map', persona: this._resolve('persona') };
   }
 
   // ── Data API (HTML-first / JS-first dual contract) ──────────────
@@ -127,8 +112,8 @@ class EmpathyMap extends HTMLElement {
    * slotted content. Mirrors what a consumer would assign to .data.
    */
   get data() {
-    const titleEl = this.querySelector('[slot="title"]');
-    const summaryEl = this.querySelector('[slot="summary"]');
+    const titleEl = slottedChild(this, 'title');
+    const summaryEl = slottedChild(this, 'summary');
     return {
       persona: this.getAttribute('persona') || undefined,
       personaId: this.getAttribute('persona-id') || undefined,
@@ -146,29 +131,22 @@ class EmpathyMap extends HTMLElement {
    * Emits empathy-map:data-changed { data, source: 'property' }.
    */
   set data(value) {
-    if (!value || typeof value !== 'object') return;
-    if (value.persona)   this.setAttribute('persona',    String(value.persona));
-    if (value.personaId) this.setAttribute('persona-id', String(value.personaId));
-    if (value.title && !this.querySelector('[slot="title"]')) {
-      const el = document.createElement('h2');
-      el.slot = 'title';
-      el.textContent = value.title;
-      this.appendChild(el);
-    }
-    if (value.summary && !this.querySelector('[slot="summary"]')) {
-      const el = document.createElement('p');
-      el.slot = 'summary';
-      el.textContent = value.summary;
-      this.appendChild(el);
-    }
-    if (value.quadrants  != null) this.__quadrants  = value.quadrants;
-    if (value.goals      != null) this.__goals      = value.goals;
-    if (value.painPoints != null) this.__painPoints = value.painPoints;
-    if (this.isConnected) this._render();
-    this.dispatchEvent(new CustomEvent('empathy-map:data-changed', {
-      detail: { data: this.data, source: 'property' },
-      bubbles: true, composed: true,
-    }));
+    this._setData(value);
+  }
+
+  /**
+   * Apply an empathy-map record (from .data or src). Title / summary create
+   * slotted children only when none are authored.
+   * @param {Record<string, any>} data
+   */
+  _applyData(data) {
+    if (data.persona)   this.setAttribute('persona',    String(data.persona));
+    if (data.personaId) this.setAttribute('persona-id', String(data.personaId));
+    fillSlot(this, 'title', data.title, { tag: 'h2' });
+    fillSlot(this, 'summary', data.summary);
+    if (data.quadrants  != null) this.__quadrants  = data.quadrants;
+    if (data.goals      != null) this.__goals      = data.goals;
+    if (data.painPoints != null) this.__painPoints = data.painPoints;
   }
 
   /* ── Public API ────────────────────────────────── */
@@ -184,7 +162,8 @@ class EmpathyMap extends HTMLElement {
   }
 
   /**
-   * Close a quadrant edit and save.
+   * Close a quadrant edit and save. No-op (and no update event) unless the
+   * quadrant's editor is open.
    * @param {string} name - Quadrant key: says|thinks|does|feels
    */
   closeQuadrant(name) {
@@ -192,41 +171,17 @@ class EmpathyMap extends HTMLElement {
     this._closeEdit(name);
   }
 
-  /* ── JSON loading ──────────────────────────────── */
+  /* ── JSON loading states ───────────────────────── */
 
-  async _loadSrc(src) {
-    if (!src || !this.shadowRoot) return;
-    this.shadowRoot.innerHTML = `<style>${styles}</style>` +
+  _renderLoading() {
+    /** @type {ShadowRoot} */ (this.shadowRoot).innerHTML = `<style>${styles}</style>` +
       `<div class="state-msg">Loading\u2026</div>`;
-    try {
-      const res = await fetch(src);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (data.persona)   this.setAttribute('persona',    data.persona);
-      if (data.personaId) this.setAttribute('persona-id', data.personaId);
-      // Content → slotted elements
-      if (data.title && !this.querySelector('[slot="title"]')) {
-        const el = document.createElement('h2');
-        el.slot = 'title';
-        el.textContent = data.title;
-        this.appendChild(el);
-      }
-      if (data.summary && !this.querySelector('[slot="summary"]')) {
-        const el = document.createElement('p');
-        el.slot = 'summary';
-        el.textContent = data.summary;
-        this.appendChild(el);
-      }
-      this.__quadrants  = data.quadrants || null;
-      this.__goals      = data.goals || null;
-      this.__painPoints = data.painPoints || null;
-      this._render();
-    } catch (err) {
-      if (!this.shadowRoot) return;
-      const msg = err instanceof Error ? err.message : String(err);
-      this.shadowRoot.innerHTML = `<style>${styles}</style>` +
-        `<div class="state-msg state-msg--error">Could not load empathy map: ${esc(msg)}</div>`;
-    }
+  }
+
+  /** @param {Error} err */
+  _renderError(err) {
+    /** @type {ShadowRoot} */ (this.shadowRoot).innerHTML = `<style>${styles}</style>` +
+      `<div class="state-msg state-msg--error">Could not load empathy map: ${esc(err.message)}</div>`;
   }
 
   /* ── Render ────────────────────────────────────── */
@@ -236,11 +191,10 @@ class EmpathyMap extends HTMLElement {
     const personaId = this._resolve('persona-id') || '';
     const compact   = this.hasAttribute('compact');
     const editable  = this.hasAttribute('editable');
-    const hasTitle  = !!this.querySelector('[slot="title"]') || this.#slotCache.has('title');
-    const hasSummary = !!this.querySelector('[slot="summary"]') || this.#slotCache.has('summary');
+    const hasSummary = !!slottedChild(this, 'summary') || this._slotCache.has('summary');
 
-    const hasGoals = this.__goals?.length || this.querySelector('[slot="goals"]');
-    const hasPains = this.__painPoints?.length || this.querySelector('[slot="pain-points"]');
+    const hasGoals = this.__goals?.length || slottedChild(this, 'goals');
+    const hasPains = this.__painPoints?.length || slottedChild(this, 'pain-points');
 
     const html = `<style>${styles}</style>
       <article class="empathy-map${compact ? ' empathy-map--compact' : ''}">
@@ -289,13 +243,6 @@ class EmpathyMap extends HTMLElement {
     } else {
       swap();
     }
-
-    /* Dispatch ready event */
-    this.dispatchEvent(new CustomEvent('empathy-map:ready', {
-      bubbles: true,
-      composed: true,
-      detail: { title: this.querySelector('[slot="title"]')?.textContent?.trim() || 'Empathy Map', persona },
-    }));
   }
 
   /* ── Render quadrant ───────────────────────────── */
@@ -305,10 +252,8 @@ class EmpathyMap extends HTMLElement {
     const items = this.__quadrants?.[key];
     const isEditing = this._editingQuadrants.has(key);
 
-    const frontContent = items && items.length
-      ? (key === 'feels'
-          ? items.map(item => this._renderEmotion(item)).join('')
-          : items.map(item => `<p>${esc(item)}</p>`).join(''))
+    const frontContent = (items && items.length) || this._editedQuadrants.has(key)
+      ? this._quadrantItemsHtml(key)
       : `<slot name="${key}"><p class="placeholder">Add ${meta.label.toLowerCase()} items\u2026</p></slot>`;
 
     const textareaValue = items?.length ? items.join('\n') : '';
@@ -318,7 +263,7 @@ class EmpathyMap extends HTMLElement {
         <div class="quadrant__inner">
           <div class="quadrant__header">
             <div class="quadrant__icon" aria-hidden="true">${lucideSvg(meta.icon)}</div>
-            <span class="quadrant__label">${meta.label}</span>
+            <h3 class="quadrant__label">${meta.label}</h3>
             ${editable ? `<button class="quadrant__edit-btn" data-quadrant="${key}"
               aria-label="Edit ${meta.label}" title="Edit ${meta.label}">${lucideSvg(UX_ICONS.pencil)}</button>` : ''}
           </div>
@@ -342,12 +287,25 @@ class EmpathyMap extends HTMLElement {
       </section>`;
   }
 
+  /**
+   * Front-face markup for a quadrant rendered from data (no slot).
+   * @param {string} key
+   */
+  _quadrantItemsHtml(key) {
+    const items = this.__quadrants?.[key] || [];
+    if (!items.length) {
+      return `<p class="placeholder">Add ${QUADRANT_META[key].label.toLowerCase()} items\u2026</p>`;
+    }
+    return key === 'feels'
+      ? items.map(item => this._renderEmotion(item)).join('')
+      : items.map(item => `<p>${esc(item)}</p>`).join('');
+  }
+
   /* ── Render emotion tag ────────────────────────── */
 
   _renderEmotion(item) {
-    const normalized = item.toLowerCase().trim();
-    const meta = EMOTION_META[normalized];
-    if (meta) {
+    if (isEmotion(item)) {
+      const meta = emotionMeta(item);
       return `<span class="emotion-tag" style="--ec:${meta.color}"><span role="img" aria-label="${esc(item)}">${meta.emoji}</span> ${esc(item)}</span>`;
     }
     return `<p>${esc(item)}</p>`;
@@ -407,10 +365,9 @@ class EmpathyMap extends HTMLElement {
   }
 
   _openEdit(key) {
-    this._editingQuadrants.add(key);
-
     const section = this.shadowRoot?.querySelector(`.quadrant--${key}`);
     if (!section) return;
+    this._editingQuadrants.add(key);
 
     section.setAttribute('data-editing', '');
 
@@ -449,6 +406,7 @@ class EmpathyMap extends HTMLElement {
   }
 
   _closeEdit(key) {
+    if (!this._editingQuadrants.has(key)) return;
     const section = this.shadowRoot?.querySelector(`.quadrant--${key}`);
     if (!section) return;
 
@@ -462,19 +420,12 @@ class EmpathyMap extends HTMLElement {
       /* Ensure __quadrants object exists */
       if (!this.__quadrants) this.__quadrants = {};
       this.__quadrants[key] = items;
+      /* From now on this quadrant renders from data, even when emptied,
+         so later full renders don't resurrect the original slotted items. */
+      this._editedQuadrants.add(key);
 
-      /* Partially re-render front face content */
       const contentEl = section.querySelector('.quadrant__content');
-      if (contentEl) {
-        if (items.length) {
-          contentEl.innerHTML = key === 'feels'
-            ? items.map(item => this._renderEmotion(item)).join('')
-            : items.map(item => `<p>${esc(item)}</p>`).join('');
-        } else {
-          const meta = QUADRANT_META[key];
-          contentEl.innerHTML = `<p class="placeholder">Add ${meta.label.toLowerCase()} items\u2026</p>`;
-        }
-      }
+      if (contentEl) contentEl.innerHTML = this._quadrantItemsHtml(key);
     }
 
     this._editingQuadrants.delete(key);
@@ -482,6 +433,12 @@ class EmpathyMap extends HTMLElement {
 
     const front = section.querySelector('.quadrant__face--front');
     const back  = section.querySelector('.quadrant__face--back');
+    /* Move focus out of the face that is about to become inert, back to
+       the quadrant's edit button, so it doesn't fall to <body>. */
+    const active = this.shadowRoot?.activeElement;
+    if (back && active && back.contains(active)) {
+      /** @type {HTMLElement | null} */ (section.querySelector('.quadrant__edit-btn'))?.focus();
+    }
     if (front) front.removeAttribute('inert');
     if (back)  back.setAttribute('inert', '');
 
