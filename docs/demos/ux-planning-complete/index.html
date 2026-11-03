@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Taskflow — Complete UX Planning Demo</title>
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0y5hfk">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0y5hfk">
-  <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js?v=mw0y5hfk"></script>
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw0yifc1">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw0yifc1">
+  <script type="module" src="/vb-project-planning/assets/vendor/drag-surface.js?v=mw0yifc1"></script>
   <style>
     body {
       padding: 0;
@@ -55,7 +55,7 @@
     section > h3 { margin-block: var(--size-s) var(--size-xs); }
     .card-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
       gap: var(--size-m);
     }
     .card-row {
@@ -63,7 +63,7 @@
       flex-wrap: wrap;
       gap: var(--size-m);
     }
-    .card-row > * { flex: 1; min-width: 280px; }
+    .card-row > * { flex: 1; min-width: min(280px, 100%); }
     hr { border: none; border-top: 1px solid var(--color-border); margin: var(--size-xl) 0; }
     .phase-label {
       display: inline-block;
@@ -488,6 +488,6 @@
 
   </main>
 
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0y5hfk"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw0yifc1"></script>
 </body>
 </html>
