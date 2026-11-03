@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" data-page="docs" data-fluid="" data-sticky="" data-icon-path="/vb-project-planning/cdn/icons">
 <head>
   <meta charset="utf-8">
@@ -85,10 +85,10 @@
 
   <title>story-map — VB Project Planning</title>
   <meta name="description" content="Horizontal user story map with activity columns and drag-and-drop between columns.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw01un2o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw08x8py">
   
 </head>
 <body style="overflow-x: clip;">
@@ -99,7 +99,7 @@
     <nav class="horizontal pills">
       <ul>
         <li><a href="/vb-project-planning/" data-nav-link="">Home</a></li>
-        <li><a class="active-parent" href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
+        <li><a href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
         <li><a href="/vb-project-planning/demos/" data-nav-link="">Demos</a></li>
         <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
         <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
@@ -141,7 +141,7 @@
           <strong class="mobile-section-title">Pages</strong>
           <ul>
             <li><a href="/vb-project-planning/">Home</a></li>
-            <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+            <li><a href="/vb-project-planning/elements/">Elements</a></li>
             <li><a href="/vb-project-planning/demos/">Demos</a></li>
             <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
             <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
@@ -170,7 +170,7 @@
         <label for="nav-drawer-toggle" class="nav-drawer-close" aria-label="Close navigation">
           <icon-wc name="x"></icon-wc>
         </label>
-        <p class="sidebar-title"><a class="active-parent" href="/vb-project-planning/elements/">All elements</a></p>
+        <p class="sidebar-title"><a href="/vb-project-planning/elements/">All elements</a></p>
 
 <ul>
   <li><a href="/vb-project-planning/elements/adr-wc/">adr-wc</a></li>
@@ -187,7 +187,7 @@
   <li><a href="/vb-project-planning/elements/requirement-card/">requirement-card</a></li>
   <li><a href="/vb-project-planning/elements/review-surface/">review-surface</a></li>
   <li><a href="/vb-project-planning/elements/risk-register/">risk-register</a></li>
-  <li><a class="active" href="/vb-project-planning/elements/story-map/">story-map</a></li>
+  <li><a href="/vb-project-planning/elements/story-map/">story-map</a></li>
   <li><a href="/vb-project-planning/elements/traceability-matrix/">traceability-matrix</a></li>
   <li><a href="/vb-project-planning/elements/user-journey/">user-journey</a></li>
   <li><a href="/vb-project-planning/elements/user-persona/">user-persona</a></li>
@@ -210,7 +210,7 @@
           <nav class="breadcrumb" aria-label="Breadcrumb" data-pagefind-ignore="">
             <ol>
               <li><a href="/vb-project-planning/">Home</a></li>
-              <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+              <li><a href="/vb-project-planning/elements/">Elements</a></li>
               <li><span aria-current="page">story-map</span></li>
             </ol>
           </nav>
@@ -737,36 +737,9 @@
 
   <section>
     <h2>Attributes</h2>
-    <table class="props-table">
-      <thead>
-        <tr>
-          <th>Attribute</th>
-          <th>Type</th>
-          <th>Default</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>src</code></td>
-          <td>string (URL)</td>
-          <td>—</td>
-          <td>Path to a JSON file containing activity and story data</td>
-        </tr>
-        <tr>
-          <td><code>compact</code></td>
-          <td>boolean</td>
-          <td>—</td>
-          <td>Reduces column widths, padding, and header font sizes for denser layouts</td>
-        </tr>
-        <tr>
-          <td><code>title</code></td>
-          <td>string</td>
-          <td>—</td>
-          <td>Optional heading displayed above the story map</td>
-        </tr>
-      </tbody>
-    </table>
+    <table class="props-table"><thead><tr><th>Attribute</th><th>Values</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>src</code></td><td>string</td><td>—</td><td>URL to JSON data with activities and stories. Fetched once per value; a new value replaces the map and aborts an older in-flight request</td></tr>
+<tr><td><code>title</code></td><td>string</td><td>—</td><td>Optional heading above the story map; also names the scroll region</td></tr>
+<tr><td><code>compact</code></td><td>boolean</td><td>—</td><td>Reduces column widths, padding, and header font sizes for denser layouts</td></tr></tbody></table>
   </section>
 
   <section>
@@ -1348,7 +1321,8 @@ map.addEventListener(&#39;story-map:reorder&#39;, (e) =&gt; {
 
   <section>
     <h2>JSON Loading</h2>
-    <p>Load the entire story map from a JSON file using the <code>src</code> attribute. The component creates activity columns with <code>&lt;user-story&gt;</code> cards automatically.</p>
+    <p>Load the entire story map from a JSON file using the <code>src</code> attribute. The component creates activity columns with <code>&lt;user-story&gt;</code> cards automatically: <code>persona</code>, <code>action</code>, and <code>benefit</code> become <code>&lt;span slot="…"&gt;</code> children, <code>title</code> an <code>&lt;h3 slot="title"&gt;</code>, and <code>id</code> / <code>storyId</code>, <code>priority</code>, <code>status</code>, <code>points</code>, and <code>detail</code> (default <code>compact</code>) the matching attributes.</p>
+    <p>The URL is fetched once and <code>story-map:ready</code> fires after the stories have rendered. Changing <code>src</code> loads the new URL and replaces the map (the request for an older URL is aborted). <code>ready</code> fires once per map; every src load also fires <code>story-map:activities-changed</code> with <code>source: 'src'</code> after it renders. Moving the map in the DOM keeps its stories and does not refetch.</p>
 
     <code-block language="html" data-ssr label="Loading from JSON" show-lines><template shadowrootmode="open"><style>
       :host {
@@ -2871,42 +2845,11 @@ map.addEventListener(&#39;story-map:reorder&#39;, (e) =&gt; {
 
   <section>
     <h2>Events</h2>
-    <table class="props-table">
-      <thead>
-        <tr>
-          <th>Event</th>
-          <th>Detail</th>
-          <th>When</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>story-map:reorder</code></td>
-          <td><code>{ itemId, activity, oldIndex, newIndex }</code></td>
-          <td>Fires when an item is reordered within the same activity column</td>
-        </tr>
-        <tr>
-          <td><code>story-map:transfer</code></td>
-          <td><code>{ itemId, fromActivity, toActivity, newIndex }</code></td>
-          <td>Fires when an item is dragged from one activity column to another</td>
-        </tr>
-        <tr>
-          <td><code>story-map:ready</code></td>
-          <td><code>{ activityCount, storyCount }</code></td>
-          <td>Fires after the component initializes with the total number of activity columns and stories</td>
-        </tr>
-        <tr>
-          <td><code>story-map:upgraded</code></td>
-          <td>—</td>
-          <td>Once after first connect. Wait for this before assigning <code>.activities</code> from a framework.</td>
-        </tr>
-        <tr>
-          <td><code>story-map:activities-changed</code></td>
-          <td><code>{ activities, source: 'property' }</code></td>
-          <td>After <code>.activities</code> assignment.</td>
-        </tr>
-      </tbody>
-    </table>
+    <table class="props-table"><thead><tr><th>Event</th><th>Detail</th><th>Description</th></tr></thead><tbody><tr><td><code>story-map:reorder</code></td><td><code>{ itemId, activity, oldIndex, newIndex }</code></td><td>Item reordered within a column</td></tr>
+<tr><td><code>story-map:transfer</code></td><td><code>{ itemId, fromActivity, toActivity, newIndex }</code></td><td>Item moved between columns</td></tr>
+<tr><td><code>story-map:ready</code></td><td><code>{ activityCount, storyCount }</code></td><td>Fired once after the first render. With src, fired once the JSON has loaded and rendered. Once per element: not re-fired by a later src change (watch activities-changed with source 'src') or when the map is moved in the DOM</td></tr>
+<tr><td><code>story-map:activities-changed</code></td><td><code>{ activities, source: 'property' | 'src' }</code></td><td>Fired after each .activities assignment (source 'property') and after each src load has rendered (source 'src')</td></tr>
+<tr><td><code>story-map:upgraded</code></td><td>—</td><td>Fired (in a microtask) each time the map connects and upgrades</td></tr></tbody></table>
   </section>
 
   <section>
@@ -2924,10 +2867,14 @@ map.addEventListener(&#39;story-map:reorder&#39;, (e) =&gt; {
           <td><code>.activities</code></td>
           <td><code>Activity[]</code></td>
           <td>
-            Replace the column structure with an array of activities,
-            each with a <code>{ name, items: [{ itemId, title, ... }] }</code>
-            shape. Whole-map rebuild on assignment; round-trips through
-            the getter.
+            Replace the column structure with an array of activities:
+            <code>{ id, label?, journeyPhase?, stories: [{ id, title?, persona?, action?, benefit?, priority?, status?, points? }] }</code>.
+            Stories render as <code>&lt;user-story&gt;</code> cards (or via an optional
+            <code>.renderStory(story) =&gt; Element</code>). The columns are rebuilt on
+            assignment. The getter returns the same shape in current DOM order
+            (drags included): assigned stories come back as the records you passed,
+            authored <code>&lt;user-story&gt;</code> cards as their <code>.data</code>, so
+            <code>map.activities = map.activities</code> round-trips.
           </td>
         </tr>
       </tbody>
@@ -3415,22 +3362,22 @@ map.addEventListener(&#39;story-map:reorder&#39;, (e) =&gt; {
       </div>
       <div class="code-container" role="region" aria-labelledby="code-label" style="">
         
-        <pre><code class="language-javascript" tabindex="0"><span class="code-line"><span class="hljs-keyword">const</span> map = <span class="hljs-variable language_">document</span>.<span class="hljs-title function_">querySelector</span>(<span class="hljs-string">&#x27;story-map&#x27;</span>);</span><span class="code-line"><span class="hljs-keyword">await</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Promise</span>(r =&amp;gt; map.<span class="hljs-title function_">addEventListener</span>(<span class="hljs-string">&#x27;story-map:upgraded&#x27;</span>, r, { <span class="hljs-attr">once</span>: <span class="hljs-literal">true</span> }));</span><span class="code-line">map.<span class="hljs-property">activities</span> = [</span><span class="code-line">  { <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;Discover&#x27;</span>,  <span class="hljs-attr">items</span>: [{ <span class="hljs-attr">itemId</span>: <span class="hljs-string">&#x27;PROJ-1&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;Browse landing&#x27;</span> }] },</span><span class="code-line">  { <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;Onboard&#x27;</span>,   <span class="hljs-attr">items</span>: [{ <span class="hljs-attr">itemId</span>: <span class="hljs-string">&#x27;PROJ-2&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;Sign up&#x27;</span> }] },</span><span class="code-line">];</span></code></pre>
+        <pre><code class="language-javascript" tabindex="0"><span class="code-line"><span class="hljs-keyword">const</span> map = <span class="hljs-variable language_">document</span>.<span class="hljs-title function_">querySelector</span>(<span class="hljs-string">&#x27;story-map&#x27;</span>);</span><span class="code-line"><span class="hljs-keyword">if</span> (!map.<span class="hljs-title function_">hasAttribute</span>(<span class="hljs-string">&#x27;data-upgraded&#x27;</span>)) <span class="hljs-keyword">await</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Promise</span>(r =&amp;gt; map.<span class="hljs-title function_">addEventListener</span>(<span class="hljs-string">&#x27;story-map:upgraded&#x27;</span>, r, { <span class="hljs-attr">once</span>: <span class="hljs-literal">true</span> }));</span><span class="code-line">map.<span class="hljs-property">activities</span> = [</span><span class="code-line">  { <span class="hljs-attr">id</span>: <span class="hljs-string">&#x27;discover&#x27;</span>, <span class="hljs-attr">label</span>: <span class="hljs-string">&#x27;Discover&#x27;</span>, <span class="hljs-attr">stories</span>: [{ <span class="hljs-attr">id</span>: <span class="hljs-string">&#x27;PROJ-1&#x27;</span>, <span class="hljs-attr">title</span>: <span class="hljs-string">&#x27;Browse landing&#x27;</span> }] },</span><span class="code-line">  { <span class="hljs-attr">id</span>: <span class="hljs-string">&#x27;onboard&#x27;</span>,  <span class="hljs-attr">label</span>: <span class="hljs-string">&#x27;Onboard&#x27;</span>,  <span class="hljs-attr">stories</span>: [{ <span class="hljs-attr">id</span>: <span class="hljs-string">&#x27;PROJ-2&#x27;</span>, <span class="hljs-attr">persona</span>: <span class="hljs-string">&#x27;Visitor&#x27;</span>, <span class="hljs-attr">action</span>: <span class="hljs-string">&#x27;sign up with email&#x27;</span> }] },</span><span class="code-line">];</span></code></pre>
       </div>
       </template><textarea style="display:none">const map = document.querySelector(&#39;story-map&#39;);
-await new Promise(r =&amp;gt; map.addEventListener(&#39;story-map:upgraded&#39;, r, { once: true }));
+if (!map.hasAttribute(&#39;data-upgraded&#39;)) await new Promise(r =&amp;gt; map.addEventListener(&#39;story-map:upgraded&#39;, r, { once: true }));
 map.activities = [
-  { name: &#39;Discover&#39;,  items: [{ itemId: &#39;PROJ-1&#39;, title: &#39;Browse landing&#39; }] },
-  { name: &#39;Onboard&#39;,   items: [{ itemId: &#39;PROJ-2&#39;, title: &#39;Sign up&#39; }] },
+  { id: &#39;discover&#39;, label: &#39;Discover&#39;, stories: [{ id: &#39;PROJ-1&#39;, title: &#39;Browse landing&#39; }] },
+  { id: &#39;onboard&#39;,  label: &#39;Onboard&#39;,  stories: [{ id: &#39;PROJ-2&#39;, persona: &#39;Visitor&#39;, action: &#39;sign up with email&#39; }] },
 ];</textarea></code-block>
   </section>
 
   <section>
     <h2>Accessibility</h2>
     <ul>
-      <li>The scroll container uses <code>role="region"</code> with <code>aria-label="Story map"</code> and is keyboard-focusable via <code>tabindex="0"</code></li>
+      <li>The scroll container uses <code>role="region"</code>, labelled by the <code>title</code> attribute (or "Story map" when there is none), and is keyboard-focusable via <code>tabindex="0"</code></li>
       <li>Each <code>&lt;drag-surface&gt;</code> has an <code>aria-label</code> describing the activity column (e.g., "Discovery stories")</li>
-      <li>A hidden live region with <code>aria-live="polite"</code> announces item transfers between columns</li>
+      <li>A hidden live region with <code>aria-live="polite"</code> announces transfers between columns using the story's text and the activity labels (e.g. "interview 10 target users moved from Discovery to Design")</li>
       <li>Keyboard navigation is provided by the underlying <code>&lt;drag-surface&gt;</code> components</li>
       <li>Column headers are sticky so the activity label remains visible while scrolling down through long columns</li>
       <li>Respects <code>prefers-reduced-motion: reduce</code> by disabling scroll behavior transitions</li>
@@ -3471,7 +3418,7 @@ map.activities = [
     <span>Part of the <a href="https://vanilla-breeze.com">Vanilla Breeze</a> ecosystem</span>
   </site-legal>
   <nav aria-label="Footer links">
-    <a class="active-parent" href="/vb-project-planning/elements/">Elements</a>
+    <a href="/vb-project-planning/elements/">Elements</a>
     <a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">
       <icon-wc name="github" size="sm"></icon-wc> GitHub
     </a>
@@ -3503,10 +3450,10 @@ map.activities = [
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw01un2o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw08x8py"></script>
   
 </body>
 </html>

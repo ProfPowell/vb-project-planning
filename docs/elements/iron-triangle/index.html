@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" data-page="docs" data-fluid="" data-sticky="" data-icon-path="/vb-project-planning/cdn/icons">
 <head>
   <meta charset="utf-8">
@@ -85,10 +85,10 @@
 
   <title>iron-triangle — VB Project Planning</title>
   <meta name="description" content="Project-shape constraint surface — captures Time × Cost × Scope and computes a single capacityPoints budget that downstream planning components can spend on quality decisions.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw01un2o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw08x8py">
   
 </head>
 <body style="overflow-x: clip;">
@@ -99,7 +99,7 @@
     <nav class="horizontal pills">
       <ul>
         <li><a href="/vb-project-planning/" data-nav-link="">Home</a></li>
-        <li><a class="active-parent" href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
+        <li><a href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
         <li><a href="/vb-project-planning/demos/" data-nav-link="">Demos</a></li>
         <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
         <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
@@ -141,7 +141,7 @@
           <strong class="mobile-section-title">Pages</strong>
           <ul>
             <li><a href="/vb-project-planning/">Home</a></li>
-            <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+            <li><a href="/vb-project-planning/elements/">Elements</a></li>
             <li><a href="/vb-project-planning/demos/">Demos</a></li>
             <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
             <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
@@ -170,7 +170,7 @@
         <label for="nav-drawer-toggle" class="nav-drawer-close" aria-label="Close navigation">
           <icon-wc name="x"></icon-wc>
         </label>
-        <p class="sidebar-title"><a class="active-parent" href="/vb-project-planning/elements/">All elements</a></p>
+        <p class="sidebar-title"><a href="/vb-project-planning/elements/">All elements</a></p>
 
 <ul>
   <li><a href="/vb-project-planning/elements/adr-wc/">adr-wc</a></li>
@@ -179,7 +179,7 @@
   <li><a href="/vb-project-planning/elements/empathy-map/">empathy-map</a></li>
   <li><a href="/vb-project-planning/elements/gantt-chart/">gantt-chart</a></li>
   <li><a href="/vb-project-planning/elements/impact-effort/">impact-effort</a></li>
-  <li><a class="active" href="/vb-project-planning/elements/iron-triangle/">iron-triangle</a></li>
+  <li><a href="/vb-project-planning/elements/iron-triangle/">iron-triangle</a></li>
   <li><a href="/vb-project-planning/elements/kanban-board/">kanban-board</a></li>
   <li><a href="/vb-project-planning/elements/product-roadmap/">product-roadmap</a></li>
   <li><a href="/vb-project-planning/elements/quadrant-grid/">quadrant-grid</a></li>
@@ -210,7 +210,7 @@
           <nav class="breadcrumb" aria-label="Breadcrumb" data-pagefind-ignore="">
             <ol>
               <li><a href="/vb-project-planning/">Home</a></li>
-              <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+              <li><a href="/vb-project-planning/elements/">Elements</a></li>
               <li><span aria-current="page">iron-triangle</span></li>
             </ol>
           </nav>
@@ -2719,12 +2719,13 @@ triangle.addEventListener(&#39;iron-triangle:change&#39;, (e) =&amp;gt; {
       </div>
       <div class="code-container" role="region" aria-labelledby="code-label" style="">
         
-        <pre><code class="language-javascript" tabindex="0"><span class="code-line">triangle.<span class="hljs-title function_">revise</span>(<span class="hljs-string">&#x27;cost.teamFTE&#x27;</span>, <span class="hljs-number">2</span>,</span><span class="code-line">  <span class="hljs-string">&#x27;Hired a backend contractor for sprints 3–5; doubles capacity.&#x27;</span>);</span><span class="code-line"><span class="hljs-comment">// Updates the input + value, appends to revisionLog,</span></span><span class="code-line"><span class="hljs-comment">// emits iron-triangle:revise. Reason must be = 10 chars./code-block&gt;</span></span></code></pre>
+        <pre><code class="language-javascript" tabindex="0"><span class="code-line">triangle.<span class="hljs-title function_">revise</span>(<span class="hljs-string">&#x27;cost.teamFTE&#x27;</span>, <span class="hljs-number">2</span>,</span><span class="code-line">  <span class="hljs-string">&#x27;Hired a backend contractor for sprints 3–5; doubles capacity.&#x27;</span>);</span><span class="code-line"><span class="hljs-comment">// Updates the input + value, appends to revisionLog,</span></span><span class="code-line"><span class="hljs-comment">// emits iron-triangle:revise. Reason must be &gt;= 10 chars.</span></span></code></pre>
       </div>
       </template><textarea style="display:none">triangle.revise(&#39;cost.teamFTE&#39;, 2,
   &#39;Hired a backend contractor for sprints 3–5; doubles capacity.&#39;);
 // Updates the input + value, appends to revisionLog,
-// emits iron-triangle:revise. Reason must be = 10 chars./code-block&gt;</textarea></code-block></section>
+// emits iron-triangle:revise. Reason must be &gt;= 10 chars.</textarea></code-block>
+</section>
 
 <section>
   <h2>Attributes</h2>
@@ -2874,7 +2875,7 @@ triangle.addEventListener(&#39;iron-triangle:change&#39;, (e) =&amp;gt; {
     <span>Part of the <a href="https://vanilla-breeze.com">Vanilla Breeze</a> ecosystem</span>
   </site-legal>
   <nav aria-label="Footer links">
-    <a class="active-parent" href="/vb-project-planning/elements/">Elements</a>
+    <a href="/vb-project-planning/elements/">Elements</a>
     <a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">
       <icon-wc name="github" size="sm"></icon-wc> GitHub
     </a>
@@ -2906,10 +2907,10 @@ triangle.addEventListener(&#39;iron-triangle:change&#39;, (e) =&amp;gt; {
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw01un2o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw08x8py"></script>
   
 </body>
 </html>

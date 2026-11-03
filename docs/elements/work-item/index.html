@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" data-page="docs" data-fluid="" data-sticky="" data-icon-path="/vb-project-planning/cdn/icons">
 <head>
   <meta charset="utf-8">
@@ -85,10 +85,10 @@
 
   <title>work-item — VB Project Planning</title>
   <meta name="description" content="General-purpose work unit card for tasks, bugs, chores, spikes, and features — the engineering sibling of user-story.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw01un2o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw08x8py">
   
 </head>
 <body style="overflow-x: clip;">
@@ -99,7 +99,7 @@
     <nav class="horizontal pills">
       <ul>
         <li><a href="/vb-project-planning/" data-nav-link="">Home</a></li>
-        <li><a class="active-parent" href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
+        <li><a href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
         <li><a href="/vb-project-planning/demos/" data-nav-link="">Demos</a></li>
         <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
         <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
@@ -141,7 +141,7 @@
           <strong class="mobile-section-title">Pages</strong>
           <ul>
             <li><a href="/vb-project-planning/">Home</a></li>
-            <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+            <li><a href="/vb-project-planning/elements/">Elements</a></li>
             <li><a href="/vb-project-planning/demos/">Demos</a></li>
             <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
             <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
@@ -170,7 +170,7 @@
         <label for="nav-drawer-toggle" class="nav-drawer-close" aria-label="Close navigation">
           <icon-wc name="x"></icon-wc>
         </label>
-        <p class="sidebar-title"><a class="active-parent" href="/vb-project-planning/elements/">All elements</a></p>
+        <p class="sidebar-title"><a href="/vb-project-planning/elements/">All elements</a></p>
 
 <ul>
   <li><a href="/vb-project-planning/elements/adr-wc/">adr-wc</a></li>
@@ -192,7 +192,7 @@
   <li><a href="/vb-project-planning/elements/user-journey/">user-journey</a></li>
   <li><a href="/vb-project-planning/elements/user-persona/">user-persona</a></li>
   <li><a href="/vb-project-planning/elements/user-story/">user-story</a></li>
-  <li><a class="active" href="/vb-project-planning/elements/work-item/">work-item</a></li>
+  <li><a href="/vb-project-planning/elements/work-item/">work-item</a></li>
 </ul>
 
       </nav>
@@ -210,7 +210,7 @@
           <nav class="breadcrumb" aria-label="Breadcrumb" data-pagefind-ignore="">
             <ol>
               <li><a href="/vb-project-planning/">Home</a></li>
-              <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+              <li><a href="/vb-project-planning/elements/">Elements</a></li>
               <li><span aria-current="page">work-item</span></li>
             </ol>
           </nav>
@@ -730,23 +730,16 @@
 
   <section>
     <h2>Attributes</h2>
-    <table class="props-table">
-      <thead>
-        <tr><th>Attribute</th><th>Type</th><th>Default</th><th>Description</th></tr>
-      </thead>
-      <tbody>
-        <tr><td><code>item-id</code></td><td>string</td><td>—</td><td>Unique identifier (also sets HTML <code>id</code> for cross-referencing)</td></tr>
-        <tr><td><code>type</code></td><td>string</td><td><code>"task"</code></td><td><code>task</code>, <code>bug</code>, <code>chore</code>, <code>spike</code>, or <code>feature</code></td></tr>
-        <tr><td><code>priority</code></td><td>string</td><td><code>"medium"</code></td><td><code>critical</code>, <code>high</code>, <code>medium</code>, or <code>low</code></td></tr>
-        <tr><td><code>status</code></td><td>string</td><td><code>"backlog"</code></td><td><code>backlog</code>, <code>to-do</code>, <code>in-progress</code>, <code>review</code>, <code>done</code>, or <code>blocked</code></td></tr>
-        <tr><td><code>estimate</code></td><td>string</td><td>—</td><td>Effort estimate (points, hours, t-shirt size)</td></tr>
-        <tr><td><code>assignee</code></td><td>string</td><td>—</td><td>Assignee name (shown with auto-generated avatar)</td></tr>
-        <tr><td><code>story-ids</code></td><td>string</td><td>—</td><td>Comma-separated linked <code>&lt;user-story&gt;</code> IDs</td></tr>
-        <tr><td><code>detail</code></td><td>string</td><td><code>"full"</code></td><td><code>full</code>, <code>compact</code>, or <code>minimal</code></td></tr>
-        <tr><td><code>compact</code></td><td>boolean</td><td>—</td><td>Alias for <code>detail="compact"</code></td></tr>
-        <tr><td><code>src</code></td><td>string (URL)</td><td>—</td><td>Path to JSON data file</td></tr>
-      </tbody>
-    </table>
+    <table class="props-table"><thead><tr><th>Attribute</th><th>Values</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>item-id</code></td><td>string</td><td>—</td><td>Unique work item identifier; sets the HTML id on first connect when none is set</td></tr>
+<tr><td><code>type</code></td><td><code>"task"</code>, <code>"bug"</code>, <code>"chore"</code>, <code>"spike"</code>, <code>"feature"</code></td><td><code>task</code></td><td>Item type</td></tr>
+<tr><td><code>priority</code></td><td><code>"critical"</code>, <code>"high"</code>, <code>"medium"</code>, <code>"low"</code></td><td><code>medium</code></td><td>Priority</td></tr>
+<tr><td><code>status</code></td><td><code>"backlog"</code>, <code>"to-do"</code>, <code>"in-progress"</code>, <code>"review"</code>, <code>"done"</code>, <code>"blocked"</code></td><td><code>backlog</code></td><td>Workflow status</td></tr>
+<tr><td><code>estimate</code></td><td>string</td><td>—</td><td>Effort estimate (points, hours, t-shirt size)</td></tr>
+<tr><td><code>assignee</code></td><td>string</td><td>—</td><td>Assignee name (shown with initials avatar)</td></tr>
+<tr><td><code>story-ids</code></td><td>string</td><td>—</td><td>Comma-separated linked user-story IDs</td></tr>
+<tr><td><code>detail</code></td><td><code>"full"</code>, <code>"compact"</code>, <code>"minimal"</code></td><td><code>full</code></td><td>Detail level. minimal shows id, type and title only.</td></tr>
+<tr><td><code>compact</code></td><td>boolean</td><td>—</td><td>Alias for detail=compact</td></tr>
+<tr><td><code>src</code></td><td>string</td><td>—</td><td>URL of a JSON work-item record. Fetched once per value; a newer value aborts the older request.</td></tr></tbody></table>
   </section>
 
   <section>
@@ -756,7 +749,7 @@
         <tr><th>Slot</th><th>Expected Content</th><th>Description</th></tr>
       </thead>
       <tbody>
-        <tr><td><code>title</code></td><td><code>&lt;h3&gt;</code> or text</td><td>Work item title displayed in the card header.</td></tr>
+        <tr><td><code>title</code></td><td><code>&lt;h3&gt;</code> or text</td><td>Work item title displayed in the card header. The title is content, so there is no <code>title</code> attribute.</td></tr>
         <tr><td><code>description</code></td><td><code>&lt;p&gt;</code></td><td>Work item description. Shows in the body section.</td></tr>
         <tr><td><code>checklist</code></td><td><code>&lt;ul&gt;</code> or <code>&lt;ol&gt;</code></td><td>Subtasks or checklist items.</td></tr>
         <tr><td><code>notes</code></td><td><code>&lt;p&gt;</code></td><td>Additional notes, context, or links.</td></tr>
@@ -1289,17 +1282,11 @@
 
   <section>
     <h2>Events</h2>
-    <table class="props-table">
-      <thead>
-        <tr><th>Event</th><th>Detail</th><th>When</th></tr>
-      </thead>
-      <tbody>
-        <tr><td><code>work-item:ready</code></td><td><code>{ itemId, title, type, priority, status }</code></td><td>After render</td></tr>
-        <tr><td><code>work-item:status</code></td><td><code>{ status, itemId }</code></td><td>When <code>updateStatus()</code> is called</td></tr>
-        <tr><td><code>work-item:priority</code></td><td><code>{ priority, itemId }</code></td><td>When <code>updatePriority()</code> is called</td></tr>
-        <tr><td><code>work-item:data-changed</code></td><td><code>{ data, source: 'property' }</code></td><td>After <code>.data</code> is assigned</td></tr>
-      </tbody>
-    </table>
+    <table class="props-table"><thead><tr><th>Event</th><th>Detail</th><th>Description</th></tr></thead><tbody><tr><td><code>work-item:ready</code></td><td><code>{ itemId, title, type, priority, status }</code></td><td>Once per element, after the first render at any detail level. With src, after the fetched data renders (not fired if the fetch fails). Not re-fired by attribute changes or moves.</td></tr>
+<tr><td><code>work-item:status</code></td><td><code>{ status, itemId }</code></td><td>When updateStatus() is called with a known status</td></tr>
+<tr><td><code>work-item:priority</code></td><td><code>{ priority, itemId }</code></td><td>When updatePriority() is called with a known priority</td></tr>
+<tr><td><code>work-item:upgraded</code></td><td>—</td><td>Once, in a microtask after first connect. Wait for this before assigning .data from a framework.</td></tr>
+<tr><td><code>work-item:data-changed</code></td><td><code>{ data, source: 'property' }</code></td><td>After .data is assigned</td></tr></tbody></table>
   </section>
 
   <section>
@@ -1311,7 +1298,7 @@
         <tr><th>Property</th><th>Type</th><th>Description</th></tr>
       </thead>
       <tbody>
-        <tr><td><code>.data</code></td><td><code>{ itemId?, type?, priority?, status?, estimate?, assignee?, storyIds?, detail?, title?, description?, checklist?, notes? }</code></td><td>Sets state attributes <em>and</em> creates slotted children for any text fields not already present. Idempotent.</td></tr>
+        <tr><td><code>.data</code></td><td><code>{ itemId?, type?, priority?, status?, estimate?, assignee?, storyIds?, detail?, title?, description?, checklist?, notes? }</code></td><td>Sets state attributes <em>and</em> creates slotted children for any text fields not already present (authored content wins). Idempotent.</td></tr>
       </tbody>
     </table>
 
@@ -1816,22 +1803,7 @@ document.body.appendChild(wi);</textarea></code-block>
 
     <p>Reading <code>.data</code> back returns the current shape — handy for persistence or logging. See the <a href="https://vanilla-breeze.com/docs/concepts/data-api/">Data API concepts guide</a>.</p>
 
-    <h3>Events</h3>
-    <table class="props-table">
-      <thead><tr><th>Event</th><th>Detail</th><th>When</th></tr></thead>
-      <tbody>
-        <tr>
-          <td><code>work-item:upgraded</code></td>
-          <td>—</td>
-          <td>Once after first connect. Wait for this before assigning <code>.data</code> from a framework.</td>
-        </tr>
-        <tr>
-          <td><code>work-item:data-changed</code></td>
-          <td><code>{ data, source: 'property' }</code></td>
-          <td>After <code>.data</code> assignment.</td>
-        </tr>
-      </tbody>
-    </table>
+    <p>Assigning <code>.data</code> fires <code>work-item:data-changed</code>; frameworks should wait for <code>work-item:upgraded</code> first. With <code>src</code>, the JSON record (same shape as <code>.data</code>) is fetched once per value — moving the card between kanban columns does not refetch — and <code>work-item:ready</code> fires after it renders.</p>
 
     <code-block language="javascript" data-ssr label="Reactive consumer (e.g. Montane)"><template shadowrootmode="open"><style>
       :host {
@@ -2342,7 +2314,8 @@ wi.data = { itemId: &#39;PROJ-42&#39;, type: &#39;task&#39;, priority: &#39;high
   <section>
     <h2>Accessibility</h2>
     <ul>
-      <li>Card is an <code>&lt;article&gt;</code> with <code>aria-label</code></li>
+      <li>Card is an <code>&lt;article&gt;</code> with <code>aria-label="Work item: [item-id]"</code></li>
+      <li>Minimal cards (<code>detail="minimal"</code>) are static summaries with no tab stop of their own; inside <code>&lt;kanban-board&gt;</code> the board makes the card itself focusable for keyboard moves</li>
       <li>Type badge uses colored background for visual distinction (not color-only)</li>
       <li>Story links are real <code>&lt;a&gt;</code> elements with fragment hrefs</li>
       <li>Respects <code>prefers-reduced-motion: reduce</code></li>
@@ -2381,7 +2354,7 @@ wi.data = { itemId: &#39;PROJ-42&#39;, type: &#39;task&#39;, priority: &#39;high
     <span>Part of the <a href="https://vanilla-breeze.com">Vanilla Breeze</a> ecosystem</span>
   </site-legal>
   <nav aria-label="Footer links">
-    <a class="active-parent" href="/vb-project-planning/elements/">Elements</a>
+    <a href="/vb-project-planning/elements/">Elements</a>
     <a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">
       <icon-wc name="github" size="sm"></icon-wc> GitHub
     </a>
@@ -2413,10 +2386,10 @@ wi.data = { itemId: &#39;PROJ-42&#39;, type: &#39;task&#39;, priority: &#39;high
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw01un2o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw08x8py"></script>
   
 </body>
 </html>

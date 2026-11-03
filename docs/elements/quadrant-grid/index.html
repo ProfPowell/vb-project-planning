@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" data-page="docs" data-fluid="" data-sticky="" data-icon-path="/vb-project-planning/cdn/icons">
 <head>
   <meta charset="utf-8">
@@ -85,10 +85,10 @@
 
   <title>quadrant-grid — VB Project Planning</title>
   <meta name="description" content="Generic 2x2 quadrant grid primitive backing SWOT, stakeholder maps, and any custom 2x2 visualization.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw01un2o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw08x8py">
   
 </head>
 <body style="overflow-x: clip;">
@@ -99,7 +99,7 @@
     <nav class="horizontal pills">
       <ul>
         <li><a href="/vb-project-planning/" data-nav-link="">Home</a></li>
-        <li><a class="active-parent" href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
+        <li><a href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
         <li><a href="/vb-project-planning/demos/" data-nav-link="">Demos</a></li>
         <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
         <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
@@ -141,7 +141,7 @@
           <strong class="mobile-section-title">Pages</strong>
           <ul>
             <li><a href="/vb-project-planning/">Home</a></li>
-            <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+            <li><a href="/vb-project-planning/elements/">Elements</a></li>
             <li><a href="/vb-project-planning/demos/">Demos</a></li>
             <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
             <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
@@ -170,7 +170,7 @@
         <label for="nav-drawer-toggle" class="nav-drawer-close" aria-label="Close navigation">
           <icon-wc name="x"></icon-wc>
         </label>
-        <p class="sidebar-title"><a class="active-parent" href="/vb-project-planning/elements/">All elements</a></p>
+        <p class="sidebar-title"><a href="/vb-project-planning/elements/">All elements</a></p>
 
 <ul>
   <li><a href="/vb-project-planning/elements/adr-wc/">adr-wc</a></li>
@@ -182,7 +182,7 @@
   <li><a href="/vb-project-planning/elements/iron-triangle/">iron-triangle</a></li>
   <li><a href="/vb-project-planning/elements/kanban-board/">kanban-board</a></li>
   <li><a href="/vb-project-planning/elements/product-roadmap/">product-roadmap</a></li>
-  <li><a class="active" href="/vb-project-planning/elements/quadrant-grid/">quadrant-grid</a></li>
+  <li><a href="/vb-project-planning/elements/quadrant-grid/">quadrant-grid</a></li>
   <li><a href="/vb-project-planning/elements/quality-target/">quality-target</a></li>
   <li><a href="/vb-project-planning/elements/requirement-card/">requirement-card</a></li>
   <li><a href="/vb-project-planning/elements/review-surface/">review-surface</a></li>
@@ -210,7 +210,7 @@
           <nav class="breadcrumb" aria-label="Breadcrumb" data-pagefind-ignore="">
             <ol>
               <li><a href="/vb-project-planning/">Home</a></li>
-              <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+              <li><a href="/vb-project-planning/elements/">Elements</a></li>
               <li><span aria-current="page">quadrant-grid</span></li>
             </ol>
           </nav>
@@ -734,12 +734,12 @@
 <tr><td><code>q2-label</code></td><td>string</td><td>—</td><td>Top-left quadrant title</td></tr>
 <tr><td><code>q3-label</code></td><td>string</td><td>—</td><td>Bottom-left quadrant title</td></tr>
 <tr><td><code>q4-label</code></td><td>string</td><td>—</td><td>Bottom-right quadrant title</td></tr>
-<tr><td><code>draggable</code></td><td>boolean</td><td>—</td><td>Enable drag-and-drop between quadrants (composes &lt;drag-surface&gt;)</td></tr></tbody></table>
+<tr><td><code>draggable</code></td><td>boolean</td><td>—</td><td>Enable drag-and-drop between quadrants (composes one &lt;drag-surface&gt; per quadrant)</td></tr></tbody></table>
 
   <h3>Child attributes</h3>
   <table class="props-table"><thead><tr><th>Attribute</th><th>On</th><th>Values</th><th>Description</th></tr></thead><tbody><tr><td><code>data-quadrant</code></td><td><code>*</code></td><td>number</td><td>Explicit quadrant index 0..3 (Cartesian Q1..Q4)</td></tr>
-<tr><td><code>data-x</code></td><td><code>*</code></td><td>number</td><td>Normalized x coordinate 0..1; quadrant is computed from coords</td></tr>
-<tr><td><code>data-y</code></td><td><code>*</code></td><td>number</td><td>Normalized y coordinate 0..1; quadrant is computed from coords</td></tr>
+<tr><td><code>data-x</code></td><td><code>*</code></td><td>number</td><td>Normalized x coordinate 0..1; quadrant is computed from coords; removed when the child is dragged to another quadrant</td></tr>
+<tr><td><code>data-y</code></td><td><code>*</code></td><td>number</td><td>Normalized y coordinate 0..1; quadrant is computed from coords; removed when the child is dragged to another quadrant</td></tr>
 <tr><td><code>data-id</code></td><td><code>*</code></td><td>string</td><td>Stable identifier emitted in move events</td></tr></tbody></table>
 </section>
 
@@ -2257,6 +2257,13 @@
       console.log(e.detail); // { item, itemId, from, to }
     });
 &lt;/script&gt;</textarea></code-block>
+  <p>A drop has no position, so a coordinate-pinned child (<code>data-x</code> / <code>data-y</code>) that is dragged to another quadrant loses its coordinates: <code>data-x</code> and <code>data-y</code> are removed and it joins that quadrant's stack like any other card. Overlapping-pin clusters are recomputed after every move. The event detail carries no coordinates.</p>
+</section>
+
+<section>
+  <h2>Events</h2>
+  <table class="props-table"><thead><tr><th>Event</th><th>Detail</th><th>Description</th></tr></thead><tbody><tr><td><code>quadrant-grid:move</code></td><td><code>{ item, itemId, from, to }</code></td><td>Fired when a draggable child moves between quadrants (from / to are indices 0..3). A coordinate-pinned child dropped in another quadrant loses its data-x / data-y and joins that quadrant's stack</td></tr>
+<tr><td><code>quadrant-grid:upgraded</code></td><td>—</td><td>Fired (in a microtask) each time the grid connects and upgrades</td></tr></tbody></table>
 </section>
 
 <section>
@@ -2271,7 +2278,14 @@
 
 <section>
   <h2>Accessibility</h2>
-  <p>The grid host is a <code>&lt;section role="region"&gt;</code> with an axis-derived label. Each quadrant is its own <code>&lt;section&gt;</code> with an <code>aria-label</code>. Move events update a polite live region announcing the new quadrant.</p>
+  <ul>
+    <li>The grid is a <code>&lt;section role="region"&gt;</code> labelled from the axis labels (e.g. "Helpfulness × Origin quadrant grid").</li>
+    <li>Each quadrant is its own <code>&lt;section&gt;</code> with an <code>aria-label</code> from its <code>q*-label</code>. Quadrants are in the DOM in visual reading order — top-left (Q2), top-right (Q1), bottom-left (Q3), bottom-right (Q4) — so screen-reader and tab order match the layout.</li>
+    <li>In read-only mode each quadrant's children are a list (<code>&lt;ul&gt;</code> / <code>&lt;li&gt;</code>).</li>
+    <li>When coordinate pins overlap, each pin in the cluster becomes focusable (<code>tabindex="0"</code>, <code>role="group"</code> unless it already has a role) so keyboard users can fan the cluster out.</li>
+    <li>Axis and scale labels are <code>aria-hidden</code>; the region label carries the axis names.</li>
+    <li>With <code>draggable</code>, a polite live region announces moves using the item's text and the quadrant label (e.g. "Moved Add 2FA to Big Bets").</li>
+  </ul>
 </section>
 
 <section>
@@ -2302,7 +2316,7 @@
     <span>Part of the <a href="https://vanilla-breeze.com">Vanilla Breeze</a> ecosystem</span>
   </site-legal>
   <nav aria-label="Footer links">
-    <a class="active-parent" href="/vb-project-planning/elements/">Elements</a>
+    <a href="/vb-project-planning/elements/">Elements</a>
     <a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">
       <icon-wc name="github" size="sm"></icon-wc> GitHub
     </a>
@@ -2334,10 +2348,10 @@
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw01un2o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw08x8py"></script>
   
 </body>
 </html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" data-page="docs" data-fluid="" data-sticky="" data-icon-path="/vb-project-planning/cdn/icons">
 <head>
   <meta charset="utf-8">
@@ -85,10 +85,10 @@
 
   <title>burndown-chart — VB Project Planning</title>
   <meta name="description" content="Sprint burndown plot. Wraps <chart-wc> with auto-computed ideal line and scope-change annotations.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw01un2o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw08x8py">
   
 </head>
 <body style="overflow-x: clip;">
@@ -99,7 +99,7 @@
     <nav class="horizontal pills">
       <ul>
         <li><a href="/vb-project-planning/" data-nav-link="">Home</a></li>
-        <li><a class="active-parent" href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
+        <li><a href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
         <li><a href="/vb-project-planning/demos/" data-nav-link="">Demos</a></li>
         <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
         <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
@@ -141,7 +141,7 @@
           <strong class="mobile-section-title">Pages</strong>
           <ul>
             <li><a href="/vb-project-planning/">Home</a></li>
-            <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+            <li><a href="/vb-project-planning/elements/">Elements</a></li>
             <li><a href="/vb-project-planning/demos/">Demos</a></li>
             <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
             <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
@@ -170,11 +170,11 @@
         <label for="nav-drawer-toggle" class="nav-drawer-close" aria-label="Close navigation">
           <icon-wc name="x"></icon-wc>
         </label>
-        <p class="sidebar-title"><a class="active-parent" href="/vb-project-planning/elements/">All elements</a></p>
+        <p class="sidebar-title"><a href="/vb-project-planning/elements/">All elements</a></p>
 
 <ul>
   <li><a href="/vb-project-planning/elements/adr-wc/">adr-wc</a></li>
-  <li><a class="active" href="/vb-project-planning/elements/burndown-chart/">burndown-chart</a></li>
+  <li><a href="/vb-project-planning/elements/burndown-chart/">burndown-chart</a></li>
   <li><a href="/vb-project-planning/elements/capacity-plan/">capacity-plan</a></li>
   <li><a href="/vb-project-planning/elements/empathy-map/">empathy-map</a></li>
   <li><a href="/vb-project-planning/elements/gantt-chart/">gantt-chart</a></li>
@@ -210,7 +210,7 @@
           <nav class="breadcrumb" aria-label="Breadcrumb" data-pagefind-ignore="">
             <ol>
               <li><a href="/vb-project-planning/">Home</a></li>
-              <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+              <li><a href="/vb-project-planning/elements/">Elements</a></li>
               <li><span aria-current="page">burndown-chart</span></li>
             </ol>
           </nav>
@@ -230,7 +230,7 @@
   <h2>Data source</h2>
   <p>Provide a <code>&lt;template&gt;</code> child whose <code>&lt;tr&gt;</code> rows have these cells in order:</p>
   <ol>
-    <li><strong>date</strong> — ISO 8601 (<code>YYYY-MM-DD</code>)</li>
+    <li><strong>date</strong> — ISO 8601 (<code>YYYY-MM-DD</code>), a calendar day in local time</li>
     <li><strong>remaining</strong> — number of points/items left at end of day</li>
     <li><em>(optional)</em> <strong>±delta</strong> — scope change applied that day (e.g. <code>+5</code> or <code>-2</code>)</li>
   </ol>
@@ -729,17 +729,24 @@
   &lt;/template&gt;
 &lt;/burndown-chart&gt;</textarea></code-block>
 
-  <p>Days with a non-zero 3rd cell are surfaced as a <strong>Scope changes</strong> aside under the chart so the cause of trend reversals is visible at a glance.</p>
+  <p>Days with a non-zero 3rd cell are surfaced as a <strong>Scope changes</strong> aside under the chart so the cause of trend reversals is visible at a glance. Cell text and the <code>unit</code> attribute are rendered as plain text, never parsed as HTML.</p>
+  <p>The day axis has one entry per calendar day from <code>start</code> to <code>end</code> inclusive, stepped by calendar day, so sprints that span a daylight-saving change neither repeat nor drop a day.</p>
 </section>
 
 <section>
   <h2>Attributes</h2>
-  <table class="props-table"><thead><tr><th>Attribute</th><th>Values</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>start</code></td><td>string</td><td>—</td><td>Sprint start date (ISO 8601, required)</td></tr>
-<tr><td><code>end</code></td><td>string</td><td>—</td><td>Sprint end date (ISO 8601, inclusive, required)</td></tr>
+  <table class="props-table"><thead><tr><th>Attribute</th><th>Values</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>start</code></td><td>string</td><td>—</td><td>Sprint start date (YYYY-MM-DD, local calendar day; required)</td></tr>
+<tr><td><code>end</code></td><td>string</td><td>—</td><td>Sprint end date (YYYY-MM-DD, inclusive; required)</td></tr>
 <tr><td><code>total</code></td><td>number</td><td>—</td><td>Total points/items at sprint start (required)</td></tr>
-<tr><td><code>unit</code></td><td>string</td><td>—</td><td>Display unit, default "points"</td></tr>
+<tr><td><code>unit</code></td><td>string</td><td><code>"points"</code></td><td>Display unit for the y-axis and scope-change notes (rendered as text)</td></tr>
 <tr><td><code>label</code></td><td>string</td><td>—</td><td>Optional heading text (e.g. "Sprint 14")</td></tr>
-<tr><td><code>weekends</code></td><td><code>"include"</code>, <code>"exclude"</code></td><td>—</td><td>Whether weekends count toward the ideal-line slope</td></tr></tbody></table>
+<tr><td><code>weekends</code></td><td><code>"include"</code>, <code>"exclude"</code></td><td><code>"include"</code></td><td>Whether weekends count toward the ideal-line slope</td></tr></tbody></table>
+  <p>All six attributes are observed. Changing one on a live element re-renders the chart in place; if the new configuration is invalid (for example <code>end</code> before <code>start</code>) the chart is removed and a console warning is logged. An element that refused to upgrade because an attribute was missing upgrades as soon as it is set.</p>
+</section>
+
+<section>
+  <h2>Events</h2>
+  <table class="props-table"><thead><tr><th>Event</th><th>Detail</th><th>Description</th></tr></thead><tbody><tr><td><code>burndown-chart:ready</code></td><td><code>{ dayCount, total, scopeChanges }</code></td><td>Fired after each upgrade (first connect, reconnect, or a retried upgrade), in a microtask. Not re-fired when a live attribute change re-renders</td></tr></tbody></table>
 </section>
 
 <section>
@@ -1761,7 +1768,7 @@
     <span>Part of the <a href="https://vanilla-breeze.com">Vanilla Breeze</a> ecosystem</span>
   </site-legal>
   <nav aria-label="Footer links">
-    <a class="active-parent" href="/vb-project-planning/elements/">Elements</a>
+    <a href="/vb-project-planning/elements/">Elements</a>
     <a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">
       <icon-wc name="github" size="sm"></icon-wc> GitHub
     </a>
@@ -1793,10 +1800,10 @@
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw01un2o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw08x8py"></script>
   
 </body>
 </html>

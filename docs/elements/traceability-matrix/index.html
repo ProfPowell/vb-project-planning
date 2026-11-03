@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" data-page="docs" data-fluid="" data-sticky="" data-icon-path="/vb-project-planning/cdn/icons">
 <head>
   <meta charset="utf-8">
@@ -85,10 +85,10 @@
 
   <title>traceability-matrix — VB Project Planning</title>
   <meta name="description" content="Auto-discovers a 2D cross-reference grid (RTM) from page elements; composes data-table for sortable + heatmap-able presentation, adds chain highlight.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw01un2o">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw01un2o">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw08x8py">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw08x8py">
   
 </head>
 <body style="overflow-x: clip;">
@@ -99,7 +99,7 @@
     <nav class="horizontal pills">
       <ul>
         <li><a href="/vb-project-planning/" data-nav-link="">Home</a></li>
-        <li><a class="active-parent" href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
+        <li><a href="/vb-project-planning/elements/" data-nav-link="">Elements</a></li>
         <li><a href="/vb-project-planning/demos/" data-nav-link="">Demos</a></li>
         <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
         <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
@@ -141,7 +141,7 @@
           <strong class="mobile-section-title">Pages</strong>
           <ul>
             <li><a href="/vb-project-planning/">Home</a></li>
-            <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+            <li><a href="/vb-project-planning/elements/">Elements</a></li>
             <li><a href="/vb-project-planning/demos/">Demos</a></li>
             <li><a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">GitHub</a></li>
             <li><a href="https://vanilla-breeze.com/docs/" target="_blank" rel="noopener">Vanilla Breeze ↗</a></li>
@@ -170,7 +170,7 @@
         <label for="nav-drawer-toggle" class="nav-drawer-close" aria-label="Close navigation">
           <icon-wc name="x"></icon-wc>
         </label>
-        <p class="sidebar-title"><a class="active-parent" href="/vb-project-planning/elements/">All elements</a></p>
+        <p class="sidebar-title"><a href="/vb-project-planning/elements/">All elements</a></p>
 
 <ul>
   <li><a href="/vb-project-planning/elements/adr-wc/">adr-wc</a></li>
@@ -188,7 +188,7 @@
   <li><a href="/vb-project-planning/elements/review-surface/">review-surface</a></li>
   <li><a href="/vb-project-planning/elements/risk-register/">risk-register</a></li>
   <li><a href="/vb-project-planning/elements/story-map/">story-map</a></li>
-  <li><a class="active" href="/vb-project-planning/elements/traceability-matrix/">traceability-matrix</a></li>
+  <li><a href="/vb-project-planning/elements/traceability-matrix/">traceability-matrix</a></li>
   <li><a href="/vb-project-planning/elements/user-journey/">user-journey</a></li>
   <li><a href="/vb-project-planning/elements/user-persona/">user-persona</a></li>
   <li><a href="/vb-project-planning/elements/user-story/">user-story</a></li>
@@ -210,7 +210,7 @@
           <nav class="breadcrumb" aria-label="Breadcrumb" data-pagefind-ignore="">
             <ol>
               <li><a href="/vb-project-planning/">Home</a></li>
-              <li><a class="active-parent" href="/vb-project-planning/elements/">Elements</a></li>
+              <li><a href="/vb-project-planning/elements/">Elements</a></li>
               <li><span aria-current="page">traceability-matrix</span></li>
             </ol>
           </nav>
@@ -222,7 +222,7 @@
   <h2>Overview</h2>
   <p>The <code>&lt;traceability-matrix&gt;</code> component renders the canonical Requirements Traceability Matrix (RTM) shape — rows × columns at-a-glance — by auto-discovering source elements on the page. Use it to verify coverage between personas and stories, stories and work items, requirements and tests, or any other cross-cutting relationship in a planning artifact graph.</p>
 
-  <p>It composes <code>&lt;data-table&gt;</code> so the rendered grid is sortable and styleable, and adds two things data-table can't: <strong>auto-discovery</strong> (you give it CSS selectors, not hand-built rows) and <strong>chain highlight</strong> (clicking a cell marks the row and column source elements page-wide so authors can see the connection in surrounding components).</p>
+  <p>It composes <code>&lt;data-table&gt;</code> so the rendered grid is sortable and styleable, and adds two things data-table can't: <strong>auto-discovery</strong> (you give it CSS selectors, not hand-built rows) and <strong>chain highlight</strong> (activating a cell marks the row and column source elements page-wide so authors can see the connection in surrounding components).</p>
 
   <browser-window url="traceability-matrix" src="/vb-project-planning/demos/traceability-matrix-basic/"></browser-window>
 </section>
@@ -231,7 +231,7 @@
   <h2>How it works</h2>
   <ol>
     <li><strong>Author CSS selectors</strong> for the row and column source elements (e.g. <code>rows='[data-row-kind="story"]'</code>, <code>cols='[data-row-kind="persona"]'</code>).</li>
-    <li><strong>Name the link attribute</strong> with <code>link-attr</code>. The component reads each row element's value(s) and matches against the column elements' <code>id</code>.</li>
+    <li><strong>Name the link attribute</strong> with <code>link-attr</code>. The component reads each row element's value(s) and matches them against each column element's <code>id</code>, <code>story-id</code> (<code>&lt;user-story&gt;</code>) or <code>item-id</code> (<code>&lt;work-item&gt;</code>). Set <code>match-attr</code> to match one specific attribute instead (e.g. <code>match-attr="data-req"</code>).</li>
     <li><strong>Comma-separated values</strong> are supported out of the box — <code>data-persona-id="p-sarah,p-jordan"</code> renders two checkmarks.</li>
     <li><strong>Orphan flagging</strong> — set <code>flag-orphans</code> to mark empty rows and columns with <code>data-orphan</code> so CSS can call them out (the default style adds a ⚠ glyph).</li>
   </ol>
@@ -241,7 +241,8 @@
   <h2>Attributes</h2>
   <table class="props-table"><thead><tr><th>Attribute</th><th>Values</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>rows</code></td><td>string</td><td>—</td><td>CSS selector for row source elements</td></tr>
 <tr><td><code>cols</code></td><td>string</td><td>—</td><td>CSS selector for column source elements</td></tr>
-<tr><td><code>link-attr</code></td><td>string</td><td>—</td><td>Attribute on the row element whose value(s) reference column ids; comma-separated values supported</td></tr>
+<tr><td><code>link-attr</code></td><td>string</td><td>—</td><td>Attribute on the row element whose value(s) reference column identifiers (see match-attr); comma-separated values supported</td></tr>
+<tr><td><code>match-attr</code></td><td>string</td><td>—</td><td>Attribute on column elements that link-attr values are matched against. Default: the column's id, story-id (&lt;user-story&gt;) or item-id (&lt;work-item&gt;), whichever matches</td></tr>
 <tr><td><code>label</code></td><td>string</td><td>—</td><td>Optional heading shown above the matrix</td></tr>
 <tr><td><code>row-label</code></td><td>string</td><td>—</td><td>Header cell text for the row axis</td></tr>
 <tr><td><code>cell-mark</code></td><td>string</td><td>—</td><td>Glyph shown in linked cells (default: ✓)</td></tr>
@@ -249,6 +250,12 @@
 
   <h3>Child attributes</h3>
   <table class="props-table"><thead><tr><th>Attribute</th><th>On</th><th>Values</th><th>Description</th></tr></thead><tbody><tr><td><code>data-matrix-label</code></td><td><code>*</code></td><td>string</td><td>Override the label rendered for this element in matrices that include it</td></tr></tbody></table>
+</section>
+
+<section>
+  <h2>Events</h2>
+  <table class="props-table"><thead><tr><th>Event</th><th>Detail</th><th>Description</th></tr></thead><tbody><tr><td><code>traceability-matrix:ready</code></td><td><code>{ rowCount, colCount, linkCount }</code></td><td>Fired after the matrix renders</td></tr>
+<tr><td><code>traceability-matrix:highlight</code></td><td><code>{ rowEl, colEl, on }</code></td><td>Fired when a cell toggles chain highlight (click, or Enter/Space on the cell's button)</td></tr></tbody></table>
 </section>
 
 <section>
@@ -758,7 +765,7 @@
 
 <section>
   <h2>Story × Work-item example</h2>
-  <p>Native VB elements work too — point at <code>&lt;user-story&gt;</code> / <code>&lt;work-item&gt;</code> directly:</p>
+  <p>Pack elements work too — point at <code>&lt;user-story&gt;</code> / <code>&lt;work-item&gt;</code> directly. A work item's <code>story-ids</code> are matched against each story's <code>story-id</code>, so the stories don't need a matching <code>id</code>:</p>
   <code-block language="html" data-ssr><template shadowrootmode="open"><style>
       :host {
         --_cb-bg: var(--color-surface-raised, #f6f8fa);
@@ -1242,7 +1249,7 @@
       </div>
       <div class="code-container" role="region" aria-labelledby="code-label" style="">
         
-        <pre><code class="language-html" tabindex="0"><span class="code-line"><span class="hljs-tag">&lt;<span class="hljs-name">traceability-matrix</span></span></span><span class="code-line"><span class="hljs-tag">  <span class="hljs-attr">rows</span>=<span class="hljs-string">&quot;work-item&quot;</span></span></span><span class="code-line"><span class="hljs-tag">  <span class="hljs-attr">cols</span>=<span class="hljs-string">&quot;user-story&quot;</span></span></span><span class="code-line"><span class="hljs-tag">  <span class="hljs-attr">link-attr</span>=<span class="hljs-string">&quot;story-ids&quot;</span></span></span><span class="code-line"><span class="hljs-tag">  <span class="hljs-attr">label</span>=<span class="hljs-string">&quot;Work item ↔ story&quot;</span></span></span><span class="code-line"><span class="hljs-tag">  <span class="hljs-attr">row-label</span>=<span class="hljs-string">&quot;Work item&quot;</span>&gt;</span></span><span class="code-line"><span class="hljs-tag">&lt;/<span class="hljs-name">traceability-matrix</span>&gt;</span></span></code></pre>
+        <pre><code class="language-html" tabindex="0"><span class="code-line"><span class="hljs-tag">&lt;<span class="hljs-name">traceability-matrix</span></span></span><span class="code-line"><span class="hljs-tag">  <span class="hljs-attr">rows</span>=<span class="hljs-string">&quot;work-item&quot;</span></span></span><span class="code-line"><span class="hljs-tag">  <span class="hljs-attr">cols</span>=<span class="hljs-string">&quot;user-story&quot;</span></span></span><span class="code-line"><span class="hljs-tag">  <span class="hljs-attr">link-attr</span>=<span class="hljs-string">&quot;story-ids&quot;</span></span></span><span class="code-line"><span class="hljs-tag">  <span class="hljs-attr">label</span>=<span class="hljs-string">&quot;Work item ↔ story&quot;</span></span></span><span class="code-line"><span class="hljs-tag">  <span class="hljs-attr">row-label</span>=<span class="hljs-string">&quot;Work item&quot;</span>&gt;</span></span><span class="code-line"><span class="hljs-tag">&lt;/<span class="hljs-name">traceability-matrix</span>&gt;</span></span><span class="code-line"> </span><span class="code-line"><span class="hljs-tag">&lt;<span class="hljs-name">user-story</span> <span class="hljs-attr">story-id</span>=<span class="hljs-string">&quot;US-1&quot;</span>&gt;</span>…<span class="hljs-tag">&lt;/<span class="hljs-name">user-story</span>&gt;</span></span><span class="code-line"><span class="hljs-tag">&lt;<span class="hljs-name">user-story</span> <span class="hljs-attr">story-id</span>=<span class="hljs-string">&quot;US-2&quot;</span>&gt;</span>…<span class="hljs-tag">&lt;/<span class="hljs-name">user-story</span>&gt;</span></span><span class="code-line"><span class="hljs-tag">&lt;<span class="hljs-name">work-item</span> <span class="hljs-attr">item-id</span>=<span class="hljs-string">&quot;WI-7&quot;</span> <span class="hljs-attr">story-ids</span>=<span class="hljs-string">&quot;US-1,US-2&quot;</span>&gt;</span>…<span class="hljs-tag">&lt;/<span class="hljs-name">work-item</span>&gt;</span></span><span class="code-line"><span class="hljs-tag">&lt;<span class="hljs-name">work-item</span> <span class="hljs-attr">item-id</span>=<span class="hljs-string">&quot;WI-8&quot;</span> <span class="hljs-attr">story-ids</span>=<span class="hljs-string">&quot;US-2&quot;</span>&gt;</span>…<span class="hljs-tag">&lt;/<span class="hljs-name">work-item</span>&gt;</span></span></code></pre>
       </div>
       </template><textarea style="display:none">&lt;traceability-matrix
   rows=&quot;work-item&quot;
@@ -1250,20 +1257,25 @@
   link-attr=&quot;story-ids&quot;
   label=&quot;Work item ↔ story&quot;
   row-label=&quot;Work item&quot;&gt;
-&lt;/traceability-matrix&gt;</textarea></code-block>
+&lt;/traceability-matrix&gt;
+
+&lt;user-story story-id=&quot;US-1&quot;&gt;…&lt;/user-story&gt;
+&lt;user-story story-id=&quot;US-2&quot;&gt;…&lt;/user-story&gt;
+&lt;work-item item-id=&quot;WI-7&quot; story-ids=&quot;US-1,US-2&quot;&gt;…&lt;/work-item&gt;
+&lt;work-item item-id=&quot;WI-8&quot; story-ids=&quot;US-2&quot;&gt;…&lt;/work-item&gt;</textarea></code-block>
   <p>The matrix uses <code>data-matrix-label</code> on each source if present, else its <code>id</code>, else its trimmed text content.</p>
 </section>
 
 <section>
   <h2>Chain highlight</h2>
-  <p>Clicking any cell in the matrix toggles <code>data-state-highlighted</code> on:</p>
+  <p>Each matrix cell and row header holds a <code>&lt;button&gt;</code>. Clicking it, or pressing <kbd>Enter</kbd> / <kbd>Space</kbd> while it has focus, toggles <code>data-state-highlighted</code> on:</p>
   <ul>
     <li>the cell itself,</li>
     <li>the matrix row,</li>
     <li>the row source element page-wide,</li>
     <li>the column source element page-wide.</li>
   </ul>
-  <p>The default stylesheet adds an outline to highlighted source elements so authors can scan the page and see the connection. Listen for <code>traceability-matrix:highlight</code> to wire additional behaviour (auto-scroll, side panel, etc.).</p>
+  <p>Only one chain is highlighted at a time; rows and columns without an <code>id</code> highlight too. The highlight is cleared from the page when the matrix is removed. The default stylesheet adds an outline to highlighted source elements so authors can scan the page and see the connection. Listen for <code>traceability-matrix:highlight</code> to wire additional behaviour (auto-scroll, side panel, etc.).</p>
 
   <code-block language="js" data-ssr><template shadowrootmode="open"><style>
       :host {
@@ -1758,11 +1770,20 @@
 </section>
 
 <section>
+  <h2>Accessibility</h2>
+  <ul>
+    <li>Body cells keep <code>aria-label="linked"</code> / <code>"not linked"</code> and contain a button named “<em>row</em> × <em>column</em>: linked” (or “not linked”), so the relationship is spoken without relying on the ✓ glyph.</li>
+    <li>Buttons use <code>aria-pressed</code> to report the active highlight; row-header buttons are named “Highlight <em>row</em>”.</li>
+    <li>Every cell button is a Tab stop, so very large matrices mean many Tab presses.</li>
+  </ul>
+</section>
+
+<section>
   <h2>Progressive Enhancement</h2>
   <ol>
     <li><strong>HTML.</strong> Without JS, the matrix host is empty — auto-discovery is inherently runtime. For no-JS RTMs, render a <code>&lt;data-table&gt;</code> directly with hand-built intersection rows. The matrix component is purely additive.</li>
     <li><strong>CSS.</strong> The :not(:defined) selector keeps the host visible pre-upgrade.</li>
-    <li><strong>JS.</strong> Auto-discovers rows/cols, builds the table, wires chain-highlight clicks, fires <code>traceability-matrix:ready</code>.</li>
+    <li><strong>JS.</strong> Auto-discovers rows/cols, builds the table, wires chain-highlight buttons, fires <code>traceability-matrix:ready</code>.</li>
   </ol>
 </section>
 
@@ -1794,7 +1815,7 @@
     <span>Part of the <a href="https://vanilla-breeze.com">Vanilla Breeze</a> ecosystem</span>
   </site-legal>
   <nav aria-label="Footer links">
-    <a class="active-parent" href="/vb-project-planning/elements/">Elements</a>
+    <a href="/vb-project-planning/elements/">Elements</a>
     <a href="https://github.com/ProfPowell/vb-project-planning" target="_blank" rel="noopener">
       <icon-wc name="github" size="sm"></icon-wc> GitHub
     </a>
@@ -1826,10 +1847,10 @@
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw01un2o"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw01un2o"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw08x8py"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw08x8py"></script>
   
 </body>
 </html>
