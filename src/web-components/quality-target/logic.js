@@ -4,9 +4,10 @@
  * One component, two roles. The radar polygon IS the picker: each
  * axis is a clickable hit-target that opens a per-ility <dialog>
  * editor (level radio group + rationale textarea). The same SVG
- * also visualizes the chosen vector against the project's capacity
- * envelope (read from a paired <iron-triangle> via data-bind-to or
- * supplied via data-capacity-points).
+ * also shows the Critical spend against the project's capacity in a
+ * centre readout ("5 / of 4"), with capacity read from a paired
+ * <iron-triangle> via data-bind-to or supplied via data-capacity-points.
+ * There is no envelope polygon: three level rings are the only backdrop.
  *
  * Replaces both <nfr-compass> and <nfr-radar> from earlier rounds.
  *
@@ -37,12 +38,14 @@ import {
   buildTargetSvg,
 } from './_quality-utils.js';
 
+let instanceCount = 0;
+
 class QualityTarget extends VBElement {
   static formAssociated = true;
   static get observedAttributes() {
     return [
       'data-bind-to', 'data-capacity-points', 'data-cost-weights',
-      'data-radius', 'data-show-envelope',
+      'data-radius',
       'data-min-rationale', 'data-max-rationale',
       'data-min-overrun-rationale', 'data-max-overrun-rationale',
       'disabled', 'locked',
@@ -71,6 +74,9 @@ class QualityTarget extends VBElement {
   #dialogs = {};
   /** @type {HTMLElement | null} */
   #footer = null;
+  /** Per-instance prefix so generated label/control ids never collide
+   *  when a page holds more than one target. */
+  #uid = `quality-target-${++instanceCount}`;
 
   constructor() {
     super();
@@ -83,6 +89,7 @@ class QualityTarget extends VBElement {
     this.#bindToTriangle();
     this.#renderViz();
     this.#ensureFooter();
+    this.#publishFormValue();
 
     this.listen(this, 'click', (e) => this.#onClick(e));
     this.listen(this, 'keydown', (e) => this.#onKeydown(e));
@@ -104,8 +111,11 @@ class QualityTarget extends VBElement {
     } else if (name === 'data-cost-weights') {
       this.#refreshCostWeights();
       this.#renderViz();
-    } else if (name === 'data-radius' || name === 'data-show-envelope') {
+    } else if (name === 'data-radius') {
       this.#renderViz();
+    } else if (name === 'data-min-overrun-rationale' || name === 'data-max-overrun-rationale') {
+      this.#updateFooter();
+      this.#publishFormValue();
     } else if (name === 'disabled' || name === 'locked') {
       this.#syncDisabledLocked();
     }
@@ -153,7 +163,7 @@ class QualityTarget extends VBElement {
 
   /** Imperatively open one axis's editor. */
   openEditor(ility) {
-    if (!this.#ilities.includes(ility)) return;
+    if (!this.#ilities.includes(ility) || this.#inert) return;
     const dialog = this.#ensureDialog(ility);
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
@@ -244,10 +254,10 @@ class QualityTarget extends VBElement {
     // Rationale form-field (required when Critical).
     const ff = document.createElement('form-field');
     const rl = document.createElement('label');
-    rl.setAttribute('for', `quality-${ility}-rationale`);
+    rl.setAttribute('for', `${this.#uid}-${ility}-rationale`);
     rl.textContent = 'Rationale (required when Critical)';
     const ta = document.createElement('textarea');
-    ta.id = `quality-${ility}-rationale`;
+    ta.id = `${this.#uid}-${ility}-rationale`;
     ta.name = 'rationale';
     ta.rows = 3;
     ta.minLength = this.#minRationale();
@@ -304,6 +314,7 @@ class QualityTarget extends VBElement {
     });
 
     this.#syncDialogFromState(ility);
+    this.#syncDisabledLocked();
     return dialog;
   }
 
@@ -338,8 +349,8 @@ class QualityTarget extends VBElement {
       <strong>Over budget — explain why.</strong>
       <small data-overrun-prompt></small>
       <form-field>
-        <label for="quality-overrun">Overrun rationale (≥ ${this.#minOverrunRationale()} chars)</label>
-        <textarea id="quality-overrun" name="overrunRationale"
+        <label for="${this.#uid}-overrun">Overrun rationale (≥ ${this.#minOverrunRationale()} chars)</label>
+        <textarea id="${this.#uid}-overrun" name="overrunRationale"
                   minlength="${this.#minOverrunRationale()}"
                   maxlength="${this.#maxOverrunRationale()}"
                   rows="3"></textarea>
@@ -355,6 +366,7 @@ class QualityTarget extends VBElement {
 
     this.append(footer);
     this.#footer = footer;
+    this.#syncDisabledLocked();
   }
 
   #updateFooter() {
@@ -366,9 +378,19 @@ class QualityTarget extends VBElement {
     if (overrun) {
       overrun.hidden = !isOver;
       const prompt = overrun.querySelector('[data-overrun-prompt]');
-      if (prompt && Number.isFinite(cap)) {
-        prompt.textContent = `You're over budget by ${sum - cap} points (${sum}/${cap}).`;
+      if (prompt) {
+        const over = sum - cap;
+        prompt.textContent = isOver
+          ? `You're over budget by ${over} ${over === 1 ? 'point' : 'points'} (${sum}/${cap}).`
+          : '';
       }
+      // Keep the label and limits in step with the data-*-overrun-rationale
+      // attributes, which may change after the footer was built.
+      const min = this.#minOverrunRationale();
+      const label = overrun.querySelector('label');
+      if (label) label.textContent = `Overrun rationale (≥ ${min} chars)`;
+      const ta = /** @type {HTMLTextAreaElement | null} */ (overrun.querySelector('textarea'));
+      if (ta) { ta.minLength = min; ta.maxLength = this.#maxOverrunRationale(); }
     }
   }
 
@@ -461,6 +483,7 @@ class QualityTarget extends VBElement {
     const existing = this.querySelector(':scope > svg');
     if (existing) existing.replaceWith(svg);
     else this.prepend(svg);
+    this.#syncAxesInert();
   }
 
   #publish(source, field) {
@@ -490,14 +513,63 @@ class QualityTarget extends VBElement {
     try {
       this.#internals.setFormValue(JSON.stringify(this.value));
     } catch { /* older Safari */ }
+    this.#syncValidity();
   }
 
+  /**
+   * Mirror validateVector() into ElementInternals so a parent <form>'s
+   * checkValidity() / submit is blocked too, not just this element's own
+   * checkValidity() method. The overrun textarea anchors the message when
+   * the overrun rationale is the problem.
+   */
+  #syncValidity() {
+    if (typeof this.#internals.setValidity !== 'function') return;
+    const { valid, errors } = validateVector({
+      vector: this.#vector,
+      rationales: this.#rationales,
+      costWeights: this.#costWeights,
+      capacityPoints: this.#resolveCapacity(),
+      overrunRationale: this.#overrunRationale,
+      minRationale: this.#minRationale(),
+      minOverrunRationale: this.#minOverrunRationale(),
+    });
+    if (valid) { this.#internals.setValidity({}); return; }
+    const overrunTa = /** @type {HTMLElement | null} */ (
+      this.overBudget ? this.querySelector('[data-quality-overrun] textarea') : null);
+    try {
+      this.#internals.setValidity({ customError: true }, errors.join(' '), overrunTa ?? undefined);
+    } catch { /* anchor not yet connected */
+      this.#internals.setValidity({ customError: true }, errors.join(' '));
+    }
+  }
+
+  get #inert() { return this.hasAttribute('disabled') || this.hasAttribute('locked'); }
+
+  /**
+   * disabled / locked: no editing path stays open. styles.css already sets
+   * pointer-events: none; this closes the keyboard and programmatic paths
+   * (axes leave the tab order, openEditor() is a no-op) and disables every
+   * dialog and footer control, including dialogs built later.
+   */
   #syncDisabledLocked() {
-    const off = this.hasAttribute('disabled') || this.hasAttribute('locked');
+    const off = this.#inert;
     for (const dialog of Object.values(this.#dialogs)) {
       for (const el of dialog.querySelectorAll('input, textarea, select, button')) {
         /** @type {HTMLInputElement} */ (el).disabled = off;
       }
+    }
+    for (const el of this.#footer?.querySelectorAll('textarea') ?? []) {
+      /** @type {HTMLTextAreaElement} */ (el).disabled = off;
+    }
+    this.#syncAxesInert();
+  }
+
+  #syncAxesInert() {
+    const off = this.#inert;
+    for (const axis of this.querySelectorAll(':scope > svg .axis[data-ility]')) {
+      axis.setAttribute('tabindex', off ? '-1' : '0');
+      if (off) axis.setAttribute('aria-disabled', 'true');
+      else axis.removeAttribute('aria-disabled');
     }
   }
 

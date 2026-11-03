@@ -92,8 +92,9 @@ test.describe('quality-target', () => {
           over: qt.querySelector(':scope > svg .center').hasAttribute('data-over'),
           state: qt.matches(':state(over-budget)'),
           overrunHidden: overrun.hidden,
-          // The prompt only matters while the overrun section is shown.
-          prompt: overrun.hidden ? null : overrun.querySelector('[data-overrun-prompt]').textContent,
+          // Read even while hidden: an under-budget prompt must be empty,
+          // never a stale or negative "over budget by -N" string.
+          prompt: overrun.querySelector('[data-overrun-prompt]').textContent,
         };
       };
 
@@ -114,10 +115,10 @@ test.describe('quality-target', () => {
       return { events, changes, over, overVector, levelsInSvg, under, finalVector: qt.vector, criticalSum: qt.criticalSum };
     });
 
-    expect(result.over).toEqual({ sum: '5', over: true, state: true, overrunHidden: false, prompt: "You're over budget by 1 points (5/4)." });
+    expect(result.over).toEqual({ sum: '5', over: true, state: true, overrunHidden: false, prompt: "You're over budget by 1 point (5/4)." });
     expect(result.overVector).toEqual({ accessibility: 'critical', maintainability: 'critical' });
     expect(result.levelsInSvg).toEqual([['accessibility', 'critical'], ['maintainability', 'critical']]);
-    expect(result.under).toEqual({ sum: '3', over: false, state: false, overrunHidden: true, prompt: null });
+    expect(result.under).toEqual({ sum: '3', over: false, state: false, overrunHidden: true, prompt: '' });
     expect(result.finalVector).toEqual({ accessibility: 'critical', maintainability: 'important', performance: 'acceptable' });
     expect(result.criticalSum).toBe(3);
     expect(result.events).toEqual([
@@ -334,5 +335,111 @@ test.describe('quality-target', () => {
       ['over',  { delta: 6,  criticalSum: 10, capacityPoints: 4 }],
       ['under', { slack: 10, criticalSum: 10, capacityPoints: 20 }],
     ]);
+  });
+
+  test('validity reaches ElementInternals, so a parent <form> is blocked while over budget without a rationale', async ({ page }) => {
+    await gotoUpgraded(page);
+
+    const result = await page.evaluate(async () => {
+      const form = document.createElement('form');
+      const qt = document.createElement('quality-target');
+      qt.setAttribute('name', 'q2');
+      qt.setAttribute('data-capacity-points', '4');
+      form.append(qt);
+      document.body.append(form);
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+      const steps = [];
+      steps.push({ step: 'empty', form: form.checkValidity() });
+      qt.vector = { accessibility: 'critical', maintainability: 'critical' };   // 5 > 4
+      qt.rationales = { accessibility: 'Screen-reader users first', maintainability: 'Long-lived codebase here' };
+      steps.push({ step: 'over', form: form.checkValidity(), message: qt.validationMessage ?? null });
+      qt.overrunRationale = 'Legal mandate, approved by the CTO';
+      steps.push({ step: 'explained', form: form.checkValidity() });
+      form.remove();
+      return steps;
+    });
+
+    expect(result[0]).toEqual({ step: 'empty', form: true });
+    expect(result[1].form).toBe(false);
+    expect(result[2]).toEqual({ step: 'explained', form: true });
+  });
+
+  test('generated ids are unique per instance and labels still point at their controls', async ({ page }) => {
+    await gotoUpgraded(page);
+
+    const result = await page.evaluate(async () => {
+      const second = document.createElement('quality-target');
+      second.setAttribute('data-capacity-points', '4');
+      document.body.append(second);
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const all = [...document.querySelectorAll('quality-target')];
+      for (const qt of all) { qt.openEditor('security'); qt.querySelector('dialog[open]')?.close(); }
+
+      const ids = [...document.querySelectorAll('quality-target [id]')].map(el => el.id);
+      const labelsResolve = [...document.querySelectorAll('quality-target label[for]')]
+        .every(l => l.control && l.closest('quality-target') === l.control.closest('quality-target'));
+      second.remove();
+      return { total: ids.length, unique: new Set(ids).size, labelsResolve };
+    });
+
+    expect(result.total).toBeGreaterThanOrEqual(4);
+    expect(result.unique).toBe(result.total);
+    expect(result.labelsResolve).toBe(true);
+  });
+
+  test('disabled / locked close the keyboard and programmatic editing paths too', async ({ page }) => {
+    await gotoUpgraded(page);
+
+    const result = await page.evaluate(() => {
+      const qt = document.querySelector('quality-target');
+      qt.openEditor('security');
+      qt.querySelector('dialog[open]').close();
+
+      qt.setAttribute('locked', '');
+      const axes = () => [...qt.querySelectorAll(':scope > svg .axis[data-ility]')];
+      const locked = {
+        tabindex: [...new Set(axes().map(a => a.getAttribute('tabindex')))],
+        ariaDisabled: axes().every(a => a.getAttribute('aria-disabled') === 'true'),
+        dialogControlsDisabled: [...qt.querySelectorAll('dialog input, dialog textarea, dialog button')].every(el => el.disabled),
+        overrunDisabled: qt.querySelector('[data-quality-overrun] textarea').disabled,
+      };
+      qt.openEditor('performance');
+      locked.openedAnyway = !!qt.querySelector('dialog[open]');
+      // A re-render (e.g. a property set) must keep the axes inert.
+      qt.capacityPoints = 9;
+      locked.afterRender = [...new Set(axes().map(a => a.getAttribute('tabindex')))];
+
+      qt.removeAttribute('locked');
+      const unlocked = {
+        tabindex: [...new Set(axes().map(a => a.getAttribute('tabindex')))],
+        ariaDisabled: axes().some(a => a.hasAttribute('aria-disabled')),
+        overrunDisabled: qt.querySelector('[data-quality-overrun] textarea').disabled,
+      };
+      return { locked, unlocked };
+    });
+
+    expect(result.locked).toEqual({
+      tabindex: ['-1'], ariaDisabled: true, dialogControlsDisabled: true,
+      overrunDisabled: true, openedAnyway: false, afterRender: ['-1'],
+    });
+    expect(result.unlocked).toEqual({ tabindex: ['0'], ariaDisabled: false, overrunDisabled: false });
+  });
+
+  test('overrun label and limits follow data-min/max-overrun-rationale changes', async ({ page }) => {
+    await gotoUpgraded(page);
+
+    const result = await page.evaluate(() => {
+      const qt = document.querySelector('quality-target');
+      qt.setAttribute('data-min-overrun-rationale', '25');
+      qt.setAttribute('data-max-overrun-rationale', '300');
+      const ta = qt.querySelector('[data-quality-overrun] textarea');
+      return {
+        label: qt.querySelector('[data-quality-overrun] label').textContent,
+        min: ta.minLength, max: ta.maxLength,
+      };
+    });
+
+    expect(result).toEqual({ label: 'Overrun rationale (≥ 25 chars)', min: 25, max: 300 });
   });
 });
