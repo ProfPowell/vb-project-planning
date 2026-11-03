@@ -71,7 +71,7 @@ crumbLabel: Web Components
 
   <section>
     <h2>Data Model</h2>
-    <p>Phase data can be loaded from a JSON file via the <code>src</code> attribute or set programmatically via the <code>.phases</code> property. The JSON schema supports top-level metadata plus an array of phase objects. The file is fetched once per <code>src</code> value (a new value aborts the previous request), and <code>journey-ready</code> fires after it renders. Every string from the data &mdash; names, emotions, ids &mdash; is rendered as text, never as markup; ids become URL-encoded fragment links.</p>
+    <p>Phase data can be loaded from a JSON file via the <code>src</code> attribute or set programmatically via the <code>.phases</code> property. The JSON schema supports top-level metadata plus an array of phase objects. The file is fetched once per <code>src</code> value (a new value aborts the previous request), and <code>user-journey:ready</code> fires after it renders. Every string from the data &mdash; names, emotions, ids &mdash; is rendered as text, never as markup; ids become URL-encoded fragment links.</p>
 
     <code-block language="json" show-lines label="JSON schema">{
   "title": "API Platform Evaluation",
@@ -292,7 +292,7 @@ journey.phases = [
       <li><strong>Story linking</strong> &mdash; set <code>story-ids</code> to a comma-separated list of story IDs. Each ID renders as a chip link. Per-phase <code>storyIds</code> in the JSON data also render as chips in the phase header row.</li>
     </ul>
 
-    <code-block language="html" show-lines label="Cross-referencing on a planning page" data-escape><user-persona id="persona-sarah-chen" role="Product Manager">
+    <code-block language="html" show-lines label="Cross-referencing on a planning page" data-escape><user-persona id="persona-sarah-chen" job-title="Product Manager">
   <h2 slot="name">Sarah Chen</h2>
   <p slot="bio">Experienced PM focused on developer tools.</p>
 </user-persona>

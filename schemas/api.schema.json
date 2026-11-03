@@ -56,7 +56,7 @@
         "required": ["name", "detail", "description"],
         "additionalProperties": false,
         "properties": {
-          "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$|^[a-z]+(-[a-z]+)+$", "description": "<element>:<event>. A few older events are un-namespaced (persona-ready, story-ready, journey-ready, status-changed, priority-changed); new events must use <element>:<event>." },
+          "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$", "description": "<element>:<event>. Deprecated un-namespaced aliases (e.g. persona-ready) are described in the namespaced event's description, not listed." },
           "detail": { "type": "string", "description": "Shape of event.detail, or empty for none" },
           "description": { "type": "string", "minLength": 1 }
         }

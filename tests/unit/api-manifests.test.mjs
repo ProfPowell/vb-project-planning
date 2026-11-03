@@ -67,10 +67,6 @@ function dispatchedSuffixes(code) {
   for (const m of code.matchAll(/`([a-z][a-z0-9-]*):\$\{/g)) {
     for (const q of code.matchAll(/['"]([a-z][a-z0-9-]*)['"]/g)) out.add(`${m[1]}:${q[1]}`);
   }
-  // Older un-namespaced events dispatched literally: new CustomEvent('status-changed')
-  for (const m of code.matchAll(/new CustomEvent\(\s*['"]([a-z]+(?:-[a-z]+)+)['"]/g)) out.add(m[1]);
-  // UXShadowElement subclasses: `static readyEvent = 'persona-ready'` is dispatched by the base
-  for (const m of code.matchAll(/static\s+readyEvent\s*=\s*['"]([a-z][a-z0-9-]*)['"]/g)) out.add(m[1]);
   return out;
 }
 
@@ -97,7 +93,6 @@ for (const c of components) {
     const inherited = dispatchedSuffixes(sharedSources);
     const canDispatch = (name) => {
       const suffix = name.split(':')[1];
-      if (!name.includes(':')) return local.has(name);
       return local.has(name) || local.has(`*:${suffix}`) || inherited.has(`*:${suffix}`);
     };
     const notDispatched = [...documented].filter((n) => !canDispatch(n));
@@ -108,7 +103,8 @@ for (const c of components) {
     // events use other tag prefixes and are ignored.)
     const literalOwn = [...local].filter((n) => n.startsWith(`${api.element}:`));
     const dispatchedLiterals = literalOwn.filter((n) =>
-      new RegExp(`(?:CustomEvent|dispatch\\w*|emit\\w*)\\(\\s*['"\`]${n.replace(/[-:]/g, '\\$&')}['"\`]`).test(code));
+      // `static readyEvent = '<tag>:ready'` is dispatched by UXShadowElement.
+      new RegExp(`(?:(?:CustomEvent|dispatch\\w*|emit\\w*)\\(|readyEvent\\s*=)\\s*['"\`]${n.replace(/[-:]/g, '\\$&')}['"\`]`).test(code));
     const undocumented = dispatchedLiterals.filter((n) => !documented.has(n));
     assert.deepEqual(undocumented, [], 'dispatched but undocumented');
   });

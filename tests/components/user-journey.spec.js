@@ -34,7 +34,7 @@ test('user-journey: .data setter populates phases + slots', async ({ page }) => 
 });
 
 test.describe('user-journey — src, lifecycle and regressions', () => {
-  const EVENTS = ['journey-ready', 'user-journey:upgraded'];
+  const EVENTS = ['user-journey:ready', 'user-journey:upgraded'];
   const record = {
     title: 'Checkout journey',
     persona: 'Sam',
@@ -45,35 +45,35 @@ test.describe('user-journey — src, lifecycle and regressions', () => {
   };
   const XSS = '"><img src=x onerror="window.__xss=1">';
 
-  test('src fetches exactly once and journey-ready fires once, after the data renders', async ({ page }) => {
+  test('src fetches exactly once and user-journey:ready fires once, after the data renders', async ({ page }) => {
     const { requests } = await openUpgradePage(page, {
       events: EVENTS,
       fixtures: { 'journey.json': record },
       body: '<user-journey id="j1" src="journey.json"></user-journey>',
     });
-    await page.waitForFunction(() => window.__events.some(e => e.type === 'journey-ready'));
+    await page.waitForFunction(() => window.__events.some(e => e.type === 'user-journey:ready'));
     await page.waitForTimeout(100);
 
     expect(requests['journey.json']).toBe(1);
-    expect(await recordedEvents(page, 'journey-ready')).toEqual([{
-      type: 'journey-ready', id: 'j1',
+    expect(await recordedEvents(page, 'user-journey:ready')).toEqual([{
+      type: 'user-journey:ready', id: 'j1',
       detail: { title: 'Checkout journey', persona: 'Sam', phaseCount: 2 },
     }]);
     expect(await recordedEvents(page, 'user-journey:upgraded')).toHaveLength(1);
   });
 
-  test('moving the element does not refetch, re-render, or re-fire journey-ready', async ({ page }) => {
+  test('moving the element does not refetch, re-render, or re-fire user-journey:ready', async ({ page }) => {
     const { requests } = await openUpgradePage(page, {
       events: EVENTS,
       fixtures: { 'journey.json': record },
       body: '<user-journey id="j1" src="journey.json"></user-journey>',
     });
-    await page.waitForFunction(() => window.__events.some(e => e.type === 'journey-ready'));
+    await page.waitForFunction(() => window.__events.some(e => e.type === 'user-journey:ready'));
 
     const moved = await moveElement(page, '#j1');
     expect(moved).toEqual({ connected: true, sameNode: true, sameHtml: true, upgraded: true });
     expect(requests['journey.json']).toBe(1);
-    expect(await recordedEvents(page, 'journey-ready')).toHaveLength(1);
+    expect(await recordedEvents(page, 'user-journey:ready')).toHaveLength(1);
   });
 
   test('ids and emotions from src JSON are rendered as text, never markup', async ({ page }) => {
@@ -91,7 +91,7 @@ test.describe('user-journey — src, lifecycle and regressions', () => {
       },
       body: `<user-journey id="j1" src="evil.json" story-ids='${XSS.replace(/'/g, '&#39;')}'></user-journey>`,
     });
-    await page.waitForFunction(() => window.__events.some(e => e.type === 'journey-ready'));
+    await page.waitForFunction(() => window.__events.some(e => e.type === 'user-journey:ready'));
 
     const state = await page.evaluate(() => {
       const sr = document.getElementById('j1').shadowRoot;
@@ -120,7 +120,7 @@ test.describe('user-journey — src, lifecycle and regressions', () => {
       fixtures: { 'journey.json': record },
       body: '<user-journey id="j1" src="journey.json"></user-journey>',
     });
-    await page.waitForFunction(() => window.__events.some(e => e.type === 'journey-ready'));
+    await page.waitForFunction(() => window.__events.some(e => e.type === 'user-journey:ready'));
     const label = await page.evaluate(() =>
       document.getElementById('j1').shadowRoot.querySelector('table').getAttribute('aria-label'));
     expect(label).toBe('Checkout journey — phase breakdown');
