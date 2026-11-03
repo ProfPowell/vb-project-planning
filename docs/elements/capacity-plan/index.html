@@ -85,10 +85,10 @@
 
   <title>capacity-plan — VB Project Planning</title>
   <meta name="description" content="Compact ledger that ties iron-triangle capacity, quality-target spend, and slotted work-item costs into a stacked-bar plan view.">
-  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mvzzz4vf">
-  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mvzzz4vf">
-  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mvzzz4vf">
-  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mvzzz4vf">
+  <link rel="stylesheet" href="/vb-project-planning/assets/vendor/vanilla-breeze.css?v=mw01sf4c">
+  <link rel="stylesheet" href="/vb-project-planning/assets/pack/vb-project-planning.css?v=mw01sf4c">
+  <link rel="stylesheet" href="/vb-project-planning/assets/docs.css?v=mw01sf4c">
+  <link rel="stylesheet" href="/vb-project-planning/assets/site.css?v=mw01sf4c">
   
 </head>
 <body style="overflow-x: clip;">
@@ -1208,12 +1208,13 @@
         <pre><code class="language-text" tabindex="0"><span class="code-line">slack = capacityPoints − qualityCriticalSum − featureCostSum</span></code></pre>
       </div>
       </template><textarea style="display:none">slack = capacityPoints − qualityCriticalSum − featureCostSum</textarea></code-block>
-  <p>When <code>capacityPoints</code> is unbounded (no triangle bound and no <code>data-capacity-points</code> on the target), slack is reported as ∞ and the bar visualization scales against actual spend. The slack row turns red and <code>capacity-plan:overdrawn</code> fires when slack crosses zero.</p>
+  <p>Capacity comes only from the bound <code>&lt;iron-triangle&gt;</code>. When no triangle is bound, or its capacity is 0, capacity and slack show as ∞ and the quality and feature bars scale against each other instead of against a budget. A <code>data-capacity-points</code> fallback on the <code>&lt;quality-target&gt;</code> feeds that target's own budget, not this ledger.</p>
+  <p>With a finite budget, bars scale against the larger of capacity and total spend, so an overdrawn plan still fits the track. When slack goes negative its number turns red, the ledger gets an error-coloured outline (<code>:state(overdrawn)</code>), and <code>capacity-plan:overdrawn</code> fires. The event fires on every crossing of zero, in either direction, including the first render if the plan starts out overdrawn.</p>
 </section>
 
 <section>
   <h2>Two ways to supply feature spend</h2>
-  <p>The component sums any descendant element with <code>data-capacity-cost="N"</code>. Authors typically slot <code>&lt;work-item&gt;</code> children:</p>
+  <p>The component sums any descendant element with <code>data-capacity-cost="N"</code>; values that aren't positive numbers count as 0. Authors typically slot <code>&lt;work-item&gt;</code> children:</p>
 
   <code-block language="html" data-ssr label="Slotted work-items"><template shadowrootmode="open"><style>
       :host {
@@ -1708,7 +1709,7 @@
   &lt;work-item data-capacity-cost=&quot;2&quot;&gt;API webhooks&lt;/work-item&gt;
 &lt;/capacity-plan&gt;</textarea></code-block>
 
-  <p>For server-rendered planning surfaces or programmatic flows, set <code>featureSum</code> directly; property override wins over slot inference. Mutation observation re-renders automatically when a slotted child's <code>data-capacity-cost</code> changes.</p>
+  <p>For server-rendered planning surfaces or programmatic flows, set <code>featureSum</code> directly; property override wins over slot inference. Set it to <code>null</code> (or anything that isn't a number) to go back to summing the children. Mutation observation re-renders automatically when children are added or removed or a child's <code>data-capacity-cost</code> changes.</p>
 </section>
 
 <section>
@@ -1724,9 +1725,21 @@
     <tbody>
       <tr><td><code>capacityPoints</code> (R)</td><td>Live capacity from the bound triangle (or Infinity if absent).</td></tr>
       <tr><td><code>qualitySum</code> (R)</td><td>Live critical sum from the bound quality target (or 0).</td></tr>
-      <tr><td><code>featureSum</code> (R/W)</td><td>Sum of <code>data-capacity-cost</code> across descendants, or an explicit number set by the host.</td></tr>
+      <tr><td><code>featureSum</code> (R/W)</td><td>Sum of <code>data-capacity-cost</code> across descendants, or an explicit number set by the host. A non-number clears the override.</td></tr>
       <tr><td><code>slack</code> (R)</td><td>Computed: capacity − quality − features.</td></tr>
-      <tr><td><code>capacity-plan:overdrawn</code> (event)</td><td>Edge-triggered when slack crosses zero.</td></tr>
+      <tr><td><code>capacity-plan:overdrawn</code> (event)</td><td>Edge-triggered when slack crosses zero in either direction. <code>detail</code> is <code>{ ledger: { capacity, quality, features, slack }, source: 'render' }</code>; read <code>detail.ledger.slack &lt; 0</code> to tell which way it crossed.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>States &amp; styling hooks</h2>
+  <table class="props-table">
+    <thead><tr><th>Hook</th><th>When</th></tr></thead>
+    <tbody>
+      <tr><td><code>:state(overdrawn)</code></td><td>Slack is below zero. Outlines the ledger in the error colour.</td></tr>
+      <tr><td><code>[data-row="capacity|quality|features|slack"]</code></td><td>One ledger row each, for targeted styling.</td></tr>
+      <tr><td><code>[data-row="slack"][data-state="over|under"]</code></td><td>Slack sign. <code>over</code> turns the slack number red and bold.</td></tr>
     </tbody>
   </table>
 </section>
@@ -1737,14 +1750,14 @@
     <thead><tr><th>Token</th><th>Default</th><th>Purpose</th></tr></thead>
     <tbody>
       <tr><td><code>--capacity-plan-max</code></td><td><code>32rem</code></td><td>Max inline-size of the ledger container.</td></tr>
-      <tr><td>Bar colors</td><td>VB theme tokens (<code>--color-text</code>, <code>--color-interactive</code>, <code>--color-success</code>, <code>--color-error</code>)</td><td>Auto-adapt across light/dark and brand themes.</td></tr>
+      <tr><td>Bar colors</td><td>VB theme tokens: capacity <code>--color-text</code> (25% mix), quality <code>--color-interactive</code>, features <code>--color-success</code>, slack <code>--color-text-muted</code> (35% mix), overdrawn <code>--color-error</code></td><td>Auto-adapt across light/dark and brand themes. There are no per-bar tokens; override the <code>.bar-quality</code>-style classes if you need different colours.</td></tr>
     </tbody>
   </table>
 </section>
 
 <section>
   <h2>Accessibility</h2>
-  <p>The ledger is read as labelled rows so the capacity / quality / features / slack breakdown is available without relying on the bar colors alone. Bars adopt VB theme tokens (<code>--color-text</code>, <code>--color-interactive</code>, <code>--color-success</code>, <code>--color-error</code>) so they auto-adapt across light, dark, and brand themes while preserving contrast; the overdrawn state is conveyed by the slack value going negative, not by color alone.</p>
+  <p>The ledger is a <code>&lt;dl aria-label="Capacity ledger"&gt;</code>: each row is a <code>&lt;dt&gt;</code> label with its value in a <code>&lt;dd&gt;</code>, so the capacity / quality / features / slack breakdown reads as text without relying on the bars, which carry no text. Bars adopt VB theme tokens so they auto-adapt across light, dark, and brand themes. The overdrawn state is conveyed by the signed slack value (e.g. "-3 pts"), not by colour alone. The ledger is not a live region: changes are not announced, so pair it with the bound components' own announcements, or add an <code>aria-live</code> wrapper if the ledger is the only feedback.</p>
 </section>
 
 <section>
@@ -1808,10 +1821,10 @@
 
   <!-- Pack bundle loads BEFORE core so the pack's own (newer) planning
        components register first; core then supplies the doc chrome. -->
-  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mvzzz4vf"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mvzzz4vf"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mvzzz4vf"></script>
-  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mvzzz4vf"></script>
+  <script type="module" src="/vb-project-planning/assets/pack/vb-project-planning.js?v=mw01sf4c"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/vanilla-breeze.js?v=mw01sf4c"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/browser-window.js?v=mw01sf4c"></script>
+  <script type="module" src="/vb-project-planning/assets/vendor/code-block.js?v=mw01sf4c"></script>
   
 </body>
 </html>

@@ -1343,10 +1343,20 @@ iron-triangle > .iron-triangle-status .iron-triangle-readout {
 }
 iron-triangle > .iron-triangle-status .iron-triangle-mode {
   font-size: inherit;
+  font-weight: var(--font-weight-normal, 400);
+  padding-block: 0;
+  padding-inline: var(--size-xs, 0.5rem);
+  border-color: transparent;
+  color: var(--color-text-muted);
+}
+iron-triangle > .iron-triangle-status .iron-triangle-mode:hover {
+  color: var(--color-text);
 }
 iron-triangle > .iron-triangle-status .iron-triangle-mode[aria-pressed=true] {
-  border-color: var(--color-interactive);
   color: var(--color-interactive);
+  text-decoration: underline;
+  text-decoration-thickness: var(--border-width-medium, 2px);
+  text-underline-offset: 0.25em;
 }
 iron-triangle > .iron-triangle-status .iron-triangle-warning {
   margin: 0;
@@ -1377,6 +1387,9 @@ iron-triangle[disabled],
 iron-triangle[locked] {
   opacity: 0.85;
   pointer-events: none;
+}
+iron-triangle[locked]:not([disabled]) svg .center[data-target=quality] {
+  pointer-events: auto;
 }
 iron-triangle > dialog.iron-triangle-dialog {
   inline-size: min(28rem, 92vw);
