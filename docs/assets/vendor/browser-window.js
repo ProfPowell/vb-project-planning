@@ -4,7 +4,11 @@ if (typeof document < "u") {
 }
 const h = /* @__PURE__ */ new Set();
 let l = null, u = null, m = /* @__PURE__ */ new WeakSet();
-const M = '[data-mode="light"], [data-mode="dark"]', C = { attributes: !0, subtree: !0, attributeFilter: ["data-mode"] };
+const A = '[data-mode="light"], [data-mode="dark"], [data-theme]', C = {
+  attributes: !0,
+  subtree: !0,
+  attributeFilter: ["data-mode", "data-theme"]
+};
 function z() {
   const o = document.documentElement, e = document.body;
   if (!o || !e) return null;
@@ -21,49 +25,63 @@ function z() {
   const t = getComputedStyle(o).colorScheme;
   return t === "dark" ? !0 : t === "light" ? !1 : null;
 }
-function A(o) {
+function L(o, e) {
+  const t = o.getAttribute("data-mode");
+  if (t === "dark" || t === "light") return t === "dark";
+  if (o === e) return null;
+  const r = getComputedStyle(o).colorScheme;
+  return r === "dark" || r === "light" ? r === "dark" : null;
+}
+function E(o) {
   let e = o;
   for (; e; ) {
-    const t = e.closest(M);
-    if (t)
-      return t === document.documentElement ? null : t.getAttribute("data-mode") === "dark";
-    const r = e.getRootNode();
-    e = r instanceof ShadowRoot ? r.host : null;
+    const t = e.closest(A);
+    if (t === document.documentElement) return null;
+    if (!t) {
+      e = e.getRootNode().host;
+      continue;
+    }
+    const r = L(t, o);
+    if (r !== null) return r;
+    e = t.parentElement ?? t.getRootNode().host;
   }
   return null;
 }
-function f(o, e = z()) {
-  return A(o) ?? e;
+function M(o) {
+  o.target.localName === "link" && f();
 }
-function x() {
+function v(o, e = z()) {
+  return E(o) ?? e;
+}
+function f() {
   const o = z();
   for (const e of h) {
-    const t = f(e, o);
+    const t = v(e, o);
     t !== e._resolvedDarkMode && e._onPageModeChange(t);
   }
 }
-function L() {
+function T() {
   if (l) return;
-  l = new MutationObserver(x);
+  l = new MutationObserver(f);
   const o = {
     attributes: !0,
     attributeFilter: ["class", "data-theme", "data-bs-theme", "data-mode", "style"]
   };
-  l.observe(document.documentElement, o), document.body && l.observe(document.body, o), u = new MutationObserver(x), u.observe(document.documentElement, C);
+  l.observe(document.documentElement, o), document.body && l.observe(document.body, o), u = new MutationObserver(f), u.observe(document.documentElement, C), document.addEventListener("load", M, !0);
 }
-function E(o) {
+function I(o) {
   let e = o.getRootNode();
   for (; e instanceof ShadowRoot; )
     m.has(e) || (m.add(e), u.observe(e, C)), e = e.host.getRootNode();
 }
-function T() {
-  l && (l.disconnect(), l = null, u.disconnect(), u = null, m = /* @__PURE__ */ new WeakSet());
+function R() {
+  l && (l.disconnect(), l = null, u.disconnect(), u = null, document.removeEventListener("load", M, !0), m = /* @__PURE__ */ new WeakSet());
 }
-function I(o) {
-  h.add(o), h.size === 1 && L(), E(o), o._onPageModeChange(f(o));
+function $(o) {
+  h.add(o), h.size === 1 && T(), I(o), o._onPageModeChange(v(o));
 }
-function R(o) {
-  h.delete(o), h.size === 0 && T();
+function B(o) {
+  h.delete(o), h.size === 0 && R();
 }
 const y = {
   "iphone-16": {
@@ -162,21 +180,21 @@ const y = {
   gold: "#d4a574",
   blue: "#3a4f6f",
   white: "#f0f0f0"
-}, $ = {
+}, O = {
   "dynamic-island": 54,
   "punch-hole": 36,
   none: 24
-}, B = 28, k = 80;
+}, D = 28, k = 80;
 let S = !1;
-class O extends HTMLElement {
+class H extends HTMLElement {
   constructor() {
     super(), this.attachShadow({ mode: "open" }), this.isMinimized = !1, this.isMaximized = !1, this.overlay = null, this.showSource = !1, this.sourceCode = "", this.showShareMenu = !1, this._handleKeydown = this._handleKeydown.bind(this), this._handleOutsideClick = this._handleOutsideClick.bind(this), this._resizeObserver = null, this._currentScale = 1, this._outsideClickTimer = null, this._copyFeedbackTimer = null, this._fetchController = null, this._sourceCodeSrc = "";
   }
   async connectedCallback() {
-    this.render(), this._attachEventListeners(), I(this), this._getDevicePreset() && this._setupDeviceScaling();
+    this.render(), this._attachEventListeners(), $(this), this._getDevicePreset() && this._setupDeviceScaling();
   }
   disconnectedCallback() {
-    R(this), this._removeOverlay(), this._teardownDeviceScaling(), clearTimeout(this._outsideClickTimer), clearTimeout(this._copyFeedbackTimer), this._fetchController?.abort(), document.removeEventListener("keydown", this._handleKeydown), document.removeEventListener("click", this._handleOutsideClick);
+    B(this), this._removeOverlay(), this._teardownDeviceScaling(), clearTimeout(this._outsideClickTimer), clearTimeout(this._copyFeedbackTimer), this._fetchController?.abort(), document.removeEventListener("keydown", this._handleKeydown), document.removeEventListener("click", this._handleOutsideClick);
   }
   static get observedAttributes() {
     return [
@@ -222,7 +240,7 @@ class O extends HTMLElement {
         return;
       }
       if (e === "mode") {
-        this.hasAttribute("mode") ? this.removeAttribute("data-page-mode") : this._onPageModeChange(f(this)), this._syncIframeColorScheme();
+        this.hasAttribute("mode") ? this.removeAttribute("data-page-mode") : this._onPageModeChange(v(this)), this._syncIframeColorScheme();
         return;
       }
       (e === "allow" || e === "allowfullscreen" || e === "referrerpolicy" || e === "iframe-title") && this._syncIframePassthroughAttrs();
@@ -1100,25 +1118,21 @@ class O extends HTMLElement {
 
         /* Larger touch targets on touch devices */
         @media (pointer: coarse) {
-          /* 44px targets that shrink, down to 24px, before the toolbar would clip */
           .controls {
-            flex: 0 1 132px;
-            min-width: 72px;
             margin-inline: -16px -12px;
           }
 
           .control-button {
-            flex: 1 1 0;
-            width: auto;
-            min-width: 24px;
+            width: 44px;
             height: 44px;
             margin-block: -16px;
           }
         }
 
+        /* The header padding is 0.75rem here, so keep targets inside the window */
         @media (pointer: coarse) and (max-width: 480px) {
           .controls {
-            margin-inline: -6px;
+            margin-inline: -12px -8px;
           }
         }
 
@@ -1163,6 +1177,8 @@ class O extends HTMLElement {
 
         .url-bar {
           flex: 1;
+          min-width: 0;
+          container: url-bar / inline-size;
           display: flex;
           align-items: center;
           gap: 0.5rem;
@@ -1178,6 +1194,13 @@ class O extends HTMLElement {
         .lock-icon {
           color: var(--browser-window-text-muted, var(--_bw-text-muted));
           font-size: 0.75rem;
+        }
+
+        /* No room for the lock beside the toolbar */
+        @container url-bar (max-width: 119px) {
+          .lock-icon {
+            display: none;
+          }
         }
 
         .url-text {
@@ -1287,14 +1310,28 @@ class O extends HTMLElement {
           }
         }
 
-        /* Touch devices: larger button padding */
+        /* Touch devices: 44px targets that shrink, down to 24px, before the toolbar would clip */
         @media (pointer: coarse) {
+          .view-source-button,
+          .share-container,
+          .download-button {
+            flex: 0 1 44px;
+            min-width: 24px;
+          }
+
+          .share-container {
+            display: flex;
+          }
+
           .view-source-button,
           .share-button,
           .download-button {
-            padding: 0.5rem;
-            min-width: 44px;
+            padding: 0.5rem 0;
             min-height: 44px;
+          }
+
+          .share-button {
+            flex: 1;
           }
 
           .share-menu-item {
@@ -1369,7 +1406,7 @@ class O extends HTMLElement {
   }
   // --- Device mode ---
   _deviceCSS(e) {
-    const t = this.getAttribute("orientation") === "landscape", r = this._getEffectiveDimensions(e), [i, s, d, n] = this._getEffectiveSafeInsets(e), c = $[e.notch] || 24, a = e.homeIndicator && !e.homeButton ? B : 0, w = e.homeButton ? k : 0, b = e.notch !== "none";
+    const t = this.getAttribute("orientation") === "landscape", r = this._getEffectiveDimensions(e), [i, s, d, n] = this._getEffectiveSafeInsets(e), c = O[e.notch] || 24, a = e.homeIndicator && !e.homeButton ? D : 0, w = e.homeButton ? k : 0, b = e.notch !== "none";
     return `
         :host([device]) {
           --device-width: ${r.width}px;
@@ -1814,12 +1851,12 @@ class O extends HTMLElement {
           <span class="battery-icon" aria-hidden="true"></span>
         </div>
       </div>
-    `, v = e.homeIndicator && !e.homeButton ? '<div class="home-indicator"><div class="home-indicator-pill"></div></div>' : "", p = this.hasAttribute("show-safe-areas") ? `<div class="safe-area-overlays">
+    `, p = e.homeIndicator && !e.homeButton ? '<div class="home-indicator"><div class="home-indicator-pill"></div></div>' : "", g = this.hasAttribute("show-safe-areas") ? `<div class="safe-area-overlays">
           <div class="safe-area-overlay safe-area-top"></div>
           <div class="safe-area-overlay safe-area-right"></div>
           <div class="safe-area-overlay safe-area-bottom"></div>
           <div class="safe-area-overlay safe-area-left"></div>
-        </div>` : "", g = this._deviceToolbar();
+        </div>` : "", x = this._deviceToolbar();
     return t && r ? `
         <div class="device-wrapper">
           <div class="${a}">
@@ -1827,22 +1864,22 @@ class O extends HTMLElement {
             <div class="device-main">
               ${b}
               ${this._contentHTML()}
-              ${v}
+              ${p}
             </div>
-            ${p}
+            ${g}
           </div>
         </div>
-        ${g}
+        ${x}
       ` : `
       <div class="device-wrapper">
         <div class="${a}">
           ${b}
           ${this._contentHTML()}
-          ${v}
           ${p}
+          ${g}
         </div>
       </div>
-      ${g}
+      ${x}
     `;
   }
   _deviceToolbar() {
@@ -1915,7 +1952,7 @@ class O extends HTMLElement {
     return t.textContent = e, t.innerHTML.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 }
-customElements.get("browser-window") || customElements.define("browser-window", O);
+customElements.get("browser-window") || customElements.define("browser-window", H);
 export {
-  O as BrowserWindow
+  H as BrowserWindow
 };
