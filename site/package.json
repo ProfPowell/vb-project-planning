@@ -11,7 +11,7 @@
     "preview": "npm run build && npx http-server dist/pages -p 4321 -c-1"
   },
   "devDependencies": {
-    "@profpowell/browser-window": "^1.4.6",
+    "@profpowell/browser-window": "^1.4.8",
     "@profpowell/code-block": "^2.9.0",
     "cook-ssg": "^2.4.0",
     "linkedom": "^0.18.15",

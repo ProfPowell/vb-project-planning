@@ -6,6 +6,11 @@ the project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Docs site uses `@profpowell/browser-window` 1.4.8, which gives demo iframes a
+  title and stops the window controls' hit areas overlapping. The `a11y-site`
+  spec no longer excludes the window controls.
+
 ## [0.3.0] - 2026-11-03
 
 An accessibility release. A full axe-core audit (WCAG 2.2 AA + best practice)

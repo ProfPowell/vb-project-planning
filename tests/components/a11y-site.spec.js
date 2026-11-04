@@ -9,11 +9,8 @@
  *   - the 20 planning components shipped by this package;
  *   - <chart-wc> (upstream vanilla-breeze): its SVG puts focusable points inside
  *     an aria-hidden subtree (aria-hidden-focus) — fix belongs upstream;
- *   - <browser-window> iframes (upstream @profpowell/browser-window): the iframe
- *     it renders in its shadow root has no title (frame-title) — fix belongs
- *     upstream. Excluding the frame also skips auditing demo pages a second time
- *     inside element pages; every demo is audited on its own below. Its 12px
- *     window-control buttons also fail target-size (same upstream package);
+ *   - <browser-window> iframes: excluding the frame skips auditing demo pages a
+ *     second time inside element pages; every demo is audited on its own below;
  *   - <drag-surface> (upstream vanilla-breeze): it forces role="list" over the
  *     authored role, appends a role="status" live region inside the list
  *     (aria-required-children) and gives <article> children role="listitem"
@@ -37,12 +34,11 @@ const COMPONENTS = [
   'user-journey', 'user-persona', 'user-story', 'work-item',
 ];
 
-/** Upstream issues tracked outside this repo (see header comment). */
+/** Excluded from this audit (see header comment). */
 const UPSTREAM = [
   'chart-wc',                                     // vanilla-breeze: aria-hidden-focus
   'drag-surface',                                 // vanilla-breeze: role=list + role=status child, listitem on <article>
-  { fromShadowDom: ['browser-window', 'iframe'] }, // @profpowell/browser-window: frame-title
-  { fromShadowDom: ['browser-window', '.browser-header'] }, // @profpowell/browser-window: 12px window-control buttons (target-size)
+  { fromShadowDom: ['browser-window', 'iframe'] }, // demo pages are audited on their own below
 ];
 
 /**

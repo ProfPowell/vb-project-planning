@@ -1,54 +1,71 @@
 if (typeof document < "u") {
-  const i = document.createElement("style");
-  i.textContent = "browser-window:not(:defined){display:block;opacity:0}", document.head.appendChild(i);
+  const o = document.createElement("style");
+  o.textContent = "browser-window:not(:defined){display:block;opacity:0}", document.head.appendChild(o);
 }
 const h = /* @__PURE__ */ new Set();
-let l = null, b = null;
-function m() {
-  const i = document.documentElement, e = document.body;
-  if (!i || !e) return null;
-  if (i.classList.contains("dark") || e.classList.contains("dark") || i.getAttribute("data-theme") === "dark" || e.getAttribute("data-theme") === "dark")
+let l = null, u = null, m = /* @__PURE__ */ new WeakSet();
+const M = '[data-mode="light"], [data-mode="dark"]', C = { attributes: !0, subtree: !0, attributeFilter: ["data-mode"] };
+function z() {
+  const o = document.documentElement, e = document.body;
+  if (!o || !e) return null;
+  if (o.classList.contains("dark") || e.classList.contains("dark") || o.getAttribute("data-theme") === "dark" || e.getAttribute("data-theme") === "dark")
     return !0;
-  if (i.getAttribute("data-theme") === "light" || e.getAttribute("data-theme") === "light")
+  if (o.getAttribute("data-theme") === "light" || e.getAttribute("data-theme") === "light")
     return !1;
-  if (i.getAttribute("data-bs-theme") === "dark" || e.getAttribute("data-bs-theme") === "dark")
+  if (o.getAttribute("data-bs-theme") === "dark" || e.getAttribute("data-bs-theme") === "dark")
     return !0;
-  if (i.getAttribute("data-bs-theme") === "light" || e.getAttribute("data-bs-theme") === "light")
+  if (o.getAttribute("data-bs-theme") === "light" || e.getAttribute("data-bs-theme") === "light")
     return !1;
-  if (i.getAttribute("data-mode") === "dark") return !0;
-  if (i.getAttribute("data-mode") === "light") return !1;
-  const t = getComputedStyle(i).colorScheme;
+  if (o.getAttribute("data-mode") === "dark") return !0;
+  if (o.getAttribute("data-mode") === "light") return !1;
+  const t = getComputedStyle(o).colorScheme;
   return t === "dark" ? !0 : t === "light" ? !1 : null;
 }
-function k() {
-  const i = m();
-  if (i !== b) {
-    b = i;
-    for (const e of h)
-      e._onPageModeChange(i);
+function A(o) {
+  let e = o;
+  for (; e; ) {
+    const t = e.closest(M);
+    if (t)
+      return t === document.documentElement ? null : t.getAttribute("data-mode") === "dark";
+    const r = e.getRootNode();
+    e = r instanceof ShadowRoot ? r.host : null;
+  }
+  return null;
+}
+function f(o, e = z()) {
+  return A(o) ?? e;
+}
+function x() {
+  const o = z();
+  for (const e of h) {
+    const t = f(e, o);
+    t !== e._resolvedDarkMode && e._onPageModeChange(t);
   }
 }
-function S() {
+function L() {
   if (l) return;
-  l = new MutationObserver(k);
-  const i = {
+  l = new MutationObserver(x);
+  const o = {
     attributes: !0,
     attributeFilter: ["class", "data-theme", "data-bs-theme", "data-mode", "style"]
   };
-  l.observe(document.documentElement, i), document.body && l.observe(document.body, i);
+  l.observe(document.documentElement, o), document.body && l.observe(document.body, o), u = new MutationObserver(x), u.observe(document.documentElement, C);
 }
-function C() {
-  l && (l.disconnect(), l = null);
+function E(o) {
+  let e = o.getRootNode();
+  for (; e instanceof ShadowRoot; )
+    m.has(e) || (m.add(e), u.observe(e, C)), e = e.host.getRootNode();
 }
-function z(i) {
-  h.add(i), h.size === 1 && S();
-  const e = m();
-  b = e, i._onPageModeChange(e);
+function T() {
+  l && (l.disconnect(), l = null, u.disconnect(), u = null, m = /* @__PURE__ */ new WeakSet());
 }
-function M(i) {
-  h.delete(i), h.size === 0 && (C(), b = null);
+function I(o) {
+  h.add(o), h.size === 1 && L(), E(o), o._onPageModeChange(f(o));
 }
-const g = {
+function R(o) {
+  h.delete(o), h.size === 0 && T();
+}
+const y = {
   "iphone-16": {
     width: 393,
     height: 852,
@@ -139,27 +156,27 @@ const g = {
     homeButton: !1,
     safeInsets: [24, 0, 20, 0]
   }
-}, x = {
+}, _ = {
   midnight: "#1a1a1a",
   silver: "#c0c0c0",
   gold: "#d4a574",
   blue: "#3a4f6f",
   white: "#f0f0f0"
-}, A = {
+}, $ = {
   "dynamic-island": 54,
   "punch-hole": 36,
   none: 24
-}, L = 28, y = 80;
-let _ = !1;
-class E extends HTMLElement {
+}, B = 28, k = 80;
+let S = !1;
+class O extends HTMLElement {
   constructor() {
     super(), this.attachShadow({ mode: "open" }), this.isMinimized = !1, this.isMaximized = !1, this.overlay = null, this.showSource = !1, this.sourceCode = "", this.showShareMenu = !1, this._handleKeydown = this._handleKeydown.bind(this), this._handleOutsideClick = this._handleOutsideClick.bind(this), this._resizeObserver = null, this._currentScale = 1, this._outsideClickTimer = null, this._copyFeedbackTimer = null, this._fetchController = null, this._sourceCodeSrc = "";
   }
   async connectedCallback() {
-    this.render(), this._attachEventListeners(), z(this), this._getDevicePreset() && this._setupDeviceScaling();
+    this.render(), this._attachEventListeners(), I(this), this._getDevicePreset() && this._setupDeviceScaling();
   }
   disconnectedCallback() {
-    M(this), this._removeOverlay(), this._teardownDeviceScaling(), clearTimeout(this._outsideClickTimer), clearTimeout(this._copyFeedbackTimer), this._fetchController?.abort(), document.removeEventListener("keydown", this._handleKeydown), document.removeEventListener("click", this._handleOutsideClick);
+    R(this), this._removeOverlay(), this._teardownDeviceScaling(), clearTimeout(this._outsideClickTimer), clearTimeout(this._copyFeedbackTimer), this._fetchController?.abort(), document.removeEventListener("keydown", this._handleKeydown), document.removeEventListener("click", this._handleOutsideClick);
   }
   static get observedAttributes() {
     return [
@@ -174,7 +191,8 @@ class E extends HTMLElement {
       "show-safe-areas",
       "allow",
       "allowfullscreen",
-      "referrerpolicy"
+      "referrerpolicy",
+      "iframe-title"
     ];
   }
   attributeChangedCallback(e, t, r) {
@@ -196,7 +214,7 @@ class E extends HTMLElement {
         return;
       }
       if (e === "url" || e === "title") {
-        this._updateBrowserUrlBar();
+        this._updateBrowserUrlBar(), this._syncIframePassthroughAttrs();
         return;
       }
       if (e === "shadow") {
@@ -204,23 +222,33 @@ class E extends HTMLElement {
         return;
       }
       if (e === "mode") {
-        this.hasAttribute("mode") ? this.removeAttribute("data-page-mode") : this._onPageModeChange(m()), this._syncIframeColorScheme();
+        this.hasAttribute("mode") ? this.removeAttribute("data-page-mode") : this._onPageModeChange(f(this)), this._syncIframeColorScheme();
         return;
       }
-      (e === "allow" || e === "allowfullscreen" || e === "referrerpolicy") && this._syncIframePassthroughAttrs();
+      (e === "allow" || e === "allowfullscreen" || e === "referrerpolicy" || e === "iframe-title") && this._syncIframePassthroughAttrs();
     }
   }
-  // Build attribute string for inline iframe templates. Only emits attributes
-  // the host actually has, so we don't change rendered HTML for existing users.
+  // Accessible name for the inner iframe, which must never be empty.
+  _iframeTitle() {
+    for (const e of [this.getAttribute("iframe-title"), this.getAttribute("title"), this.url]) {
+      const t = e?.trim();
+      if (t) return t;
+    }
+    return "Embedded page";
+  }
+  // Build attribute string for inline iframe templates. The title is always
+  // emitted; the passthrough attributes only when the host has them.
   _iframeAttrs() {
-    const e = [];
-    return this.hasAttribute("allow") && e.push(`allow="${this._escapeHtml(this.getAttribute("allow"))}"`), this.hasAttribute("allowfullscreen") && e.push("allowfullscreen"), this.hasAttribute("referrerpolicy") && e.push(`referrerpolicy="${this._escapeHtml(this.getAttribute("referrerpolicy"))}"`), e.length ? " " + e.join(" ") : "";
+    const e = [`title="${this._escapeHtml(this._iframeTitle())}"`];
+    return this.hasAttribute("allow") && e.push(`allow="${this._escapeHtml(this.getAttribute("allow"))}"`), this.hasAttribute("allowfullscreen") && e.push("allowfullscreen"), this.hasAttribute("referrerpolicy") && e.push(`referrerpolicy="${this._escapeHtml(this.getAttribute("referrerpolicy"))}"`), " " + e.join(" ");
   }
   _syncIframePassthroughAttrs() {
     const e = this.shadowRoot?.querySelector("iframe");
-    if (e)
+    if (e) {
+      e.setAttribute("title", this._iframeTitle());
       for (const t of ["allow", "allowfullscreen", "referrerpolicy"])
         this.hasAttribute(t) ? e.setAttribute(t, this.getAttribute(t) ?? "") : e.removeAttribute(t);
+    }
   }
   get url() {
     return this.getAttribute("url") || "";
@@ -273,10 +301,10 @@ class E extends HTMLElement {
   _getDevicePreset() {
     const e = this.getAttribute("device");
     if (!e) return null;
-    const t = g[e];
+    const t = y[e];
     return t || (console.warn(
       `<browser-window>: Unknown device preset "${e}", falling back to "iphone-16"`
-    ), g["iphone-16"]);
+    ), y["iphone-16"]);
   }
   _getEffectiveDimensions(e) {
     const t = this.getAttribute("orientation") === "landscape";
@@ -286,11 +314,11 @@ class E extends HTMLElement {
     };
   }
   _getEffectiveSafeInsets(e) {
-    const [t, r, o, s] = e.safeInsets;
-    return this.getAttribute("orientation") === "landscape" ? [s, t, r, o] : [t, r, o, s];
+    const [t, r, i, s] = e.safeInsets;
+    return this.getAttribute("orientation") === "landscape" ? [s, t, r, i] : [t, r, i, s];
   }
   _onPageModeChange(e) {
-    if (this.hasAttribute("mode")) {
+    if (this._resolvedDarkMode = e, this.hasAttribute("mode")) {
       this.removeAttribute("data-page-mode");
       return;
     }
@@ -321,7 +349,7 @@ class E extends HTMLElement {
     e && (e.textContent = this._dynamicCSS());
   }
   _getBezelColor() {
-    return x[this.deviceColor] || x.midnight;
+    return _[this.deviceColor] || _.midnight;
   }
   _applyDeviceColorClass() {
     const e = this.shadowRoot?.querySelector(".device-frame");
@@ -334,11 +362,11 @@ class E extends HTMLElement {
     if (!e) return;
     const t = e.querySelector(".url-text");
     t && (t.textContent = this.browserTitle, t.setAttribute("title", this.url));
-    const r = e.querySelector(".lock-icon"), o = this.url.startsWith("https");
-    if (o && !r && t) {
+    const r = e.querySelector(".lock-icon"), i = this.url.startsWith("https");
+    if (i && !r && t) {
       const s = document.createElement("span");
       s.className = "lock-icon", s.textContent = "🔒", e.insertBefore(s, t);
-    } else !o && r && r.remove();
+    } else !i && r && r.remove();
   }
   _updateDownloadLinks() {
     for (const e of this.shadowRoot?.querySelectorAll(".download-button") || [])
@@ -373,8 +401,8 @@ class E extends HTMLElement {
       try {
         const r = e.contentDocument;
         if (!r) return;
-        const o = r.querySelector("style[data-browser-window-safe-areas]");
-        o && o.remove();
+        const i = r.querySelector("style[data-browser-window-safe-areas]");
+        i && i.remove();
         const [s, d, n, c] = this._getEffectiveSafeInsets(t), a = r.createElement("style");
         a.setAttribute("data-browser-window-safe-areas", ""), a.textContent = `
         :root {
@@ -399,8 +427,8 @@ class E extends HTMLElement {
     }
   }
   _attachEventListeners() {
-    const e = this.shadowRoot.querySelector(".control-button.close"), t = this.shadowRoot.querySelector(".control-button.minimize"), r = this.shadowRoot.querySelector(".control-button.maximize"), o = this.shadowRoot.querySelector(".view-source-button"), s = this.shadowRoot.querySelector(".copy-source-button"), d = this.shadowRoot.querySelector(".share-button"), n = this.shadowRoot.querySelector(".browser-header");
-    e?.addEventListener("click", () => this._handleClose()), t?.addEventListener("click", () => this.toggleMinimize()), r?.addEventListener("click", () => this.toggleMaximize()), o?.addEventListener("click", () => this.toggleViewSource()), s?.addEventListener("click", () => this.copySourceCode()), d?.addEventListener("click", (a) => {
+    const e = this.shadowRoot.querySelector(".control-button.close"), t = this.shadowRoot.querySelector(".control-button.minimize"), r = this.shadowRoot.querySelector(".control-button.maximize"), i = this.shadowRoot.querySelector(".view-source-button"), s = this.shadowRoot.querySelector(".copy-source-button"), d = this.shadowRoot.querySelector(".share-button"), n = this.shadowRoot.querySelector(".browser-header");
+    e?.addEventListener("click", () => this._handleClose()), t?.addEventListener("click", () => this.toggleMinimize()), r?.addEventListener("click", () => this.toggleMaximize()), i?.addEventListener("click", () => this.toggleViewSource()), s?.addEventListener("click", () => this.copySourceCode()), d?.addEventListener("click", (a) => {
       a.stopPropagation(), this.toggleShareMenu();
     }), n?.addEventListener("dblclick", (a) => {
       a.target.closest("button, a, .share-menu") || this.toggleMaximize();
@@ -466,8 +494,8 @@ class E extends HTMLElement {
         }
         return;
       }
-      const o = await r.text();
-      this._fetchController === t && this.src === e && (this.sourceCode = o, this._sourceCodeSrc = e);
+      const i = await r.text();
+      this._fetchController === t && this.src === e && (this.sourceCode = i, this._sourceCodeSrc = e);
     } catch (r) {
       r.name !== "AbortError" && (console.error("Failed to fetch source code:", r), this.src === e && (this.sourceCode = "// Failed to load source code", this._sourceCodeSrc = e));
     } finally {
@@ -588,13 +616,13 @@ class E extends HTMLElement {
     if (!this.sourceCode) return null;
     const t = new DOMParser().parseFromString(this.sourceCode, "text/html"), r = Array.from(t.querySelectorAll("style")).map((n) => n.textContent).join(`
 
-`), o = Array.from(t.querySelectorAll("script")).filter((n) => !n.src && n.type !== "module").map((n) => n.textContent).join(`
+`), i = Array.from(t.querySelectorAll("script")).filter((n) => !n.src && n.type !== "module").map((n) => n.textContent).join(`
 
 `), s = t.body.cloneNode(!0);
     return s.querySelectorAll("script, style").forEach((n) => n.remove()), {
       html: s.innerHTML.trim(),
       css: r.trim(),
-      js: o.trim()
+      js: i.trim()
     };
   }
   async openInCodePen() {
@@ -611,8 +639,8 @@ class E extends HTMLElement {
       // Show HTML and CSS editors, hide JS if empty
     }, r = document.createElement("form");
     r.action = "https://codepen.io/pen/define", r.method = "POST", r.target = "_blank";
-    const o = document.createElement("input");
-    o.type = "hidden", o.name = "data", o.value = JSON.stringify(t), r.appendChild(o), document.body.appendChild(r), r.submit(), document.body.removeChild(r), this._setShareMenuOpen(!1);
+    const i = document.createElement("input");
+    i.type = "hidden", i.name = "data", i.value = JSON.stringify(t), r.appendChild(i), document.body.appendChild(r), r.submit(), document.body.removeChild(r), this._setShareMenuOpen(!1);
   }
   _handleClose() {
     if (this.isMaximized) {
@@ -636,14 +664,14 @@ class E extends HTMLElement {
       z-index: var(--browser-window-overlay-z-index, 9998);
       cursor: pointer;
       animation: fadeIn 200ms ease;
-    `, !_) {
+    `, !S) {
         const e = document.createElement("style");
         e.textContent = `
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-      `, document.head.appendChild(e), _ = !0;
+      `, document.head.appendChild(e), S = !0;
       }
       this.overlay.addEventListener("click", () => this.toggleMaximize()), document.body.appendChild(this.overlay), document.addEventListener("keydown", this._handleKeydown);
     }
@@ -1034,16 +1062,20 @@ class E extends HTMLElement {
           cursor: zoom-out;
         }
 
+        /* Targets sit edge to edge so hit areas never overlap. The inline margin
+           keeps the first dot on the header padding. */
         .controls {
           display: flex;
-          gap: 0.5rem;
+          flex-shrink: 0;
           align-items: center;
+          margin-inline: -6px;
         }
 
         .control-button {
           /* Touch target size - transparent background */
-          width: 28px;
-          height: 28px;
+          width: 24px;
+          height: 24px;
+          padding: 0;
           border-radius: 50%;
           border: none;
           background: transparent;
@@ -1053,7 +1085,8 @@ class E extends HTMLElement {
           display: flex;
           align-items: center;
           justify-content: center;
-          margin: -8px;
+          /* Keep targets from adding to the header height */
+          margin-block: -6px;
         }
 
         /* Visual circle via pseudo-element */
@@ -1067,10 +1100,25 @@ class E extends HTMLElement {
 
         /* Larger touch targets on touch devices */
         @media (pointer: coarse) {
+          /* 44px targets that shrink, down to 24px, before the toolbar would clip */
+          .controls {
+            flex: 0 1 132px;
+            min-width: 72px;
+            margin-inline: -16px -12px;
+          }
+
           .control-button {
-            width: 44px;
+            flex: 1 1 0;
+            width: auto;
+            min-width: 24px;
             height: 44px;
-            margin: -16px;
+            margin-block: -16px;
+          }
+        }
+
+        @media (pointer: coarse) and (max-width: 480px) {
+          .controls {
+            margin-inline: -6px;
           }
         }
 
@@ -1321,17 +1369,17 @@ class E extends HTMLElement {
   }
   // --- Device mode ---
   _deviceCSS(e) {
-    const t = this.getAttribute("orientation") === "landscape", r = this._getEffectiveDimensions(e), [o, s, d, n] = this._getEffectiveSafeInsets(e), c = A[e.notch] || 24, a = e.homeIndicator && !e.homeButton ? L : 0, w = e.homeButton ? y : 0, u = e.notch !== "none";
+    const t = this.getAttribute("orientation") === "landscape", r = this._getEffectiveDimensions(e), [i, s, d, n] = this._getEffectiveSafeInsets(e), c = $[e.notch] || 24, a = e.homeIndicator && !e.homeButton ? B : 0, w = e.homeButton ? k : 0, b = e.notch !== "none";
     return `
         :host([device]) {
           --device-width: ${r.width}px;
           --device-height: ${r.height}px;
           --device-bezel: ${e.bezel}px;
           --device-corner-radius: ${e.cornerRadius}px;
-          --status-bar-height: ${t && u ? 24 : c}px;
+          --status-bar-height: ${t && b ? 24 : c}px;
           --home-indicator-height: ${a}px;
           --home-button-area: ${w}px;
-          --safe-top: ${o}px;
+          --safe-top: ${i}px;
           --safe-right: ${s}px;
           --safe-bottom: ${d}px;
           --safe-left: ${n}px;
@@ -1757,8 +1805,8 @@ class E extends HTMLElement {
     `;
   }
   _deviceChrome(e) {
-    const t = this.getAttribute("orientation") === "landscape", r = e.notch !== "none", o = r ? e.notch : "", s = e.homeButton ? "home-button" : "", n = ["silver", "gold", "white"].includes(this.deviceColor) ? "light-bezel" : "", a = ["device-frame", o, s, n, t ? "landscape" : ""].filter(Boolean).join(" "), u = `
-      <div class="status-bar ${t && r ? "" : o}">
+    const t = this.getAttribute("orientation") === "landscape", r = e.notch !== "none", i = r ? e.notch : "", s = e.homeButton ? "home-button" : "", n = ["silver", "gold", "white"].includes(this.deviceColor) ? "light-bezel" : "", a = ["device-frame", i, s, n, t ? "landscape" : ""].filter(Boolean).join(" "), b = `
+      <div class="status-bar ${t && r ? "" : i}">
         <span class="status-time">9:41</span>
         <div class="status-icons">
           <span class="signal-bars" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
@@ -1766,35 +1814,35 @@ class E extends HTMLElement {
           <span class="battery-icon" aria-hidden="true"></span>
         </div>
       </div>
-    `, f = e.homeIndicator && !e.homeButton ? '<div class="home-indicator"><div class="home-indicator-pill"></div></div>' : "", v = this.hasAttribute("show-safe-areas") ? `<div class="safe-area-overlays">
+    `, v = e.homeIndicator && !e.homeButton ? '<div class="home-indicator"><div class="home-indicator-pill"></div></div>' : "", p = this.hasAttribute("show-safe-areas") ? `<div class="safe-area-overlays">
           <div class="safe-area-overlay safe-area-top"></div>
           <div class="safe-area-overlay safe-area-right"></div>
           <div class="safe-area-overlay safe-area-bottom"></div>
           <div class="safe-area-overlay safe-area-left"></div>
-        </div>` : "", p = this._deviceToolbar();
+        </div>` : "", g = this._deviceToolbar();
     return t && r ? `
         <div class="device-wrapper">
           <div class="${a}">
-            <div class="notch-sidebar ${o}"></div>
+            <div class="notch-sidebar ${i}"></div>
             <div class="device-main">
-              ${u}
+              ${b}
               ${this._contentHTML()}
-              ${f}
+              ${v}
             </div>
-            ${v}
+            ${p}
           </div>
         </div>
-        ${p}
+        ${g}
       ` : `
       <div class="device-wrapper">
         <div class="${a}">
-          ${u}
+          ${b}
           ${this._contentHTML()}
-          ${f}
           ${v}
+          ${p}
         </div>
       </div>
-      ${p}
+      ${g}
     `;
   }
   _deviceToolbar() {
@@ -1852,11 +1900,11 @@ class E extends HTMLElement {
     if (!e) return;
     const t = this.shadowRoot.querySelector(".device-wrapper"), r = this.shadowRoot.querySelector(".device-frame");
     if (!t || !r) return;
-    const o = this.clientWidth;
-    if (o === 0) return;
-    const s = this._getEffectiveDimensions(e), d = s.width + e.bezel * 2, n = Math.max(0.5, Math.min(1, o / d));
+    const i = this.clientWidth;
+    if (i === 0) return;
+    const s = this._getEffectiveDimensions(e), d = s.width + e.bezel * 2, n = Math.max(0.5, Math.min(1, i / d));
     this._currentScale = n, r.style.transform = `scale(${n})`;
-    const c = e.homeButton ? y : 0, a = s.height + e.bezel * 2 + c;
+    const c = e.homeButton ? k : 0, a = s.height + e.bezel * 2 + c;
     t.style.height = `${a * n}px`;
   }
   _teardownDeviceScaling() {
@@ -1864,10 +1912,10 @@ class E extends HTMLElement {
   }
   _escapeHtml(e) {
     const t = document.createElement("div");
-    return t.textContent = e, t.innerHTML;
+    return t.textContent = e, t.innerHTML.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 }
-customElements.get("browser-window") || customElements.define("browser-window", E);
+customElements.get("browser-window") || customElements.define("browser-window", O);
 export {
-  E as BrowserWindow
+  O as BrowserWindow
 };
