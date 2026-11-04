@@ -7,9 +7,10 @@ the project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
-- Docs site uses `@profpowell/browser-window` 1.4.8, which gives demo iframes a
-  title and stops the window controls' hit areas overlapping. The `a11y-site`
-  spec no longer excludes the window controls.
+- Docs site uses `@profpowell/browser-window` 1.4.9. Demo iframes have a title
+  and the window controls' hit areas no longer overlap, so the `a11y-site` spec
+  no longer excludes the window controls. The toolbar also fits narrow windows,
+  and demos follow a scoped `data-theme`.
 
 ## [0.3.0] - 2026-11-03
 
